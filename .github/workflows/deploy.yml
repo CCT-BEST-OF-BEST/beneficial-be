@@ -76,19 +76,17 @@ jobs:
             exit 1
           }
 
-      - name: 7. Install rsync on GCP VM
+      - name: 7. Check Required Tools on GCP VM
         run: |
-          echo "==== GCP VM에 rsync 설치 ===="
+          echo "==== GCP VM 필수 도구 확인 ===="
           ssh -i ~/.ssh/id_ed25519 -o StrictHostKeyChecking=no -o ConnectTimeout=30 gwinvade99@34.47.103.49 '
-            # Ubuntu/Debian 패키지 업데이트
-            sudo apt-get update
+            echo "rsync 버전 확인:"
+            rsync --version || echo "rsync이 설치되지 않았습니다. 수동으로 설치해주세요: sudo apt-get install -y rsync"
             
-            # rsync 설치
-            sudo apt-get install -y rsync
+            echo "Docker 버전 확인:"
+            sudo docker --version || echo "Docker가 설치되지 않았습니다."
             
-            # 설치 확인
-            rsync --version
-            echo "rsync 설치 완료!"
+            echo "필수 도구 확인 완료!"
           '
 
       - name: 8. Rsync Project Files to GCP VM
