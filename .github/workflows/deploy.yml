@@ -97,21 +97,16 @@ jobs:
           # 기존 디렉토리 정리
           ssh -i ~/.ssh/id_ed25519 -o StrictHostKeyChecking=no -o ConnectTimeout=30 gwinvade99@34.47.103.49 'rm -rf ~/beneficial-be'
           
-          # tar로 압축하여 전송
-          tar -czf project.tar.gz .
-          scp -i ~/.ssh/id_ed25519 -o StrictHostKeyChecking=no -o ConnectTimeout=30 project.tar.gz gwinvade99@34.47.103.49:~/
+          # 특정 파일들만 복사 (tar 오류 방지)
+          ssh -i ~/.ssh/id_ed25519 -o StrictHostKeyChecking=no -o ConnectTimeout=30 gwinvade99@34.47.103.49 'mkdir -p ~/beneficial-be'
           
-          # 원격에서 압축 해제
-          ssh -i ~/.ssh/id_ed25519 -o StrictHostKeyChecking=no -o ConnectTimeout=30 gwinvade99@34.47.103.49 '
-            mkdir -p ~/beneficial-be
-            cd ~/beneficial-be
-            tar -xzf ~/project.tar.gz
-            rm ~/project.tar.gz
-            echo "파일 복사 완료!"
-          '
+          # 주요 파일들 개별 전송
+          scp -i ~/.ssh/id_ed25519 -o StrictHostKeyChecking=no -o ConnectTimeout=30 app/main.py gwinvade99@34.47.103.49:~/beneficial-be/app/
+          scp -i ~/.ssh/id_ed25519 -o StrictHostKeyChecking=no -o ConnectTimeout=30 Dockerfile gwinvade99@34.47.103.49:~/beneficial-be/
+          scp -i ~/.ssh/id_ed25519 -o StrictHostKeyChecking=no -o ConnectTimeout=30 requirements.txt gwinvade99@34.47.103.49:~/beneficial-be/
+          scp -i ~/.ssh/id_ed25519 -o StrictHostKeyChecking=no -o ConnectTimeout=30 README.md gwinvade99@34.47.103.49:~/beneficial-be/
           
-          # 로컬 압축 파일 정리
-          rm project.tar.gz
+          echo "파일 복사 완료!"
 
       - name: 9. Build & Run Docker on GCP VM
         run: |
