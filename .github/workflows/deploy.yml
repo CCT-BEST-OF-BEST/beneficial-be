@@ -118,12 +118,12 @@ jobs:
             set -e
             cd ~/beneficial-be
             echo "기존 fastapi-app 컨테이너 정지 및 삭제 시도..."
-            docker stop fastapi-app || true
-            docker rm fastapi-app || true
+            sudo docker stop fastapi-app || true
+            sudo docker rm fastapi-app || true
             echo "도커 이미지 빌드..."
-            docker build -t my-fastapi-app .
+            sudo docker build -t my-fastapi-app .
             echo "도커 컨테이너 실행(포트 8000)..."
-            docker run -d --name fastapi-app -p 8000:8000 my-fastapi-app
+            sudo docker run -d --name fastapi-app -p 8000:8000 my-fastapi-app
             echo "==== 배포 완료 ===="
           '
 
