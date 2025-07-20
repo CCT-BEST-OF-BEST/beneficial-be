@@ -1,0 +1,62 @@
+name: Deploy FastAPI App to GCP VM
+
+on:
+  push:
+    branches: [ main ]
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: 1. Checkout Source Code
+        uses: actions/checkout@v4
+
+      - name: 2. Set up Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: 3. Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: 4. Build Docker Image (FastAPI)
+        run: |
+          echo "==== 도커 이미지 빌드 시작 ===="
+          docker build -t my-fastapi-app .
+          echo "==== 도커 이미지 빌드 완료 ===="
+
+      - name: 5. Save SSH Key for GCP VM
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.GCP_SSH_KEY }}" > ~/.ssh/id_ed25519
+          chmod 600 ~/.ssh/id_ed25519
+
+      - name: 6. Rsync Project Files to GCP VM
+        run: |
+          echo "==== Rsync로 GCP VM에 프로젝트 파일 복사 ===="
+          rsync -avz --delete -e "ssh -i ~/.ssh/id_ed25519 -o StrictHostKeyChecking=no" ./ gwinvade99@34.47.103.49:/home/gwinvade99/beneficial-be
+
+      - name: 7. Build & Run Docker on GCP VM
+        run: |
+          echo "==== GCP VM에서 도커 컨테이너 빌드 및 실행 ===="
+          ssh -i ~/.ssh/id_ed25519 -o StrictHostKeyChecking=no gwinvade99@34.47.103.49 '
+            set -e
+            cd ~/beneficial-be
+            echo "기존 fastapi-app 컨테이너 정지 및 삭제 시도..."
+            docker stop fastapi-app || true
+            docker rm fastapi-app || true
+            echo "도커 이미지 빌드..."
+            docker build -t my-fastapi-app .
+            echo "도커 컨테이너 실행(포트 8000)..."
+            docker run -d --name fastapi-app -p 8000:8000 my-fastapi-app
+            echo "==== 배포 완료 ===="
+          '
+
+      - name: 8. Show Docker Container Logs (On Failure)
+        if: failure()
+        run: |
+          echo "==== FastAPI 도커 컨테이너 로그 출력 (배포 실패시) ===="
+          ssh -i ~/.ssh/id_ed25519 -o StrictHostKeyChecking=no gwinvade99@34.47.103.49 '
+            docker logs fastapi-app || echo "컨테이너 로그가 없습니다."
+          '
