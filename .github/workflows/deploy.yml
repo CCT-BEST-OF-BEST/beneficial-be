@@ -26,21 +26,55 @@ jobs:
           docker build -t my-fastapi-app .
           echo "==== 도커 이미지 빌드 완료 ===="
 
-      - name: 5. Save SSH Key for GCP VM
+      - name: 5. Setup SSH for GCP VM
         run: |
+          echo "==== SSH 키 설정 시작 ===="
           mkdir -p ~/.ssh
-          echo "${{ secrets.GCP_SSH_KEY }}" > ~/.ssh/id_ed25519
+          
+          # SSH 키 파일 생성 (개행문자 처리)
+          echo "${{ secrets.GCP_SSH_KEY }}" | tr -d '\r' > ~/.ssh/id_ed25519
           chmod 600 ~/.ssh/id_ed25519
+          
+          # SSH 설정 파일 생성
+          cat >> ~/.ssh/config << EOF
+          Host gcp-vm
+            HostName 34.47.103.49
+            User gwinvade99
+            IdentityFile ~/.ssh/id_ed25519
+            StrictHostKeyChecking no
+            UserKnownHostsFile /dev/null
+          EOF
+          
+          chmod 600 ~/.ssh/config
+          
+          # SSH 키 확인
+          echo "SSH 키 파일 내용 확인:"
+          ls -la ~/.ssh/
+          echo "SSH 키 형식 확인:"
+          ssh-keygen -l -f ~/.ssh/id_ed25519 || echo "SSH 키 형식에 문제가 있습니다."
+          
+          echo "==== SSH 키 설정 완료 ===="
 
-      - name: 6. Rsync Project Files to GCP VM
+      - name: 6. Test SSH Connection
+        run: |
+          echo "==== SSH 연결 테스트 ===="
+          ssh -i ~/.ssh/id_ed25519 -o StrictHostKeyChecking=no -o ConnectTimeout=10 gwinvade99@34.47.103.49 'echo "SSH 연결 성공!"' || {
+            echo "SSH 연결 실패. 다음을 확인하세요:"
+            echo "1. GCP_SSH_KEY secret이 올바른 형식인지 확인"
+            echo "2. GCP VM의 authorized_keys에 공개키가 등록되었는지 확인"
+            echo "3. GCP VM의 방화벽 설정 확인"
+            exit 1
+          }
+
+      - name: 7. Rsync Project Files to GCP VM
         run: |
           echo "==== Rsync로 GCP VM에 프로젝트 파일 복사 ===="
-          rsync -avz --delete -e "ssh -i ~/.ssh/id_ed25519 -o StrictHostKeyChecking=no" ./ gwinvade99@34.47.103.49:/home/gwinvade99/beneficial-be
+          rsync -avz --delete -e "ssh -i ~/.ssh/id_ed25519 -o StrictHostKeyChecking=no -o ConnectTimeout=30" ./ gwinvade99@34.47.103.49:/home/gwinvade99/beneficial-be
 
-      - name: 7. Build & Run Docker on GCP VM
+      - name: 8. Build & Run Docker on GCP VM
         run: |
           echo "==== GCP VM에서 도커 컨테이너 빌드 및 실행 ===="
-          ssh -i ~/.ssh/id_ed25519 -o StrictHostKeyChecking=no gwinvade99@34.47.103.49 '
+          ssh -i ~/.ssh/id_ed25519 -o StrictHostKeyChecking=no -o ConnectTimeout=30 gwinvade99@34.47.103.49 '
             set -e
             cd ~/beneficial-be
             echo "기존 fastapi-app 컨테이너 정지 및 삭제 시도..."
@@ -53,10 +87,10 @@ jobs:
             echo "==== 배포 완료 ===="
           '
 
-      - name: 8. Show Docker Container Logs (On Failure)
+      - name: 9. Show Docker Container Logs (On Failure)
         if: failure()
         run: |
           echo "==== FastAPI 도커 컨테이너 로그 출력 (배포 실패시) ===="
-          ssh -i ~/.ssh/id_ed25519 -o StrictHostKeyChecking=no gwinvade99@34.47.103.49 '
+          ssh -i ~/.ssh/id_ed25519 -o StrictHostKeyChecking=no -o ConnectTimeout=10 gwinvade99@34.47.103.49 '
             docker logs fastapi-app || echo "컨테이너 로그가 없습니다."
           '
