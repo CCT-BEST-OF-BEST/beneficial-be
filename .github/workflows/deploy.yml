@@ -93,8 +93,25 @@ jobs:
 
       - name: 8. Rsync Project Files to GCP VM
         run: |
-          echo "==== Rsync로 GCP VM에 프로젝트 파일 복사 ===="
-          rsync -avz --delete -e "ssh -i ~/.ssh/id_ed25519 -o StrictHostKeyChecking=no -o ConnectTimeout=30" ./ gwinvade99@34.47.103.49:/home/gwinvade99/beneficial-be
+          echo "==== SCP로 GCP VM에 프로젝트 파일 복사 ===="
+          # 기존 디렉토리 정리
+          ssh -i ~/.ssh/id_ed25519 -o StrictHostKeyChecking=no -o ConnectTimeout=30 gwinvade99@34.47.103.49 'rm -rf ~/beneficial-be'
+          
+          # tar로 압축하여 전송
+          tar -czf project.tar.gz .
+          scp -i ~/.ssh/id_ed25519 -o StrictHostKeyChecking=no -o ConnectTimeout=30 project.tar.gz gwinvade99@34.47.103.49:~/
+          
+          # 원격에서 압축 해제
+          ssh -i ~/.ssh/id_ed25519 -o StrictHostKeyChecking=no -o ConnectTimeout=30 gwinvade99@34.47.103.49 '
+            mkdir -p ~/beneficial-be
+            cd ~/beneficial-be
+            tar -xzf ~/project.tar.gz
+            rm ~/project.tar.gz
+            echo "파일 복사 완료!"
+          '
+          
+          # 로컬 압축 파일 정리
+          rm project.tar.gz
 
       - name: 9. Build & Run Docker on GCP VM
         run: |
