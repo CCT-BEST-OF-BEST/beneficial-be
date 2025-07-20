@@ -53,6 +53,16 @@ jobs:
           echo "SSH 키 형식 확인:"
           ssh-keygen -l -f ~/.ssh/id_ed25519 || echo "SSH 키 형식에 문제가 있습니다."
           
+          # SSH 키 내용 확인 (처음 몇 줄만)
+          echo "SSH 키 내용 (처음 3줄):"
+          head -3 ~/.ssh/id_ed25519
+          echo "SSH 키 내용 (마지막 3줄):"
+          tail -3 ~/.ssh/id_ed25519
+          
+          # 공개키 추출 시도
+          echo "공개키 추출 시도:"
+          ssh-keygen -y -f ~/.ssh/id_ed25519 || echo "공개키 추출 실패"
+          
           echo "==== SSH 키 설정 완료 ===="
 
       - name: 6. Test SSH Connection
@@ -66,12 +76,27 @@ jobs:
             exit 1
           }
 
-      - name: 7. Rsync Project Files to GCP VM
+      - name: 7. Install rsync on GCP VM
+        run: |
+          echo "==== GCP VM에 rsync 설치 ===="
+          ssh -i ~/.ssh/id_ed25519 -o StrictHostKeyChecking=no -o ConnectTimeout=30 gwinvade99@34.47.103.49 '
+            # Ubuntu/Debian 패키지 업데이트
+            sudo apt-get update
+            
+            # rsync 설치
+            sudo apt-get install -y rsync
+            
+            # 설치 확인
+            rsync --version
+            echo "rsync 설치 완료!"
+          '
+
+      - name: 8. Rsync Project Files to GCP VM
         run: |
           echo "==== Rsync로 GCP VM에 프로젝트 파일 복사 ===="
           rsync -avz --delete -e "ssh -i ~/.ssh/id_ed25519 -o StrictHostKeyChecking=no -o ConnectTimeout=30" ./ gwinvade99@34.47.103.49:/home/gwinvade99/beneficial-be
 
-      - name: 8. Build & Run Docker on GCP VM
+      - name: 9. Build & Run Docker on GCP VM
         run: |
           echo "==== GCP VM에서 도커 컨테이너 빌드 및 실행 ===="
           ssh -i ~/.ssh/id_ed25519 -o StrictHostKeyChecking=no -o ConnectTimeout=30 gwinvade99@34.47.103.49 '
@@ -87,7 +112,7 @@ jobs:
             echo "==== 배포 완료 ===="
           '
 
-      - name: 9. Show Docker Container Logs (On Failure)
+      - name: 10. Show Docker Container Logs (On Failure)
         if: failure()
         run: |
           echo "==== FastAPI 도커 컨테이너 로그 출력 (배포 실패시) ===="
