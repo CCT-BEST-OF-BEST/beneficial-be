@@ -122,15 +122,35 @@ jobs:
             sudo docker rm fastapi-app || true
             echo "도커 이미지 빌드..."
             sudo docker build -t my-fastapi-app .
-            echo "도커 컨테이너 실행(포트 8000)..."
-            sudo docker run -d --name fastapi-app -p 8000:8000 my-fastapi-app
+            echo "도커 컨테이너 실행(포트 8000, localhost만 접근 가능)..."
+            sudo docker run -d --name fastapi-app -p 127.0.0.1:8000:8000 my-fastapi-app
             echo "==== 배포 완료 ===="
           '
 
-      - name: 10. Show Docker Container Logs (On Failure)
+      - name: 10. Test Application Deployment
+        run: |
+          echo "==== 애플리케이션 배포 테스트 ===="
+          # 잠시 대기 (애플리케이션 시작 시간)
+          sleep 10
+          
+          # 로컬에서 FastAPI 애플리케이션 테스트
+          ssh -i ~/.ssh/id_ed25519 -o StrictHostKeyChecking=no -o ConnectTimeout=10 gwinvade99@34.47.103.49 '
+            echo "FastAPI 애플리케이션 상태 확인..."
+            curl -f http://localhost:8000/ || echo "FastAPI 애플리케이션에 접근할 수 없습니다."
+            
+            echo "Swagger 문서 접근 테스트..."
+            curl -f http://localhost:8000/docs || echo "Swagger 문서에 접근할 수 없습니다."
+          '
+          
+          echo "배포된 애플리케이션 접속 URL:"
+          echo "🌐 메인 애플리케이션: https://study-mate.club"
+          echo "📚 Swagger 문서: https://study-mate.club/docs"
+          echo "🔧 API 문서: https://study-mate.club/redoc"
+
+      - name: 11. Show Docker Container Logs (On Failure)
         if: failure()
         run: |
           echo "==== FastAPI 도커 컨테이너 로그 출력 (배포 실패시) ===="
           ssh -i ~/.ssh/id_ed25519 -o StrictHostKeyChecking=no -o ConnectTimeout=10 gwinvade99@34.47.103.49 '
-            docker logs fastapi-app || echo "컨테이너 로그가 없습니다."
+            sudo docker logs fastapi-app || echo "컨테이너 로그가 없습니다."
           '
