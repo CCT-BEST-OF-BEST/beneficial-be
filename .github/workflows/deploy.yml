@@ -97,8 +97,11 @@ jobs:
           # 기존 디렉토리 정리
           ssh -i ~/.ssh/id_ed25519 -o StrictHostKeyChecking=no -o ConnectTimeout=30 gwinvade99@34.47.103.49 'rm -rf ~/beneficial-be'
           
-          # 특정 파일들만 복사 (tar 오류 방지)
-          ssh -i ~/.ssh/id_ed25519 -o StrictHostKeyChecking=no -o ConnectTimeout=30 gwinvade99@34.47.103.49 'mkdir -p ~/beneficial-be'
+          # 디렉토리 구조 생성
+          ssh -i ~/.ssh/id_ed25519 -o StrictHostKeyChecking=no -o ConnectTimeout=30 gwinvade99@34.47.103.49 '
+            mkdir -p ~/beneficial-be/app
+            echo "디렉토리 구조 생성 완료"
+          '
           
           # 주요 파일들 개별 전송
           scp -i ~/.ssh/id_ed25519 -o StrictHostKeyChecking=no -o ConnectTimeout=30 app/main.py gwinvade99@34.47.103.49:~/beneficial-be/app/
