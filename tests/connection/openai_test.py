@@ -1,13 +1,38 @@
 import os
 from openai import OpenAI
 from dotenv import load_dotenv
+from app.core.rag_service import get_rag_service
 
 load_dotenv()  # .env 파일에서 환경변수 읽어오기
 
+
 def chat_with_gpt(prompt: str):
+    """
+    RAG 시스템을 사용하여 GPT와 대화합니다.
+
+    Args:
+        prompt: 사용자 질문
+
+    Returns:
+        GPT 응답
+    """
+    try:
+        # RAG 서비스 사용
+        rag_service = get_rag_service()
+        response = rag_service.chat_with_rag(prompt)
+        return response
+    except Exception as e:
+        print(f"RAG 시스템 오류: {e}")
+        # RAG 실패 시 기본 GPT 응답으로 폴백
+        return _fallback_gpt_response(prompt)
+
+
+def _fallback_gpt_response(prompt: str):
+    """RAG 실패 시 기본 GPT 응답"""
     api_key = os.getenv("OPENAI_API_KEY")
     if not api_key:
         raise Exception("API Key not found in environment variable!")
+
     client = OpenAI(api_key=api_key)
 
     response = client.chat.completions.create(
