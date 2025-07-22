@@ -4,6 +4,6 @@ pymongo
 python-dotenv
 openai
 chromadb
-sentence-transformers
 numpy
 pydantic
+sentence-transformers
