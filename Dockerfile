@@ -16,9 +16,5 @@ COPY . .
 # (필요하다면 포트 오픈, FastAPI의 기본 포트 8000)
 EXPOSE 8000
 
-# MONGO_URI를 인자와 환경변수로 설정
-ARG MONGO_URI
-ENV MONGO_URI=${MONGO_URI}
-
 # FastAPI 앱 실행 예시
 CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]

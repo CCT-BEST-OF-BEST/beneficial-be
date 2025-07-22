@@ -111,7 +111,7 @@ jobs:
             echo "도커 이미지 빌드..."
             sudo docker build -t my-fastapi-app .
             echo "도커 컨테이너 실행(포트 8000, localhost만 접근 가능)..."
-            sudo docker run -d --name fastapi-app -p 127.0.0.1:8000:8000 --env MONGO_URI="${{ secrets.MONGO_URI }}" my-fastapi-app
+            sudo docker run -d --name fastapi-app -p 127.0.0.1:8000:8000 --env MONGO_URI="${{ secrets.MONGO_URI }}" --env OPENAI_API_KEY="${{ secrets.OPENAI_API_KEY }}" my-fastapi-app
             echo "==== 배포 완료 ===="
           '
 
