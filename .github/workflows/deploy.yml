@@ -89,24 +89,14 @@ jobs:
             echo "필수 도구 확인 완료!"
           '
 
-      - name: 8. Rsync Project Files to GCP VM
+      - name: 8. Deploy Files to GCP VM
         run: |
-          echo "==== SCP로 GCP VM에 프로젝트 파일 복사 ===="
-          # 기존 디렉토리 정리
-          ssh -i ~/.ssh/id_ed25519 -o StrictHostKeyChecking=no -o ConnectTimeout=30 gwinvade99@34.47.103.49 'rm -rf ~/beneficial-be'
+          echo "==== GCP VM에 프로젝트 파일 복사 ===="
+          # 서버의 기존 디렉토리 정리 및 재생성
+          ssh -i ~/.ssh/id_ed25519 -o StrictHostKeyChecking=no -o ConnectTimeout=30 gwinvade99@34.47.103.49 'rm -rf ~/beneficial-be && mkdir ~/beneficial-be'
           
-          # 디렉토리 구조 생성
-          ssh -i ~/.ssh/id_ed25519 -o StrictHostKeyChecking=no -o ConnectTimeout=30 gwinvade99@34.47.103.49 '
-            mkdir -p ~/beneficial-be/app
-            echo "디렉토리 구조 생성 완료"
-          '
-          
-          # 주요 파일들 개별 전송
-          scp -i ~/.ssh/id_ed25519 -o StrictHostKeyChecking=no -o ConnectTimeout=30 app/main.py gwinvade99@34.47.103.49:~/beneficial-be/app/
-          scp -i ~/.ssh/id_ed25519 -o StrictHostKeyChecking=no -o ConnectTimeout=30 Dockerfile gwinvade99@34.47.103.49:~/beneficial-be/
-          scp -i ~/.ssh/id_ed25519 -o StrictHostKeyChecking=no -o ConnectTimeout=30 requirements.txt gwinvade99@34.47.103.49:~/beneficial-be/
-          scp -i ~/.ssh/id_ed25519 -o StrictHostKeyChecking=no -o ConnectTimeout=30 README.md gwinvade99@34.47.103.49:~/beneficial-be/
-          
+          # scp를 사용하여 모든 프로젝트 파일과 디렉토리를 재귀적으로 복사
+          scp -r -i ~/.ssh/id_ed25519 -o StrictHostKeyChecking=no -o ConnectTimeout=30 ./* gwinvade99@34.47.103.49:~/beneficial-be/
           echo "파일 복사 완료!"
 
       - name: 9. Build & Run Docker on GCP VM
