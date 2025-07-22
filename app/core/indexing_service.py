@@ -11,7 +11,7 @@ class IndexingService:
         self.vector_db = get_vector_db()
         self.embedding_model = get_embedding_model()
 
-    def index_korean_word_problems(self) -> Dict[str, Any]:
+    async def index_korean_word_problems(self) -> Dict[str, Any]:
         """
         한국어 단어 문제 데이터를 벡터 DB에 인덱싱합니다.
 
@@ -40,7 +40,7 @@ class IndexingService:
 
             # 임베딩 생성
             print(f"⚒️ {len(texts)}개 문서 임베딩 중...")
-            embeddings = self.embedding_model.get_embeddings(texts)
+            embeddings = await self.embedding_model.get_embeddings(texts)
 
             # ChromaDB에 저장
             collection = self.vector_db.get_collection("korean_word_problems")
@@ -62,7 +62,7 @@ class IndexingService:
             print(f"❌ 한국어 단어 문제 인덱싱 실패: {e}")
             return {"status": "error", "message": str(e)}
 
-    def index_card_check_data(self) -> Dict[str, Any]:
+    async def index_card_check_data(self) -> Dict[str, Any]:
         """
         카드 체크 데이터를 벡터 DB에 인덱싱합니다.
 
@@ -91,7 +91,7 @@ class IndexingService:
 
             # 임베딩 생성
             print(f"🔎 {len(texts)}개 문서 임베딩 중...")
-            embeddings = self.embedding_model.get_embeddings(texts)
+            embeddings = await self.embedding_model.get_embeddings(texts)
 
             # ChromaDB에 저장
             collection = self.vector_db.get_collection("card_check")
@@ -113,7 +113,7 @@ class IndexingService:
             print(f"❌ 카드 체크 데이터 인덱싱 실패: {e}")
             return {"status": "error", "message": str(e)}
 
-    def index_all_data(self) -> Dict[str, Any]:
+    async def index_all_data(self) -> Dict[str, Any]:
         """
         모든 데이터를 벡터 DB에 인덱싱합니다.
 
@@ -123,8 +123,8 @@ class IndexingService:
         print("🚀 전체 데이터 인덱싱 시작...")
 
         results = {
-            "korean_word_problems": self.index_korean_word_problems(),
-            "card_check": self.index_card_check_data()
+            "korean_word_problems": await self.index_korean_word_problems(),
+            "card_check": await self.index_card_check_data()
         }
 
         # 성공/실패 통계

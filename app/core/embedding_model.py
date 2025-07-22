@@ -28,7 +28,7 @@ class EmbeddingModel:
             self.use_openai = False
             print(f"🤖 Sentence Transformers 모델 사용: {model_name}")
 
-    def get_embedding(self, text: str) -> List[float]:
+    async def get_embedding(self, text: str) -> List[float]:
         """
         단일 텍스트를 임베딩합니다.
 
@@ -40,7 +40,7 @@ class EmbeddingModel:
         """
         if self.use_openai:
             try:
-                response = self.client.embeddings.create(
+                response = await self.client.embeddings.create(
                     model="text-embedding-ada-002",
                     input=text
                 )
@@ -52,7 +52,7 @@ class EmbeddingModel:
         else:
             return self.model.encode(text).tolist()
 
-    def get_embeddings(self, texts: List[str]) -> List[List[float]]:
+    async def get_embeddings(self, texts: List[str]) -> List[List[float]]:
         """
         여러 텍스트를 임베딩합니다.
 
@@ -64,7 +64,7 @@ class EmbeddingModel:
         """
         if self.use_openai:
             try:
-                response = self.client.embeddings.create(
+                response = await self.client.embeddings.create(
                     model="text-embedding-ada-002",
                     input=texts
                 )

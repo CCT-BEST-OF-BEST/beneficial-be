@@ -9,7 +9,7 @@ async def index_korean_word_problems():
     """한국어 단어 문제 데이터를 벡터 DB에 인덱싱합니다. (관리자 전용)"""
     try:
         indexing_service = get_indexing_service()
-        result = indexing_service.index_korean_word_problems()
+        result = await indexing_service.index_korean_word_problems()
 
         if result["status"] == "success":
             return {
@@ -29,7 +29,7 @@ async def index_card_check_data():
     """카드 체크 데이터를 벡터 DB에 인덱싱합니다. (관리자 전용)"""
     try:
         indexing_service = get_indexing_service()
-        result = indexing_service.index_card_check_data()
+        result = await indexing_service.index_card_check_data()
 
         if result["status"] == "success":
             return {
@@ -49,7 +49,7 @@ async def index_all_data():
     """모든 데이터를 벡터 DB에 인덱싱합니다. (관리자 전용)"""
     try:
         indexing_service = get_indexing_service()
-        result = indexing_service.index_all_data()
+        result = await indexing_service.index_all_data()
 
         return {
             "status": "success",

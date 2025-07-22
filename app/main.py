@@ -7,7 +7,7 @@ from app.api.system.indexing import router as indexing_router
 
 # 기존 테스트 함수들
 from tests.connection.db_conntction_test import mongo_test
-from tests.connection.openai_test import chat_with_gpt
+from tests.connection.openai_test import test_chat_with_gpt
 
 # 전역 로깅 설정
 logging.basicConfig(
@@ -43,13 +43,19 @@ async def startup_event():
     """애플리케이션 시작 시 실행될 이벤트"""
     logger.info("🚀 Beneficial RAG System 시작 중...")
 
-    # 벡터 DB 초기화 (선택적)
+    # 벡터 DB 및 RAG 서비스 초기화
     try:
         from app.core.vector_db import initialize_vector_db
+        from app.core.rag_service import get_rag_service
+
         vector_db = initialize_vector_db()
         logger.info("✅ 벡터 DB 초기화 완료")
+
+        await get_rag_service()
+        logger.info("✅ RAG 서비스 초기화 완료")
+
     except Exception as e:
-        logger.warning(f"⚠️ 벡터 DB 초기화 실패: {e}")
+        logger.warning(f"⚠️ 서비스 초기화 실패: {e}")
 
 
 @app.on_event("shutdown")
@@ -80,6 +86,6 @@ def test_db_connection():
 
 
 @app.get("/test-gpt", tags=["test"])
-def test_gpt(prompt: str = "맞히다와 맞추다의 차이 알려줘"):
-    result = chat_with_gpt(prompt)
+async def test_gpt(prompt: str = "맞히다와 맞추다의 차이 알려줘"):
+    result = await test_chat_with_gpt(prompt)
     return {"result": result}

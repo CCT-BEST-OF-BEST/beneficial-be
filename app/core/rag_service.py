@@ -16,10 +16,19 @@ class RAGService:
         self.embedding_model = get_embedding_model()
         self.openai_client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 
+    async def initialize(self):
         # 데이터가 벡터 DB에 없으면 자동으로 인덱싱
-        self._ensure_data_indexed()
+        await self._ensure_data_indexed()
 
-    def _ensure_data_indexed(self):
+    async def async_init(self):
+        # 데이터가 벡터 DB에 없으면 자동으로 인덱싱
+        await self._ensure_data_indexed()
+        """RAG 서비스 초기화"""
+        self.vector_db = get_vector_db()
+        self.embedding_model = get_embedding_model()
+        self.openai_client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+
+    async def _ensure_data_indexed(self):
         """데이터가 벡터 DB에 인덱싱되어 있는지 확인하고, 없으면 자동 인덱싱"""
         try:
             # 각 컬렉션의 문서 수 확인
@@ -34,16 +43,16 @@ class RAGService:
             # 데이터가 없으면 자동 인덱싱
             if korean_count == 0:
                 print("🔎 한국어 단어 문제 데이터 자동 인덱싱 중...")
-                self._index_korean_word_problems()
+                await self._index_korean_word_problems()
 
             if card_count == 0:
                 print("🔎 카드 체크 데이터 자동 인덱싱 중...")
-                self._index_card_check_data()
+                await self._index_card_check_data()
 
         except Exception as e:
             print(f"⚠️ 데이터 인덱싱 확인 중 오류: {e}")
 
-    def _index_korean_word_problems(self):
+    async def _index_korean_word_problems(self):
         """한국어 단어 문제 데이터를 벡터 DB에 인덱싱"""
         try:
             data = get_korean_word_problems()
@@ -56,7 +65,7 @@ class RAGService:
             ids = [doc["id"] for doc in documents]
             metadatas = [doc["metadata"] for doc in documents]
 
-            embeddings = self.embedding_model.get_embeddings(texts)
+            embeddings = await self.embedding_model.get_embeddings(texts)
 
             collection = self.vector_db.get_collection("korean_word_problems")
             collection.add(
@@ -70,7 +79,7 @@ class RAGService:
         except Exception as e:
             print(f"❌ 한국어 단어 문제 인덱싱 실패: {e}")
 
-    def _index_card_check_data(self):
+    async def _index_card_check_data(self):
         """카드 체크 데이터를 벡터 DB에 인덱싱"""
         try:
             data = get_card_check_data()
@@ -83,7 +92,7 @@ class RAGService:
             ids = [doc["id"] for doc in documents]
             metadatas = [doc["metadata"] for doc in documents]
 
-            embeddings = self.embedding_model.get_embeddings(texts)
+            embeddings = await self.embedding_model.get_embeddings(texts)
 
             collection = self.vector_db.get_collection("card_check")
             collection.add(
@@ -97,7 +106,7 @@ class RAGService:
         except Exception as e:
             print(f"❌ 카드 체크 인덱싱 실패: {e}")
 
-    def search_relevant_documents(self, query: str, collection_name: str = None, top_k: int = 3) -> List[
+    async def search_relevant_documents(self, query: str, collection_name: str = None, top_k: int = 3) -> List[
         Dict[str, Any]]:
         """
         질문과 관련된 문서를 검색합니다.
@@ -112,7 +121,7 @@ class RAGService:
         """
         try:
             # 질문을 임베딩
-            query_embedding = self.embedding_model.get_embedding(query)
+            query_embedding = await self.embedding_model.get_embedding(query)
 
             results = []
 
@@ -161,7 +170,7 @@ class RAGService:
             print(f"❌ 문서 검색 실패: {e}")
             return []
 
-    def chat_with_rag(self, prompt: str, collection_name: str = None, top_k: int = 3) -> str:
+    async def chat_with_rag(self, prompt: str, collection_name: str = None, top_k: int = 3) -> str:
         """
         RAG를 사용하여 GPT와 대화합니다.
 
@@ -175,7 +184,7 @@ class RAGService:
         """
         try:
             # 1. 관련 문서 검색
-            relevant_docs = self.search_relevant_documents(prompt, collection_name, top_k)
+            relevant_docs = await self.search_relevant_documents(prompt, collection_name, top_k)
 
             # 2. 컨텍스트 구성
             context = self._build_context(relevant_docs)
@@ -192,7 +201,7 @@ class RAGService:
 질문: {prompt}"""
 
             # 4. GPT 호출
-            response = self.openai_client.chat.completions.create(
+            response = await self.openai_client.chat.completions.create(
                 model="gpt-3.5-turbo",
                 messages=[
                     {"role": "system", "content": system_message},
@@ -224,9 +233,10 @@ class RAGService:
 rag_service = None
 
 
-def get_rag_service():
-    """전역 RAG 서비스 인스턴스를 반환합니다."""
+async def get_rag_service():
+    """전역 RAG 서비스 인스턴스를 비동기적으로 반환하고 초기화합니다."""
     global rag_service
     if rag_service is None:
         rag_service = RAGService()
+        await rag_service.initialize()
     return rag_service

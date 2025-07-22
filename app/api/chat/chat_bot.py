@@ -32,8 +32,8 @@ async def chat_with_rag(request: ChatRequest):
         GPT 응답
     """
     try:
-        rag_service = get_rag_service()
-        response = rag_service.chat_with_rag(
+        rag_service = await get_rag_service()
+        response = await rag_service.chat_with_rag(
             prompt=request.prompt,
             collection_name=request.collection_name,
             top_k=request.top_k
@@ -68,8 +68,8 @@ async def chat_get(
         GPT 응답
     """
     try:
-        rag_service = get_rag_service()
-        response = rag_service.chat_with_rag(
+        rag_service = await get_rag_service()
+        response = await rag_service.chat_with_rag(
             prompt=prompt,
             collection_name=collection_name,
             top_k=top_k
@@ -104,8 +104,8 @@ async def search_documents(
         관련 문서 리스트
     """
     try:
-        rag_service = get_rag_service()
-        results = rag_service.search_relevant_documents(query, collection_name, top_k)
+        rag_service = await get_rag_service()
+        results = await rag_service.search_relevant_documents(query, collection_name, top_k)
 
         return {
             "status": "success",
@@ -122,7 +122,7 @@ async def search_documents(
 async def get_chat_status():
     """채팅 시스템 상태를 확인합니다. (프론트엔드용)"""
     try:
-        rag_service = get_rag_service()
+        rag_service = await get_rag_service()
         vector_db = rag_service.vector_db
 
         # 각 컬렉션의 문서 수 확인
