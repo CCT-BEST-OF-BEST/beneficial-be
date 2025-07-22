@@ -1,0 +1,22 @@
+{
+  "collections": {
+    "card_check": {
+      "stage_field": "stage",
+      "type_field": "type",
+      "title_field": "title",
+      "cards_field": "cards",
+      "card_word_field": "word",
+      "card_meaning_field": "meaning",
+      "card_examples_field": "examples"
+    },
+    "korean_word_problems": {
+      "stage_field": "stage",
+      "type_field": "type",
+      "option_cards_field": "option_cards",
+      "questions_field": "questions",
+      "question_number_field": "number",
+      "question_sentence_field": "sentence",
+      "question_answer_field": "answer"
+    }
+  }
+}

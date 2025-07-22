@@ -1,7 +1,7 @@
 # main.py
 from fastapi import FastAPI
-from app.core.db_conntction_test import mongo_test
-from app.core.openai_test import chat_with_gpt
+from tests.connection.db_conntction_test import mongo_test
+from tests.connection.openai_test import chat_with_gpt
 app = FastAPI()
 
 @app.get("/")
