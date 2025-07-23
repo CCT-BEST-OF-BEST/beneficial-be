@@ -58,14 +58,16 @@ class InitializationService:
     async def _check_and_index_data(self) -> Dict[str, Any]:
         """데이터 상태 확인 및 필요시 자동 인덱싱"""
         try:
-            # 기존 데이터 확인
+            # 기존 데이터 확인 (PDF 문서 컬렉션 포함)
             korean_collection = self.vector_db.get_collection("korean_word_problems")
             card_collection = self.vector_db.get_collection("card_check")
+            pdf_collection = self.vector_db.get_collection("pdf_documents")
 
             korean_count = korean_collection.count() if korean_collection else 0
             card_count = card_collection.count() if card_collection else 0
+            pdf_count = pdf_collection.count() if pdf_collection else 0
 
-            logger.info(f"🩺 데이터 상태: 문제({korean_count}개), 카드({card_count}개)")
+            logger.info(f"🩺 데이터 상태: 문제({korean_count}개), 카드({card_count}개), PDF({pdf_count}개)")
 
             # 데이터가 없으면 자동 인덱싱
             if korean_count == 0 or card_count == 0:
@@ -78,7 +80,8 @@ class InitializationService:
                 return {
                     "status": "no_indexing_needed",
                     "korean_count": korean_count,
-                    "card_count": card_count
+                    "card_count": card_count,
+                    "pdf_count": pdf_count
                 }
 
         except Exception as e:
@@ -92,7 +95,7 @@ class InitializationService:
         """시스템 상태 확인"""
         try:
             collections_info = {}
-            for collection_name in ["korean_word_problems", "card_check"]:
+            for collection_name in ["korean_word_problems", "card_check", "pdf_documents"]:
                 collection = self.vector_db.get_collection(collection_name)
                 if collection:
                     collections_info[collection_name] = {

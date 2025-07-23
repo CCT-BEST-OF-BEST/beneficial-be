@@ -192,6 +192,15 @@ class EmbeddingModel:
                     }
                 })
 
+        elif collection_type == "pdf_documents":  # 신규 추가
+            # PDF 문서 데이터는 이미 전처리된 상태로 들어옴
+            for doc in data:
+                documents.append({
+                    "id": doc["id"],
+                    "text": doc["text"],
+                    "metadata": doc["metadata"]
+                })
+
         return documents
 
     def __del__(self):

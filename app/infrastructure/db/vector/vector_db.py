@@ -36,6 +36,9 @@ class VectorDatabase:
             },
             "card_check": {
                 "metadata": {"type": "educational", "language": "korean"}
+            },
+            "pdf_documents": {  # 신규 추가
+                "metadata": {"type": "document", "language": "korean", "source": "pdf"}
             }
         }
 
