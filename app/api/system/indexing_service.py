@@ -23,8 +23,11 @@ class IndexingService:
 
         logger.info(f"📚 {collection_name} 컬렉션에 {total_docs}개 문서 배치 인덱싱 시작...")
 
-        # 컬렉션 가져오기 또는 생성
-        collection = self.vector_db.get_or_create_collection(collection_name)
+        # 컬렉션 가져오기
+        collection = self.vector_db.get_collection(collection_name)
+        if not collection:
+            logger.error(f"❌ 컬렉션 '{collection_name}'을 찾을 수 없습니다.")
+            return 0
 
         for i in range(0, total_docs, self.batch_size):
             batch_docs = documents[i:i + self.batch_size]

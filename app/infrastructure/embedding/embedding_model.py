@@ -5,17 +5,22 @@ from concurrent.futures import ThreadPoolExecutor
 from sentence_transformers import SentenceTransformer
 from openai import AsyncOpenAI
 from dotenv import load_dotenv
+from app.common.logging.logging_config import get_logger
 
 load_dotenv()
 
+logger = get_logger(__name__)
+
 
 class EmbeddingModel:
-    def __init__(self, model_name: str = "sentence-transformers/all-MiniLM-L6-v2"):
+    def __init__(self, model_name: str = "jhgan/ko-sroberta-multitask"):
         """
         임베딩 모델 초기화
 
         Args:
             model_name: 사용할 임베딩 모델명
+                - OpenAI: "text-embedding-3-small", "text-embedding-3-large"
+                - Local: "jhgan/ko-sroberta-multitask" (한국어 전용), "sentence-transformers/all-MiniLM-L6-v2"
         """
         self.model_name = model_name
         self.openai_api_key = os.getenv("OPENAI_API_KEY")
@@ -31,11 +36,11 @@ class EmbeddingModel:
         if self.openai_api_key:
             self.client = AsyncOpenAI(api_key=self.openai_api_key)
             self.use_openai = True
-            print("🔑 OpenAI 임베딩 모델 사용 (비동기)")
+            logger.info("🔑 OpenAI 임베딩 모델 사용 (비동기)")
         else:
             self.model = SentenceTransformer(model_name)
             self.use_openai = False
-            print(f"🤖 Sentence Transformers 모델 사용: {model_name}")
+            logger.info(f"🤖 Sentence Transformers 모델 사용: {model_name}")
 
     async def get_embedding(self, text: str) -> List[float]:
         """
@@ -88,10 +93,10 @@ class EmbeddingModel:
                 if i + self.batch_size < len(texts):
                     await asyncio.sleep(0.1)
 
-                print(f"OpenAI 임베딩 진행률: {min(i + self.batch_size, len(texts))}/{len(texts)}")
+                logger.debug(f"OpenAI 임베딩 진행률: {min(i + self.batch_size, len(texts))}/{len(texts)}")
 
             except Exception as e:
-                print(f"OpenAI 배치 임베딩 실패 (배치 {i // self.batch_size + 1}): {e}")
+                logger.error(f"OpenAI 배치 임베딩 실패 (배치 {i // self.batch_size + 1}): {e}")
                 # 폴백으로 로컬 모델 사용
                 fallback_embeddings = await self._get_local_embeddings_batch(batch_texts)
                 all_embeddings.extend(fallback_embeddings)
@@ -116,7 +121,7 @@ class EmbeddingModel:
             batch_embeddings = await process_batch(batch_texts)
             all_embeddings.extend(batch_embeddings)
 
-            print(f"로컬 임베딩 진행률: {min(i + self.batch_size, len(texts))}/{len(texts)}")
+            logger.debug(f"로컬 임베딩 진행률: {min(i + self.batch_size, len(texts))}/{len(texts)}")
 
         return all_embeddings
 

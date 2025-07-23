@@ -8,6 +8,9 @@ from app.infrastructure.external.openai_client import OpenAIClient
 from app.infrastructure.db.vector.vector_db import get_vector_db
 from app.infrastructure.embedding.embedding_model import get_embedding_model
 from app.api.chat.service.chat_service import ChatService
+from app.common.logging.logging_config import get_logger
+
+logger = get_logger(__name__)
 
 
 # 전역 인스턴스들
@@ -73,7 +76,7 @@ def initialize_dependencies():
         get_vector_db_instance()
         get_embedding_model_instance()
         get_chat_service()
-        print("✅ 모든 의존성 초기화 완료")
+        logger.info("✅ 모든 의존성 초기화 완료")
     except Exception as e:
-        print(f"❌ 의존성 초기화 실패: {e}")
+        logger.error(f"❌ 의존성 초기화 실패: {e}")
         raise
