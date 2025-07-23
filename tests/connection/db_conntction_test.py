@@ -1,6 +1,9 @@
 import os
 from dotenv import load_dotenv
 from pymongo import MongoClient
+from app.common.logging.logging_config import get_logger
+
+logger = get_logger(__name__)
 
 # .env 파일 로드
 load_dotenv()
@@ -18,7 +21,7 @@ try:
     collection = db[COLLECTION_NAME]
     mongo_available = True
 except Exception as e:
-    print(f"MongoDB 연결 실패: {e}")
+    logger.error(f"MongoDB 연결 실패: {e}")
     mongo_available = False
     client = None
     db = None
