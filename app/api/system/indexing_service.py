@@ -117,6 +117,32 @@ class IndexingService:
             logger.error(f"카드 체크 데이터 인덱싱 실패: {e}")
             return {"status": "error", "message": str(e)}
 
+    async def index_pdf_documents(self) -> Dict[str, Any]:
+        """PDF 문서들을 인덱싱"""
+        try:
+            from app.data.data_loader.pdf_loader import load_pdf_documents
+            
+            # PDF 데이터 로드
+            pdf_data = load_pdf_documents()
+            if not pdf_data:
+                return {"status": "no_data", "message": "PDF 파일이 없습니다."}
+            
+            # 문서 변환 (이미 전처리된 상태)
+            documents = self.embedding_model.prepare_documents_for_indexing(pdf_data, "pdf_documents")
+            
+            # 배치 인덱싱
+            indexed_count = await self.index_documents_batch(documents, "pdf_documents")
+            
+            return {
+                "status": "success",
+                "message": "PDF 문서 인덱싱 완료",
+                "indexed_count": indexed_count
+            }
+            
+        except Exception as e:
+            logger.error(f"PDF 문서 인덱싱 실패: {e}")
+            return {"status": "error", "message": f"인덱싱 실패: {str(e)}"}
+
     async def index_all_data(self) -> Dict[str, Any]:
         """모든 데이터를 병렬로 인덱싱"""
         logger.info("🚀 전체 데이터 인덱싱 시작...")
@@ -124,7 +150,8 @@ class IndexingService:
         # 병렬 실행을 위한 태스크 생성
         tasks = [
             self.index_korean_word_problems(),
-            self.index_card_check_data()
+            self.index_card_check_data(),
+            self.index_pdf_documents()  # PDF 인덱싱 추가
         ]
 
         # 병렬 실행
@@ -135,7 +162,7 @@ class IndexingService:
         detailed_results = {}
 
         for i, result in enumerate(results):
-            collection_name = ["korean_word_problems", "card_check"][i]
+            collection_name = ["korean_word_problems", "card_check", "pdf_documents"][i]
 
             if isinstance(result, Exception):
                 detailed_results[collection_name] = {
@@ -179,6 +206,32 @@ class IndexingService:
                 "status": "error",
                 "message": f"컬렉션 삭제 중 오류 발생: {str(e)}"
             }
+
+    async def index_pdf_documents(self) -> Dict[str, Any]:
+        """PDF 문서들을 인덱싱"""
+        try:
+            from app.data.data_loader.pdf_loader import load_pdf_documents
+
+            # PDF 데이터 로드
+            pdf_data = load_pdf_documents()
+            if not pdf_data:
+                return {"status": "no_data", "message": "PDF 파일이 없습니다."}
+
+            # 문서 변환 (이미 전처리된 상태)
+            documents = self.embedding_model.prepare_documents_for_indexing(pdf_data, "pdf_documents")
+
+            # 배치 인덱싱
+            indexed_count = await self.index_documents_batch(documents, "pdf_documents")
+
+            return {
+                "status": "success",
+                "message": "PDF 문서 인덱싱 완료",
+                "indexed_count": indexed_count
+            }
+
+        except Exception as e:
+            logger.error(f"PDF 문서 인덱싱 실패: {e}")
+            return {"status": "error", "message": f"인덱싱 실패: {str(e)}"}
 
 
 # 전역 인덱싱 서비스 인스턴스

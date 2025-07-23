@@ -70,7 +70,8 @@ class ChatService:
             if collection_name:
                 collections = [collection_name]
             else:
-                collections = ["korean_word_problems", "card_check"]
+                # PDF 문서를 포함한 모든 컬렉션에서 검색
+                collections = ["korean_word_problems", "card_check", "pdf_documents"]
 
             logger.debug(f"📂 검색할 컬렉션: {collections}")
 
@@ -187,6 +188,19 @@ class ChatService:
         except Exception as e:
             logger.error(f"❌ 간단 채팅 실패: {e}")
             return f"죄송합니다. 응답 생성 중 오류가 발생했습니다: {str(e)}"
+
+    def _is_korean_grammar_query(self, query: str) -> bool:
+        """한글 문법 관련 질문인지 판단 (초등학생이 자주 묻는 것들)"""
+        korean_grammar_keywords = [
+            "맞춤법", "띄어쓰기", "된소리", "외래어", "발음", "표기",
+            "자음", "모음", "받침", "어간", "어미",
+            "되다", "돼다", "하다", "해다", "되", "돼",
+            "맞나요", "틀렸나요", "어떻게 써요", "헷갈려요",
+            "구분", "차이", "올바른", "바른", "어느게", "뭐가"
+        ]
+        
+        query_lower = query.lower()
+        return any(keyword in query_lower for keyword in korean_grammar_keywords)
 
 
 def get_chat_service() -> ChatService:
