@@ -7,3 +7,4 @@ chromadb
 numpy
 pydantic
 sentence-transformers
+pytest

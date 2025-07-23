@@ -8,7 +8,7 @@ import os
 
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 
-from app.core.vector_db import initialize_vector_db, get_vector_db
+from app.infrastructure.db.vector.vector_db import initialize_vector_db, get_vector_db
 from app.common.config.vector_db_config import VectorDBConfig
 
 
