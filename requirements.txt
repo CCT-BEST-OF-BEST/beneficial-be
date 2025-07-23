@@ -9,8 +9,6 @@ pydantic
 sentence-transformers
 pytest
 
-# PDF 처리용 라이브러리 추가
+# PDF 처리용 라이브러리 (경량화)
 PyPDF2==3.0.1
 pdfplumber==0.10.3
-langchain==0.1.0
-langchain-text-splitters==0.0.1

@@ -11,3 +11,8 @@ Dockerfile
 docker-compose.yml
 .idea/
 .vscode/
+
+# 로컬 데이터 제외
+chroma_db/
+*.log
+.pytest_cache/
