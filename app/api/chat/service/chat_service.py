@@ -2,6 +2,9 @@ from typing import List, Dict, Any
 from app.infrastructure.external.openai_client import OpenAIClient
 from app.infrastructure.db.vector.vector_db import get_vector_db
 from app.infrastructure.embedding.embedding_model import get_embedding_model
+from app.common.logging_config import get_logger
+
+logger = get_logger(__name__)
 
 
 class ChatService:
@@ -81,7 +84,7 @@ class ChatService:
             return results[:top_k]
 
         except Exception as e:
-            print(f"문서 검색 실패: {e}")
+            logger.error(f"문서 검색 실패: {e}")
             return []
 
 

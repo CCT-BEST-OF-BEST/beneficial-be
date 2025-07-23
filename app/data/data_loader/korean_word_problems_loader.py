@@ -1,6 +1,9 @@
 import os
 from app.infrastructure.db.mongo.mongo_client import get_mongo_client
 from app.common.config.loader.config_loader import load_rag_config
+from app.common.logging_config import get_logger
+
+logger = get_logger(__name__)
 
 
 def get_korean_word_problems():
@@ -14,7 +17,7 @@ def get_korean_word_problems():
         doc = mongo_client.find_one("korean_word_problems", {})
 
         if not doc:
-            print("⚠️ 한국어 단어 문제 데이터가 없습니다.")
+            logger.warning("⚠️ 한국어 단어 문제 데이터가 없습니다.")
             return {}
 
         # option_cards, questions 파싱
@@ -29,7 +32,7 @@ def get_korean_word_problems():
                 "answer": q[config["question_answer_field"]]
             })
 
-        print(f"✅ 한국어 단어 문제 데이터 로드 완료: 문제 {len(questions)}개, 옵션 카드 {len(option_cards)}개")
+        logger.info(f"✅ 한국어 단어 문제 데이터 로드 완료: 문제 {len(questions)}개, 옵션 카드 {len(option_cards)}개")
 
         return {
             "option_cards": option_cards,
@@ -37,7 +40,7 @@ def get_korean_word_problems():
         }
 
     except Exception as e:
-        print(f"❌ 한국어 단어 문제 데이터 로드 실패: {e}")
+        logger.error(f"❌ 한국어 단어 문제 데이터 로드 실패: {e}")
         return {}
 
 

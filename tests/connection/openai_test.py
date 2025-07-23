@@ -2,6 +2,9 @@ import os
 from openai import OpenAI
 from dotenv import load_dotenv
 from app.infrastructure.rag_service import get_rag_service
+from app.common.logging_config import get_logger
+
+logger = get_logger(__name__)
 import pytest
 import asyncio
 
@@ -26,7 +29,7 @@ async def test_chat_with_gpt():
         response = await rag_service.chat_with_rag(prompt)
         assert response is not None and len(response) > 0
     except Exception as e:
-        print(f"RAG 시스템 오류: {e}")
+        logger.error(f"RAG 시스템 오류: {e}")
         # RAG 실패 시 기본 GPT 응답으로 폴백
         response = await _fallback_gpt_response(prompt)
         assert response is not None and len(response) > 0

@@ -2,8 +2,11 @@ import os
 import chromadb
 from chromadb.config import Settings
 from dotenv import load_dotenv
+from app.common.logging_config import get_logger
 
 load_dotenv()
+
+logger = get_logger(__name__)
 
 class VectorDatabase:
     def __init__(self, persist_directory: str = "./chroma_db"):
@@ -45,9 +48,9 @@ class VectorDatabase:
                     metadata=config["metadata"]
                 )
                 self.collections[collection_name] = collection
-                print(f"✅ 컬렉션 '{collection_name}' 초기화 완료")
+                logger.info(f"✅ 컬렉션 '{collection_name}' 초기화 완료")
             except Exception as e:
-                print(f"❌ 컬렉션 '{collection_name}' 초기화 실패: {e}")
+                logger.error(f"❌ 컬렉션 '{collection_name}' 초기화 실패: {e}")
 
     def get_collection(self, collection_name: str):
         """특정 컬렉션을 반환합니다."""

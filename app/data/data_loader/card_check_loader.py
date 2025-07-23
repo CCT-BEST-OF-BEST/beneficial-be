@@ -1,6 +1,9 @@
 import os
 from app.infrastructure.db.mongo.mongo_client import get_mongo_client
 from app.common.config.loader.config_loader import load_rag_config
+from app.common.logging_config import get_logger
+
+logger = get_logger(__name__)
 
 
 def get_card_check_data():
@@ -14,7 +17,7 @@ def get_card_check_data():
         doc = mongo_client.find_one("card_check", {})
 
         if not doc:
-            print("⚠️ 카드 체크 데이터가 없습니다.")
+            logger.warning("⚠️ 카드 체크 데이터가 없습니다.")
             return []
 
         result = []
@@ -25,12 +28,12 @@ def get_card_check_data():
                 "examples": card[config["card_examples_field"]]
             })
 
-        print(f"✅ 카드 체크 데이터 로드 완료: {len(result)}개 카드")
+        logger.info(f"✅ 카드 체크 데이터 로드 완료: {len(result)}개 카드")
 
         return result
 
     except Exception as e:
-        print(f"❌ 카드 체크 데이터 로드 실패: {e}")
+        logger.error(f"❌ 카드 체크 데이터 로드 실패: {e}")
         return []
 
 
