@@ -9,8 +9,8 @@ import os
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 
 from app.infrastructure.db.vector.vector_db import initialize_vector_db, get_vector_db
-from app.common.config.vector_db_config import VectorDBConfig
-from app.common.logging_config import get_logger
+from app.infrastructure.db.vector.config.vector_db_config import VectorDBConfig
+from app.common.logging.logging_config import get_logger
 
 logger = get_logger(__name__)
 

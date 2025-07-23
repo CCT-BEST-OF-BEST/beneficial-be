@@ -1,12 +1,11 @@
 import os
 from openai import OpenAI
 from dotenv import load_dotenv
-from app.infrastructure.rag_service import get_rag_service
-from app.common.logging_config import get_logger
+from app.legacy.rag_service import get_rag_service
+from app.common.logging.logging_config import get_logger
 
 logger = get_logger(__name__)
 import pytest
-import asyncio
 
 load_dotenv()  # .env 파일에서 환경변수 읽어오기
 

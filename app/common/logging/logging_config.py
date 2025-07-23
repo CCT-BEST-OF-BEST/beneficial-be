@@ -7,7 +7,7 @@ import sys
 from typing import Optional
 
 
-def setup_logger(name: str, level: int = logging.INFO) -> logging.Logger:
+def setup_logger(name: str, level: int = logging.DEBUG) -> logging.Logger:
     """
     표준화된 로거 설정
     

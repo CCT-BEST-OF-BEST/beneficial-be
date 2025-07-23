@@ -1,9 +1,11 @@
 from fastapi import APIRouter, HTTPException
 from app.api.chat.service.chat_service import get_chat_service
-from app.data.models.chat_models import ChatRequest, ChatResponse, SearchRequest, SearchResponse, ChatStatusResponse
+from app.data.models.chat_models import ChatRequest, ChatResponse, SearchResponse, ChatStatusResponse
+from app.common.logging.logging_config import get_logger
 from typing import Optional
 
 router = APIRouter(prefix="/chat", tags=["chat"])
+logger = get_logger(__name__)
 
 
 @router.post("/", response_model=ChatResponse)
@@ -18,13 +20,17 @@ async def chat_with_rag(request: ChatRequest):
         GPT 응답
     """
     try:
-        chat_service = get_chat_service()  # 새로운 Chat 서비스 사용
+        logger.info(f"📨 채팅 요청 수신: '{request.prompt}' (top_k={request.top_k})")
+        
+        chat_service = get_chat_service()
         response = await chat_service.chat_with_rag(
-            prompt=request.prompt,  # 사용자 질문
-            collection_name=request.collection_name,  # 모든 컬렉션 검색
-            top_k=request.top_k  # 상위 3개 문서 검색
+            prompt=request.prompt,
+            collection_name=request.collection_name,
+            top_k=request.top_k
         )
 
+        logger.info(f"✅ 채팅 응답 완료: {len(response)}자")
+        
         return ChatResponse(
             status="success",
             prompt=request.prompt,
@@ -33,6 +39,7 @@ async def chat_with_rag(request: ChatRequest):
             top_k=request.top_k
         )
     except Exception as e:
+        logger.error(f"❌ 채팅 요청 실패: {e}")
         raise HTTPException(status_code=500, detail=f"채팅 실패: {str(e)}")
 
 

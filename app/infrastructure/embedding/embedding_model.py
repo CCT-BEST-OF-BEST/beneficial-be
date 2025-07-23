@@ -5,7 +5,7 @@ from concurrent.futures import ThreadPoolExecutor
 from sentence_transformers import SentenceTransformer
 from openai import AsyncOpenAI
 from dotenv import load_dotenv
-from app.common.logging_config import get_logger
+from app.common.logging.logging_config import get_logger
 
 load_dotenv()
 
@@ -13,12 +13,14 @@ logger = get_logger(__name__)
 
 
 class EmbeddingModel:
-    def __init__(self, model_name: str = "sentence-transformers/all-MiniLM-L6-v2"):
+    def __init__(self, model_name: str = "jhgan/ko-sroberta-multitask"):
         """
         임베딩 모델 초기화
 
         Args:
             model_name: 사용할 임베딩 모델명
+                - OpenAI: "text-embedding-3-small", "text-embedding-3-large"
+                - Local: "jhgan/ko-sroberta-multitask" (한국어 전용), "sentence-transformers/all-MiniLM-L6-v2"
         """
         self.model_name = model_name
         self.openai_api_key = os.getenv("OPENAI_API_KEY")

@@ -1,7 +1,6 @@
-import os
 from app.infrastructure.db.mongo.mongo_client import get_mongo_client
 from app.common.config.loader.config_loader import load_rag_config
-from app.common.logging_config import get_logger
+from app.common.logging.logging_config import get_logger
 
 logger = get_logger(__name__)
 

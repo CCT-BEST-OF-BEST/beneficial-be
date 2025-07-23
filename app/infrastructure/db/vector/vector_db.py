@@ -1,8 +1,7 @@
-import os
 import chromadb
 from chromadb.config import Settings
 from dotenv import load_dotenv
-from app.common.logging_config import get_logger
+from app.common.logging.logging_config import get_logger
 
 load_dotenv()
 
