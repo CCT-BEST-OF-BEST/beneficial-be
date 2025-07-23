@@ -1,7 +1,7 @@
 import os
 from openai import OpenAI
 from dotenv import load_dotenv
-from app.core.rag_service import get_rag_service
+from app.infrastructure.rag_service import get_rag_service
 import pytest
 import asyncio
 

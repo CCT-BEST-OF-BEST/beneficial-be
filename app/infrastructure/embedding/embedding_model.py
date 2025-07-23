@@ -1,7 +1,9 @@
 import os
+import asyncio
 from typing import List, Dict, Any
+from concurrent.futures import ThreadPoolExecutor
 from sentence_transformers import SentenceTransformer
-from openai import OpenAI
+from openai import AsyncOpenAI
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -18,11 +20,18 @@ class EmbeddingModel:
         self.model_name = model_name
         self.openai_api_key = os.getenv("OPENAI_API_KEY")
 
+        # 환경 변수에서 배치 크기와 워커 수 설정
+        self.batch_size = int(os.getenv("EMBEDDING_BATCH_SIZE", "50"))
+        self.max_workers = int(os.getenv("MAX_WORKERS", "4"))
+
+        # ThreadPoolExecutor 초기화
+        self.executor = ThreadPoolExecutor(max_workers=self.max_workers)
+
         # OpenAI API 키가 있으면 OpenAI 사용, 없으면 sentence-transformers 사용
         if self.openai_api_key:
-            self.client = OpenAI(api_key=self.openai_api_key)
+            self.client = AsyncOpenAI(api_key=self.openai_api_key)
             self.use_openai = True
-            print("🔑 OpenAI 임베딩 모델 사용")
+            print("🔑 OpenAI 임베딩 모델 사용 (비동기)")
         else:
             self.model = SentenceTransformer(model_name)
             self.use_openai = False
@@ -38,23 +47,12 @@ class EmbeddingModel:
         Returns:
             임베딩 벡터
         """
-        if self.use_openai:
-            try:
-                response = await self.client.embeddings.create(
-                    model="text-embedding-ada-002",
-                    input=text
-                )
-                return response.data[0].embedding
-            except Exception as e:
-                print(f"OpenAI 임베딩 실패: {e}")
-                # OpenAI 실패 시 sentence-transformers로 폴백
-                return self.model.encode(text).tolist()
-        else:
-            return self.model.encode(text).tolist()
+        embeddings = await self.get_embeddings([text])
+        return embeddings[0] if embeddings else []
 
     async def get_embeddings(self, texts: List[str]) -> List[List[float]]:
         """
-        여러 텍스트를 임베딩합니다.
+        여러 텍스트를 배치로 나누어 임베딩합니다.
 
         Args:
             texts: 임베딩할 텍스트 리스트
@@ -62,20 +60,65 @@ class EmbeddingModel:
         Returns:
             임베딩 벡터 리스트
         """
+        if not texts:
+            return []
+
         if self.use_openai:
+            return await self._get_openai_embeddings_batch(texts)
+        else:
+            return await self._get_local_embeddings_batch(texts)
+
+    async def _get_openai_embeddings_batch(self, texts: List[str]) -> List[List[float]]:
+        """OpenAI API 배치 처리"""
+        all_embeddings = []
+
+        # 텍스트를 배치로 나누어 처리
+        for i in range(0, len(texts), self.batch_size):
+            batch_texts = texts[i:i + self.batch_size]
+
             try:
                 response = await self.client.embeddings.create(
                     model="text-embedding-ada-002",
-                    input=texts
+                    input=batch_texts
                 )
-                return [data.embedding for data in response.data]
-            except Exception as e:
-                print(f"OpenAI 임베딩 실패: {e}")
-                # OpenAI 실패 시 sentence-transformers로 폴백
-                return self.model.encode(texts).tolist()
-        else:
-            return self.model.encode(texts).tolist()
+                batch_embeddings = [data.embedding for data in response.data]
+                all_embeddings.extend(batch_embeddings)
 
+                # API 호출 간격 조절 (rate limit 방지)
+                if i + self.batch_size < len(texts):
+                    await asyncio.sleep(0.1)
+
+                print(f"OpenAI 임베딩 진행률: {min(i + self.batch_size, len(texts))}/{len(texts)}")
+
+            except Exception as e:
+                print(f"OpenAI 배치 임베딩 실패 (배치 {i // self.batch_size + 1}): {e}")
+                # 폴백으로 로컬 모델 사용
+                fallback_embeddings = await self._get_local_embeddings_batch(batch_texts)
+                all_embeddings.extend(fallback_embeddings)
+
+        return all_embeddings
+
+    async def _get_local_embeddings_batch(self, texts: List[str]) -> List[List[float]]:
+        """로컬 모델 배치 처리 (ThreadPoolExecutor 사용)"""
+        loop = asyncio.get_event_loop()
+
+        async def process_batch(batch_texts):
+            return await loop.run_in_executor(
+                self.executor,
+                lambda: self.model.encode(batch_texts, show_progress_bar=False).tolist()
+            )
+
+        all_embeddings = []
+
+        # 텍스트를 배치로 나누어 처리
+        for i in range(0, len(texts), self.batch_size):
+            batch_texts = texts[i:i + self.batch_size]
+            batch_embeddings = await process_batch(batch_texts)
+            all_embeddings.extend(batch_embeddings)
+
+            print(f"로컬 임베딩 진행률: {min(i + self.batch_size, len(texts))}/{len(texts)}")
+
+        return all_embeddings
 
     def prepare_documents_for_indexing(self, data: Dict[str, Any], collection_type: str) -> List[Dict[str, Any]]:
         """
@@ -104,7 +147,7 @@ class EmbeddingModel:
                     "text": doc_text,
                     "metadata": {
                         "type": "question",
-                        "number": str(question['number']),  # int를 str로 변환
+                        "number": str(question['number']),
                         "sentence": question['sentence'],
                         "answer": question['answer'],
                         "collection": collection_type
@@ -118,7 +161,7 @@ class EmbeddingModel:
                     "text": card,
                     "metadata": {
                         "type": "option_card",
-                        "card_index": str(i),  # int를 str로 변환
+                        "card_index": str(i),
                         "content": card,
                         "collection": collection_type
                     }
@@ -129,7 +172,6 @@ class EmbeddingModel:
             for i, card in enumerate(data):
                 doc_text = f"단어: {card['word']} 의미: {card['meaning']}"
                 if card.get('examples'):
-                    # 리스트를 문자열로 변환
                     examples_str = ", ".join(card['examples'])
                     doc_text += f" 예시: {examples_str}"
 
@@ -140,12 +182,17 @@ class EmbeddingModel:
                         "type": "card",
                         "word": card['word'],
                         "meaning": card['meaning'],
-                        "examples": ", ".join(card.get('examples', [])),  # 리스트를 문자열로 변환
+                        "examples": ", ".join(card.get('examples', [])),
                         "collection": collection_type
                     }
                 })
 
         return documents
+
+    def __del__(self):
+        """소멸자에서 ThreadPoolExecutor 정리"""
+        if hasattr(self, 'executor'):
+            self.executor.shutdown(wait=False)
 
 
 # 전역 임베딩 모델 인스턴스

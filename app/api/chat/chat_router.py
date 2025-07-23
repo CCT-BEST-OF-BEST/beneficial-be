@@ -1,23 +1,9 @@
 from fastapi import APIRouter, HTTPException
-from app.core.rag_service import get_rag_service
+from app.api.chat.service.chat_service import get_chat_service
+from app.data.models.chat_models import ChatRequest, ChatResponse, SearchRequest, SearchResponse, ChatStatusResponse
 from typing import Optional
-from pydantic import BaseModel
 
 router = APIRouter(prefix="/chat", tags=["chat"])
-
-
-class ChatRequest(BaseModel):
-    prompt: str
-    collection_name: Optional[str] = None
-    top_k: Optional[int] = 3
-
-
-class ChatResponse(BaseModel):
-    status: str
-    prompt: str
-    response: str
-    collection_used: str
-    top_k: int
 
 
 @router.post("/", response_model=ChatResponse)
@@ -32,11 +18,11 @@ async def chat_with_rag(request: ChatRequest):
         GPT 응답
     """
     try:
-        rag_service = await get_rag_service()
-        response = await rag_service.chat_with_rag(
-            prompt=request.prompt,
-            collection_name=request.collection_name,
-            top_k=request.top_k
+        chat_service = get_chat_service()  # 새로운 Chat 서비스 사용
+        response = await chat_service.chat_with_rag(
+            prompt=request.prompt,  # 사용자 질문
+            collection_name=request.collection_name,  # 모든 컬렉션 검색
+            top_k=request.top_k  # 상위 3개 문서 검색
         )
 
         return ChatResponse(
@@ -68,8 +54,8 @@ async def chat_get(
         GPT 응답
     """
     try:
-        rag_service = await get_rag_service()
-        response = await rag_service.chat_with_rag(
+        chat_service = get_chat_service()  # 새로운 Chat 서비스 사용
+        response = await chat_service.chat_with_rag(
             prompt=prompt,
             collection_name=collection_name,
             top_k=top_k
@@ -104,16 +90,16 @@ async def search_documents(
         관련 문서 리스트
     """
     try:
-        rag_service = await get_rag_service()
-        results = await rag_service.search_relevant_documents(query, collection_name, top_k)
+        chat_service = get_chat_service()  # 새로운 Chat 서비스 사용
+        results = await chat_service.search_relevant_documents(query, collection_name, top_k)
 
-        return {
-            "status": "success",
-            "query": query,
-            "results": results,
-            "total_found": len(results),
-            "collection_searched": collection_name or "all"
-        }
+        return SearchResponse(
+            status="success",
+            query=query,
+            results=results,
+            total_found=len(results),
+            collection_searched=collection_name or "all"
+        )
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"문서 검색 실패: {str(e)}")
 
@@ -122,8 +108,8 @@ async def search_documents(
 async def get_chat_status():
     """채팅 시스템 상태를 확인합니다. (프론트엔드용)"""
     try:
-        rag_service = await get_rag_service()
-        vector_db = rag_service.vector_db
+        chat_service = get_chat_service()  # 새로운 Chat 서비스 사용
+        vector_db = chat_service.vector_db
 
         # 각 컬렉션의 문서 수 확인
         collections_info = {}
@@ -140,11 +126,36 @@ async def get_chat_status():
                     "status": "not_available"
                 }
 
-        return {
-            "status": "success",
-            "chat_system": "active",
-            "rag_system": "available",
-            "collections": collections_info
-        }
+        return ChatStatusResponse(
+            status="success",
+            chat_system="active",
+            rag_system="available",
+            collections=collections_info
+        )
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"상태 확인 실패: {str(e)}")
+
+
+@router.get("/simple")
+async def simple_chat(prompt: str = "안녕하세요"):
+    """
+    RAG 없이 간단한 채팅 (테스트용)
+
+    Args:
+        prompt: 사용자 질문
+
+    Returns:
+        GPT 응답
+    """
+    try:
+        chat_service = get_chat_service()
+        response = await chat_service.simple_chat(prompt)
+
+        return {
+            "status": "success",
+            "prompt": prompt,
+            "response": response,
+            "type": "simple_chat"
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"간단 채팅 실패: {str(e)}")
