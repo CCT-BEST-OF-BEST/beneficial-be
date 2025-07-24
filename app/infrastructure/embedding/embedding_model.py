@@ -145,10 +145,12 @@ class EmbeddingModel:
 
             # 문제별로 문서 생성
             for question in questions:
+                # ID 필드가 있으면 사용, 없으면 기본 ID 생성
+                question_id = question.get('id', f"question_{question['number']}")
                 doc_text = f"문제 {question['number']}: {question['sentence']} 정답: {question['answer']}"
 
                 documents.append({
-                    "id": f"question_{question['number']}",
+                    "id": question_id,
                     "text": doc_text,
                     "metadata": {
                         "type": "question",
