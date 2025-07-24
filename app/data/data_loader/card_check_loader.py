@@ -12,20 +12,25 @@ def get_card_check_data():
         mongo_client = get_mongo_client()
         config = load_rag_config()["collections"]["card_check"]
 
-        # 데이터 조회
-        doc = mongo_client.find_one("card_check", {})
+        # 데이터 조회 - 모든 문서 가져오기
+        docs = mongo_client.find_many("card_check")
 
-        if not doc:
+        if not docs:
             logger.warning("⚠️ 카드 체크 데이터가 없습니다.")
             return []
 
         result = []
-        for card in doc[config["cards_field"]]:
-            result.append({
-                "word": card[config["card_word_field"]],
-                "meaning": card[config["card_meaning_field"]],
-                "examples": card[config["card_examples_field"]]
-            })
+        # 각 차시별 데이터 처리
+        for doc in docs:
+            cards = doc.get("cards", [])
+            
+            # 각 카드 데이터 처리
+            for idx, card in enumerate(cards, 1):
+                result.append({
+                    "word": f"{card.get('word1', '')}/{card.get('word2', '')}",
+                    "meaning": f"{card.get('meaning1', '')} | {card.get('meaning2', '')}",
+                    "examples": card.get('examples1', []) + card.get('examples2', [])
+                })
 
         logger.info(f"✅ 카드 체크 데이터 로드 완료: {len(result)}개 카드")
 
