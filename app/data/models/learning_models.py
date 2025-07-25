@@ -32,7 +32,25 @@ class LessonProgress(BaseModel):
     stage3_completed: bool = Field(default=False, description="3단계 완료 여부")
     progress_rate: int = Field(default=0, description="전체 진행도 (25% 단위)")
     last_updated: datetime = Field(default_factory=datetime.now, description="마지막 업데이트 시간")
-    completed_at: Optional[datetime] = Field(None, description="학습 완료 시간")
+
+class LessonData(BaseModel):
+    """차시 기본 정보"""
+    lesson_id: str = Field(..., description="차시 ID")
+    chapter_id: str = Field(..., description="단원 ID")
+    title: str = Field(..., description="차시 제목")
+    description: str = Field(..., description="차시 설명")
+    word_count: int = Field(..., description="학습할 단어 쌍 수")
+
+class LessonResponse(BaseModel):
+    """차시 정보 응답"""
+    lesson_id: str = Field(..., description="차시 ID")
+    chapter_id: str = Field(..., description="단원 ID")
+    title: str = Field(..., description="차시 제목")
+    description: str = Field(..., description="차시 설명")
+    is_locked: bool = Field(..., description="잠금 여부")
+    progress: LessonProgress = Field(..., description="진행도")
+    word_pairs: List[Dict[str, str]] = Field(..., description="학습할 단어 쌍 목록")
+
 
 class WordCard(BaseModel):
     """어휘 학습 카드 모델"""
