@@ -1,4 +1,4 @@
-# beneficial-be/app/api/learning/simple_learning_router.py
+# beneficial-be/app/api/learning/learning_router.py
 
 from fastapi import APIRouter, HTTPException
 from fastapi.responses import FileResponse
@@ -14,44 +14,43 @@ logger = get_logger(__name__)
 @router.get(
     "/stage1/cards",
     summary="1단계 어휘학습 카드 조회",
-    description="8개의 카드 데이터를 순서대로 반환합니다. 각 카드는 앞면/뒤면 이미지 경로를 포함합니다."
+    description="2개 카드 쌍의 이미지 경로를 순서대로 반환합니다."
 )
 async def get_stage1_cards() -> Dict[str, Any]:
-    """1단계 어휘학습 카드 8개 조회"""
+    """1단계 어휘학습 카드 쌍 조회"""
     try:
         mongo_client = get_mongo_client()
 
-        # 카드 데이터 조회 (order 순으로 정렬)
-        cards = list(mongo_client.find_many(
+        # 카드 쌍 데이터 조회 (order 순으로 정렬)
+        card_pairs = list(mongo_client.find_many(
             "stage1_cards",
             {},
             sort=[("order", 1)]
         ))
 
-        if not cards:
+        if not card_pairs:
             raise HTTPException(status_code=404, detail="카드 데이터를 찾을 수 없습니다")
 
-        # 응답 데이터 구성
-        cards_response = []
-        for card in cards:
-            cards_response.append({
-                "card_id": card["card_id"],
-                "word_correct": card["word_correct"],
-                "word_wrong": card["word_wrong"],
-                "front_image": card["front_image"],
-                "back_image": card["back_image"],
-                "description": card["description"],
-                "examples": card["examples"],
-                "color_theme": card["color_theme"],
-                "order": card["order"]
-            })
+        # 응답 데이터 구성 (쌍 구조)
+        pairs_response = []
+        
+        for pair in card_pairs:
+            pair_data = {
+                "pair_id": pair["pair_id"],
+                "word1": pair["word1"],
+                "word2": pair["word2"],
+                "card1": pair["card1"],
+                "card2": pair["card2"],
+                "order": pair["order"]
+            }
+            pairs_response.append(pair_data)
 
-        logger.info(f"✅ 1단계 카드 {len(cards_response)}개 조회 완료")
+        logger.info(f"✅ 1단계 카드 쌍 {len(pairs_response)}개 조회 완료")
 
         return {
             "success": True,
-            "total_cards": len(cards_response),
-            "cards": cards_response
+            "total_pairs": len(pairs_response),
+            "card_pairs": pairs_response
         }
 
     except HTTPException:

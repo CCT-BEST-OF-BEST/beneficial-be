@@ -92,6 +92,21 @@ class MongoClient:
         result = collection.insert_one(document)
         return str(result.inserted_id)
 
+    def insert_many(self, collection_name: str, documents: List[Dict[str, Any]]):
+        """
+        여러 문서 삽입
+
+        Args:
+            collection_name: 컬렉션명
+            documents: 삽입할 문서 리스트
+
+        Returns:
+            삽입 결과 객체
+        """
+        collection = self.get_collection(collection_name)
+        result = collection.insert_many(documents)
+        return result
+
     def find_one(self, collection_name: str, filter_dict: Dict[str, Any] = None) -> Optional[Dict[str, Any]]:
         """
         단일 문서 조회
@@ -107,8 +122,7 @@ class MongoClient:
         filter_dict = filter_dict or {}
         return collection.find_one(filter_dict)
 
-    def find_many(self, collection_name: str, filter_dict: Dict[str, Any] = None, limit: int = None) -> List[
-        Dict[str, Any]]:
+    def find_many(self, collection_name: str, filter_dict: Dict[str, Any] = None, limit: int = None, sort: List = None) -> List[Dict[str, Any]]:
         """
         여러 문서 조회
 
@@ -116,6 +130,7 @@ class MongoClient:
             collection_name: 컬렉션명
             filter_dict: 필터 조건
             limit: 조회할 문서 수 제한
+            sort: 정렬 조건 (예: [("order", 1)] - order 필드 오름차순)
 
         Returns:
             조회된 문서 리스트
@@ -124,6 +139,10 @@ class MongoClient:
         filter_dict = filter_dict or {}
 
         cursor = collection.find(filter_dict)
+        
+        if sort:
+            cursor = cursor.sort(sort)
+            
         if limit:
             cursor = cursor.limit(limit)
 
