@@ -7,6 +7,7 @@ from typing import Dict, Any
 from app.common.dependency.dependencies import initialize_dependencies
 from app.infrastructure.db.vector.vector_db import initialize_vector_db
 from app.api.system.indexing_service import get_indexing_service
+from app.data.data_loader.stage3_problems_loader import load_stage3_problems
 
 logger = logging.getLogger(__name__)
 
@@ -42,10 +43,14 @@ class InitializationService:
             # 4. 데이터 상태 확인 및 자동 인덱싱
             indexing_result = await self._check_and_index_data()
 
+            # 5. 3단계 문제 데이터 로딩
+            stage3_result = self._load_stage3_data()
+
             return {
                 "status": "success",
                 "message": "애플리케이션 초기화 완료",
-                "indexing_result": indexing_result
+                "indexing_result": indexing_result,
+                "stage3_result": stage3_result
             }
 
         except Exception as e:
@@ -89,6 +94,29 @@ class InitializationService:
             return {
                 "status": "error",
                 "message": f"데이터 처리 실패: {str(e)}"
+            }
+
+    def _load_stage3_data(self) -> Dict[str, Any]:
+        """3단계 문제 데이터 로딩"""
+        try:
+            result = load_stage3_problems()
+            if result:
+                logger.info("✅ 3단계 문제 데이터 로딩 완료")
+                return {
+                    "status": "success",
+                    "message": "3단계 문제 데이터 로딩 완료"
+                }
+            else:
+                logger.warning("⚠️ 3단계 문제 데이터 로딩 실패")
+                return {
+                    "status": "warning",
+                    "message": "3단계 문제 데이터 로딩 실패"
+                }
+        except Exception as e:
+            logger.error(f"❌ 3단계 문제 데이터 로딩 실패: {e}")
+            return {
+                "status": "error",
+                "message": f"3단계 문제 데이터 로딩 실패: {str(e)}"
             }
 
     def get_system_status(self) -> Dict[str, Any]:
