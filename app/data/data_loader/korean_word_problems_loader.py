@@ -12,30 +12,40 @@ def get_korean_word_problems():
         mongo_client = get_mongo_client()
         config = load_rag_config()["collections"]["korean_word_problems"]
 
-        # 데이터 조회
-        doc = mongo_client.find_one("korean_word_problems", {})
+        # 데이터 조회 - 모든 문서 가져오기
+        docs = mongo_client.find_many("korean_word_problems")
 
-        if not doc:
+        if not docs:
             logger.warning("⚠️ 한국어 단어 문제 데이터가 없습니다.")
             return {}
 
-        # option_cards, questions 파싱
-        option_cards = doc.get(config["option_cards_field"], [])
-        questions_raw = doc.get(config["questions_field"], [])
+        all_questions = []
+        all_option_cards = []
 
-        questions = []
-        for q in questions_raw:
-            questions.append({
-                "number": q[config["question_number_field"]],
-                "sentence": q[config["question_sentence_field"]],
-                "answer": q[config["question_answer_field"]]
-            })
+        # 각 차시별 데이터 처리
+        for doc in docs:
+            lesson_id = doc.get("lessonId", "0")
+            option_cards = doc.get("option_cards", [])
+            questions = doc.get("questions", [])
+            
+            # 문제 데이터 처리
+            for idx, q in enumerate(questions, 1):
+                # 차시별로 고유한 ID 생성 (예: lesson1_q1, lesson2_q1, ...)
+                question_id = f"lesson{lesson_id}_q{idx}"
+                all_questions.append({
+                    "id": question_id,  # 고유 ID 추가
+                    "number": idx,
+                    "sentence": q.get("sentence", ""),
+                    "answer": q.get("answer", "")
+                })
+            
+            all_option_cards.extend(option_cards)
 
-        logger.info(f"✅ 한국어 단어 문제 데이터 로드 완료: 문제 {len(questions)}개, 옵션 카드 {len(option_cards)}개")
+        logger.info(f"✅ 한국어 단어 문제 데이터 로드 완료: 문제 {len(all_questions)}개, 옵션 카드 {len(all_option_cards)}개")
 
         return {
-            "option_cards": option_cards,
-            "questions": questions
+            "option_cards": all_option_cards,
+            "questions": all_questions
         }
 
     except Exception as e:

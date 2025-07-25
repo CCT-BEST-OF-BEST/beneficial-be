@@ -2,6 +2,7 @@ import logging
 from fastapi import FastAPI
 from app.api.chat.chat_router import router as chat_router
 from app.api.system.indexing import router as indexing_router
+from app.api.learning.learning_router import router as learning_router
 from app.common.init.initialization import get_initialization_service
 
 # 전역 로깅 설정
@@ -22,9 +23,13 @@ app = FastAPI(
             "description": "사용자 채팅 API (초등학생 돌봄반용)"
         },
         {
+            "name": "learning",
+            "description": "학습 진행도 및 상태 관리 API"
+        },
+        {
             "name": "admin",
             "description": "시스템 상태 모니터링 API (관리자용)"
-        }
+        },
     ]
 )
 
@@ -54,6 +59,7 @@ async def shutdown_event():
 
 # 라우터 등록
 app.include_router(chat_router)
+app.include_router(learning_router)
 app.include_router(indexing_router)
 
 
