@@ -61,6 +61,41 @@ async def get_stage1_cards() -> Dict[str, Any]:
 
 
 @router.get(
+    "/stage2/problems",
+    summary="2단계 예제풀이 문제 조회",
+    description="8개의 드래그&드롭 문제와 답안 옵션을 반환합니다."
+)
+async def get_stage2_problems() -> Dict[str, Any]:
+    """2단계 예제풀이 문제 조회"""
+    try:
+        mongo_client = get_mongo_client()
+
+        # 2단계 문제 데이터 조회
+        stage2_data = mongo_client.find_one("stage2_problems", {"lesson_id": "lesson1"})
+
+        if not stage2_data:
+            raise HTTPException(status_code=404, detail="2단계 문제 데이터를 찾을 수 없습니다")
+
+        logger.info(f"✅ 2단계 문제 {stage2_data['total_problems']}개 조회 완료")
+
+        return {
+            "success": True,
+            "lesson_id": stage2_data["lesson_id"],
+            "title": stage2_data["title"],
+            "instruction": stage2_data["instruction"],
+            "total_problems": stage2_data["total_problems"],
+            "answer_options": stage2_data["answer_options"],
+            "problems": stage2_data["problems"]
+        }
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"❌ 2단계 문제 조회 실패: {e}")
+        raise HTTPException(status_code=500, detail="2단계 문제 조회에 실패했습니다")
+
+
+@router.get(
     "/images/{filename}",
     summary="이미지 파일 서빙",
     description="카드 이미지 파일을 반환합니다."
