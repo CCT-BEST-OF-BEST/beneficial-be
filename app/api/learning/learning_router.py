@@ -14,7 +14,42 @@ logger = get_logger(__name__)
 @router.get(
     "/stage1/cards",
     summary="1단계 어휘학습 카드 조회",
-    description="2개 카드 쌍의 이미지 경로를 순서대로 반환합니다."
+    description="""
+## API 설명
+1단계 어휘학습을 위한 카드 쌍 데이터를 조회합니다.
+
+## 프론트엔드 구현 가이드
+- **카드 쌍 구성**: `word1`과 `word2`로 구성된 카드 쌍
+- **이미지 경로**: `card1`, `card2` 객체의 `front_image`, `back_image` 활용
+- **순서 학습**: `order` 필드에 따라 순차적 학습 진행
+
+## 응답 예시
+```json
+{
+  "success": true,
+  "total_pairs": 2,
+  "card_pairs": [
+    {
+      "pair_id": "pair_1",
+      "word1": "가르치다",
+      "word2": "가르키다",
+      "card1": {
+        "card_id": "card_1",
+        "front_image": "/images/cards/card1_front.png",
+        "back_image": "/images/cards/card1_back.png"
+      },
+      "card2": {
+        "card_id": "card_2", 
+        "front_image": "/images/cards/card2_front.png",
+        "back_image": "/images/cards/card2_back.png"
+      },
+      "order": 1
+    }
+  ]
+}
+```
+    """,
+    response_model=Dict[str, Any]
 )
 async def get_stage1_cards() -> Dict[str, Any]:
     """1단계 어휘학습 카드 쌍 조회"""
@@ -63,7 +98,39 @@ async def get_stage1_cards() -> Dict[str, Any]:
 @router.get(
     "/stage2/problems",
     summary="2단계 예제풀이 문제 조회",
-    description="8개의 드래그&드롭 문제와 답안 옵션을 반환합니다."
+    description="""
+## API 설명
+2단계 예제풀이를 위한 드래그&드롭 문제와 답안 옵션을 조회합니다.
+
+## 프론트엔드 구현 가이드
+- **문제 구성**: `sentence_part1 + [빈칸] + sentence_part2` 형태
+- **답안 옵션**: `answer_options` 배열의 카드들을 드래그 가능하게 구현
+- **정답 확인**: `problems` 배열의 `correct_answer`와 비교
+
+## 응답 예시
+```json
+{
+  "success": true,
+  "lesson_id": "lesson1",
+  "title": "2단계 예제풀이",
+  "instruction": "맞춤법에 맞는 낱말 카드를 선택하세요",
+  "total_problems": 8,
+  "answer_options": [
+    "가르쳐", "맞힐", "바라는", "가르켰", "맞춰", "잊지", "바랐", "잊으려고"
+  ],
+  "problems": [
+    {
+      "problem_id": 1,
+      "sentence_part1": "왜 화가 났는지",
+      "correct_answer": "가르쳐",
+      "sentence_part2": "줘",
+      "full_sentence": "왜 화가 났는지 가르쳐 줘"
+    }
+  ]
+}
+```
+    """,
+    response_model=Dict[str, Any]
 )
 async def get_stage2_problems() -> Dict[str, Any]:
     """2단계 예제풀이 문제 조회"""
@@ -98,7 +165,19 @@ async def get_stage2_problems() -> Dict[str, Any]:
 @router.get(
     "/images/{filename}",
     summary="이미지 파일 서빙",
-    description="카드 이미지 파일을 반환합니다."
+    description="""
+## API 설명
+학습에 사용되는 이미지 파일(카드, 문제 이미지 등)을 서빙합니다.
+
+## 프론트엔드 구현 가이드
+- **이미지 URL**: `/learning/images/{filename}` 형태로 접근
+- **에러 처리**: 이미지 로드 실패 시 기본 이미지 표시
+- **성능 최적화**: 필요한 이미지 미리 로드 권장
+
+## 사용 예시
+- 카드 이미지: `/learning/images/card1_front.png`
+- 문제 이미지: `/learning/images/stage3/problem_1.png`
+    """
 )
 async def get_image(filename: str):
     """이미지 파일 서빙"""
