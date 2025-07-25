@@ -10,56 +10,49 @@ import os
 router = APIRouter(prefix="/learning", tags=["learning"])
 logger = get_logger(__name__)
 
-
 @router.get(
     "/stage1/cards",
     summary="1단계 어휘학습 카드 조회",
-    description="8개의 카드 데이터를 순서대로 반환합니다. 각 카드는 앞면/뒤면 이미지 경로를 포함합니다."
+    description="8개의 카드 이미지 경로를 순서대로 반환합니다."
 )
 async def get_stage1_cards() -> Dict[str, Any]:
     """1단계 어휘학습 카드 8개 조회"""
     try:
         mongo_client = get_mongo_client()
-
+        
         # 카드 데이터 조회 (order 순으로 정렬)
         cards = list(mongo_client.find_many(
-            "stage1_cards",
+            "stage1_cards", 
             {},
             sort=[("order", 1)]
         ))
-
+        
         if not cards:
             raise HTTPException(status_code=404, detail="카드 데이터를 찾을 수 없습니다")
-
-        # 응답 데이터 구성
+        
+        # 응답 데이터 구성 (이미지 경로만)
         cards_response = []
         for card in cards:
             cards_response.append({
                 "card_id": card["card_id"],
-                "word_correct": card["word_correct"],
-                "word_wrong": card["word_wrong"],
                 "front_image": card["front_image"],
                 "back_image": card["back_image"],
-                "description": card["description"],
-                "examples": card["examples"],
-                "color_theme": card["color_theme"],
                 "order": card["order"]
             })
-
+        
         logger.info(f"✅ 1단계 카드 {len(cards_response)}개 조회 완료")
-
+        
         return {
             "success": True,
             "total_cards": len(cards_response),
             "cards": cards_response
         }
-
+        
     except HTTPException:
         raise
     except Exception as e:
         logger.error(f"❌ 1단계 카드 조회 실패: {e}")
         raise HTTPException(status_code=500, detail="카드 조회에 실패했습니다")
-
 
 @router.get(
     "/images/{filename}",
@@ -71,11 +64,11 @@ async def get_image(filename: str):
     try:
         # 이미지 파일 경로
         image_path = f"/app/static/images/cards/{filename}"
-
+        
         # 파일 존재 확인
         if not os.path.exists(image_path):
             raise HTTPException(status_code=404, detail="이미지를 찾을 수 없습니다")
-
+        
         # 파일 확장자에 따른 media_type 설정
         if filename.lower().endswith('.png'):
             media_type = "image/png"
@@ -85,15 +78,15 @@ async def get_image(filename: str):
             media_type = "image/svg+xml"
         else:
             media_type = "application/octet-stream"
-
+        
         return FileResponse(
             path=image_path,
             media_type=media_type,
             filename=filename
         )
-
+        
     except HTTPException:
         raise
     except Exception as e:
         logger.error(f"❌ 이미지 서빙 실패: {e}")
-        raise HTTPException(status_code=500, detail="이미지 로딩에 실패했습니다")
+        raise HTTPException(status_code=500, detail="이미지 로딩에 실패했습니다") 
