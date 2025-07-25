@@ -91,15 +91,28 @@ class Stage3Service:
                 # next_problem_index가 6 이상이면 모든 문제를 시도한 것
                 if next_index > total_problems:
                     review_index = progress.get("review_problem_index", 0)
-                    if review_index < len(progress["review_problems"]):
-                        problem_id = progress["review_problems"][review_index]
-                        logger.info(f"🔄 복습 문제 출제: 문제 ID {problem_id} (인덱스: {review_index + 1}/{len(progress['review_problems'])})")
+                    review_problems = progress["review_problems"]
+                    
+                    if len(review_problems) > 0:
+                        # 복습 인덱스가 복습 목록 길이를 초과하면 처음부터 다시 시작 (순환)
+                        if review_index >= len(review_problems):
+                            review_index = 0
+                            # 진행도에서 review_problem_index를 0으로 리셋
+                            self.mongo_client.update_one(
+                                self.progress_collection,
+                                {"_id": "stage3_progress"},
+                                {"review_problem_index": 0}
+                            )
+                            logger.info(f"🔄 복습 문제 인덱스 리셋: {progress.get('review_problem_index', 0)} → 0")
+                        
+                        problem_id = review_problems[review_index]
+                        logger.info(f"🔄 복습 문제 출제: 문제 ID {problem_id} (인덱스: {review_index + 1}/{len(review_problems)})")
                         problem = self._get_problem_by_id(problem_id)
                         if problem:
                             problem["badge"] = "재도전"  # 복습 문제는 "재도전" 뱃지
                         return problem
                     else:
-                        # 복습 문제를 모두 출제했으면 완료
+                        # 복습 문제가 없으면 완료
                         logger.info("🔄 복습 문제 모두 출제 완료")
                         return None
             
@@ -284,6 +297,12 @@ class Stage3Service:
             elif problem_id in progress.get("review_problems", []):
                 # 복습 문제 - next_problem_index는 건드리지 않음
                 logger.info(f"📈 복습 문제 - next_problem_index 유지: {next_index}")
+                
+                # 복습 문제를 틀렸을 때도 다음 복습 문제로 넘어가기
+                if not is_correct:
+                    review_index = progress.get("review_problem_index", 0)
+                    progress["review_problem_index"] = review_index + 1
+                    logger.info(f"📈 복습 문제 오답으로 인덱스 증가: {review_index} → {review_index + 1}")
             else:
                 # 기타 경우
                 logger.info(f"📈 기타 경우 - next_problem_index 유지: {next_index}")
