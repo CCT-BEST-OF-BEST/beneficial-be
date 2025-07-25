@@ -1,5 +1,6 @@
 import logging
 from fastapi import FastAPI
+from fastapi.staticfiles import StaticFiles
 from app.api.chat.chat_router import router as chat_router
 from app.api.system.indexing import router as indexing_router
 from app.api.learning.learning_router import router as learning_router
@@ -32,6 +33,9 @@ app = FastAPI(
         },
     ]
 )
+
+# Static 파일 마운트 (이미지 파일 서빙을 위해)
+app.mount("/images", StaticFiles(directory="app/static/images"), name="images")
 
 
 @app.on_event("startup")
