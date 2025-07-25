@@ -40,10 +40,10 @@ def load_stage2_problems():
                 },
                 {
                     "problem_id": 3,
-                    "sentence_part1": "습품을",
-                    "correct_answer": "잇으려고",
+                    "sentence_part1": "슬픔을",
+                    "correct_answer": "잊으려고",
                     "sentence_part2": "노력 중이에요",
-                    "full_sentence": "습품을 잇으려고 노력 중이에요"
+                    "full_sentence": "슬픔을 잊으려고 노력 중이에요"
                 },
                 {
                     "problem_id": 4,
@@ -68,7 +68,7 @@ def load_stage2_problems():
                 },
                 {
                     "problem_id": 7,
-                    "sentence_part1": "차에 타면 안전벨트를 매는 것을",
+                    "sentence_part1": "차에 타면 안전벨트 매는 것을",
                     "correct_answer": "잊지",
                     "sentence_part2": "마",
                     "full_sentence": "차에 타면 안전벨트를 매는 것을 잊지 마"
