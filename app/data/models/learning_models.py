@@ -130,8 +130,8 @@ class Stage3ProblemResponse(BaseModel):
 class Stage3ProblemsResponse(BaseModel):
     """3단계 문제 목록 응답"""
     success: bool = Field(..., description="성공 여부")
-    lesson_id: str = Field(..., description="차시 ID")
-    title: str = Field(..., description="제목")
+    lesson_id: Optional[str] = Field(None, description="차시 ID (Stage 3는 독립 모듈)")
+    title: Optional[str] = Field(None, description="제목 (Stage 3는 독립 모듈)")
     instruction: str = Field(..., description="설명")
     total_problems: int = Field(..., description="전체 문제 수")
     problems: List[Stage3ProblemResponse] = Field(..., description="문제 목록")

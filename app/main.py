@@ -1,6 +1,7 @@
 import logging
 from fastapi import FastAPI
 from fastapi.staticfiles import StaticFiles
+from fastapi.middleware.cors import CORSMiddleware
 from app.api.chat.chat_router import router as chat_router
 from app.api.system.indexing import router as indexing_router
 from app.api.learning.learning_router import router as learning_router
@@ -106,6 +107,23 @@ app = FastAPI(
             """
         },
     ]
+)
+
+# CORS 미들웨어 설정
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=[
+        "http://localhost:3000",  # React 개발 서버
+        "http://localhost:5173",  # Vite 개발 서버
+        "http://localhost:8080",  # Vue 개발 서버
+        "http://127.0.0.1:3000",
+        "http://127.0.0.1:5173",
+        "http://127.0.0.1:8080",
+        "*"  # 개발 환경에서는 모든 origin 허용 (프로덕션에서는 제거)
+    ],
+    allow_credentials=True,
+    allow_methods=["*"],  # 모든 HTTP 메서드 허용
+    allow_headers=["*"],  # 모든 헤더 허용
 )
 
 # Static 파일 마운트 (이미지 파일 서빙을 위해)
