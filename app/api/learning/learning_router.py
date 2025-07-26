@@ -182,8 +182,9 @@ async def get_stage2_problems() -> Dict[str, Any]:
 async def get_image(filename: str):
     """이미지 파일 서빙"""
     try:
-        # 이미지 파일 경로
-        image_path = f"/app/static/images/cards/{filename}"
+        # 이미지 파일 경로 (상대 경로로 수정)
+        base_dir = os.path.dirname(os.path.dirname(os.path.dirname(__file__)))
+        image_path = os.path.join(base_dir, "static", "images", "cards", filename)
 
         # 파일 존재 확인
         if not os.path.exists(image_path):
