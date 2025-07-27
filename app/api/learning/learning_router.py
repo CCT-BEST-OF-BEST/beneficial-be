@@ -163,7 +163,7 @@ async def get_stage2_problems() -> Dict[str, Any]:
 
 
 @router.get(
-    "/images/{filename}",
+    "/images/{filename:path}",
     summary="이미지 파일 서빙",
     description="""
 ## API 설명
@@ -182,9 +182,19 @@ async def get_stage2_problems() -> Dict[str, Any]:
 async def get_image(filename: str):
     """이미지 파일 서빙"""
     try:
-        # 이미지 파일 경로 (상대 경로로 수정)
+        # 이미지 파일 경로 (cards와 stage3 모두 지원)
         base_dir = os.path.dirname(os.path.dirname(os.path.dirname(__file__)))
-        image_path = os.path.join(base_dir, "static", "images", "cards", filename)
+        
+        # filename이 이미 경로를 포함하는 경우 (예: "stage3/problem_1.png")
+        if "/" in filename:
+            image_path = os.path.join(base_dir, "static", "images", filename)
+        else:
+            # filename이 파일명만 있는 경우, cards 폴더에서 먼저 찾기
+            image_path = os.path.join(base_dir, "static", "images", "cards", filename)
+            
+            # cards에 없으면 stage3에서 찾기
+            if not os.path.exists(image_path):
+                image_path = os.path.join(base_dir, "static", "images", "stage3", filename)
 
         # 파일 존재 확인
         if not os.path.exists(image_path):
