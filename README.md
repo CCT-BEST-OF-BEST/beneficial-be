@@ -56,10 +56,6 @@
 ---
 
 ## 🔥 Technical Deep Dive: RAG System Implementation
-<img width="990" height="725" alt="image" src="https://github.com/user-attachments/assets/328951a6-d223-4a38-b7df-bce566e5bb1e" />
-
-<img width="693" height="419" alt="image" src="https://github.com/user-attachments/assets/9aee123c-1a4f-4144-bd4c-bd507a52273f" />
-
 <img width="937" height="489" alt="image" src="https://github.com/user-attachments/assets/e77ae7cb-abd1-4c63-be48-80d5e9ab27b0" />
 
 <details>
