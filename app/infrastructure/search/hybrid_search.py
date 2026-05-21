@@ -2,6 +2,7 @@ from typing import List, Dict, Any
 from app.infrastructure.search.bm25_retriever import get_bm25_retriever
 from app.infrastructure.db.vector.vector_db import get_vector_db
 from app.infrastructure.embedding.embedding_model import get_embedding_model
+from app.data.data_loader.hypothetical_questions_loader import is_question_collection_ready
 from app.common.logging.logging_config import get_logger
 
 logger = get_logger(__name__)
@@ -86,24 +87,37 @@ class HybridSearchService:
         # ── Dense 검색 ──────────────────────────────────────────────
         query_embedding = await self.embedding_model.get_embedding(query)
 
-        collections = (
-            [collection_name]
-            if collection_name
-            else ["korean_word_problems", "card_check", "pdf_documents"]
-        )
+        BASE_COLLECTIONS = ["korean_word_problems", "card_check", "pdf_documents"]
+        QUESTION_COLLECTIONS = ["korean_word_problems_questions", "card_check_questions"]
+
+        if collection_name:
+            collections = [collection_name, f"{collection_name}_questions"]
+        else:
+            collections = BASE_COLLECTIONS + QUESTION_COLLECTIONS
 
         dense_results: List[Dict] = []
         for coll_name in collections:
-            collection = self.vector_db.get_collection(coll_name)
-            if not collection or collection.count() == 0:
+            # 가상 질문 컬렉션은 생성 완료 전까지 스킵
+            if coll_name.endswith("_questions") and not is_question_collection_ready(coll_name):
+                logger.info(f"⏳ [{coll_name}] 아직 생성 중 → 이번 검색에서 제외")
                 continue
 
-            n = min(fetch_n, collection.count())
-            res = collection.query(
-                query_embeddings=[query_embedding],
-                n_results=n,
-                include=["documents", "metadatas", "distances"],
-            )
+            try:
+                collection = self.vector_db.get_collection(coll_name)
+                if not collection or collection.count() == 0:
+                    continue
+
+                n = min(fetch_n, collection.count())
+                res = collection.query(
+                    query_embeddings=[query_embedding],
+                    n_results=n,
+                    include=["documents", "metadatas", "distances"],
+                )
+            except Exception as e:
+                logger.warning(f"⚠ [{coll_name}] 검색 실패 (스킵): {e}")
+                continue
+
+            is_question_coll = coll_name.endswith("_questions")
 
             for doc_id, doc, meta, dist in zip(
                 res["ids"][0],
@@ -111,15 +125,35 @@ class HybridSearchService:
                 res["metadatas"][0],
                 res["distances"][0],
             ):
+                meta = meta or {}
+                # 가상 질문 컬렉션: 원본 문서로 교체하되 원본 컬렉션명으로 표기
+                if is_question_coll and meta.get("original_text"):
+                    effective_doc = meta["original_text"]
+                    effective_coll = meta.get("collection", coll_name.replace("_questions", ""))
+                    # 원본 doc_id로 de-dup (같은 원본이 여러 질문으로 올라올 수 있음)
+                    effective_id = meta.get("original_id", doc_id)
+                else:
+                    effective_doc = doc
+                    effective_coll = coll_name
+                    effective_id = doc_id
+
                 dense_results.append(
                     {
-                        "id": doc_id,
-                        "document": doc,
-                        "collection": coll_name,
-                        "metadata": meta or {},
+                        "id": effective_id,
+                        "document": effective_doc,
+                        "collection": effective_coll,
+                        "metadata": meta,
                         "distance": dist,
                     }
                 )
+
+        # 같은 원본 doc_id가 여러 가상 질문으로 중복될 경우 최소 거리(최고 유사도)만 유지
+        seen: Dict[str, Dict] = {}
+        for item in dense_results:
+            did = item["id"]
+            if did not in seen or item["distance"] < seen[did]["distance"]:
+                seen[did] = item
+        dense_results = list(seen.values())
 
         # 코사인 거리 기준 정렬 (낮을수록 유사)
         dense_results.sort(key=lambda x: x["distance"])
@@ -132,7 +166,12 @@ class HybridSearchService:
             sparse_results = [r for r in sparse_results if r[2] == collection_name]
 
         # ── RRF 결합 ───────────────────────────────────────────────
-        final = _reciprocal_rank_fusion(dense_results, sparse_results, top_k)
+        final = _reciprocal_rank_fusion(dense_results, sparse_results, top_k * 2)
+
+        # BM25만으로 올라온 결과(cosine=1.0 → 유사도 0) 제거
+        # distance=1.0은 _reciprocal_rank_fusion에서 BM25 전용 문서에 부여한 기본값
+        dense_ids = {item["id"] for item in dense_results}
+        final = [item for item in final if item["id"] in dense_ids][:top_k]
 
         # 로그
         logger.info(

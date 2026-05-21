@@ -24,6 +24,14 @@ logger = get_logger(__name__)
 QUESTIONS_SUFFIX = "_questions"  # 가상 질문 컬렉션 접미사
 N_QUESTIONS = 3                  # 문서당 생성 질문 수
 
+# 생성 완료된 컬렉션 추적 (hybrid_search에서 readiness 확인용)
+_ready_question_collections: set[str] = set()
+
+
+def is_question_collection_ready(collection_name: str) -> bool:
+    """해당 _questions 컬렉션의 생성이 완료되었는지 반환"""
+    return collection_name in _ready_question_collections
+
 SYSTEM_PROMPT = """너는 초등학생 대상 한국어 맞춤법 교육 챗봇의 검색 시스템을 개선하는 전문가야.
 주어진 교육 자료에 대해 초등학생이 실제로 물어볼 법한 자연스러운 구어체 질문을 만들어줘.
 질문은 짧고 구체적으로, 줄바꿈으로 구분해서 딱 {n}개만 출력해."""
@@ -103,6 +111,17 @@ async def build_hypothetical_questions(
         src_data = src_col.get(include=["documents", "metadatas"])
         total = len(src_data["ids"])
         new_count = 0
+        processed = 0
+
+        # 이미 모든 문서가 처리된 경우 바로 완료 처리
+        already_done = all(
+            any(eid.startswith(f"hq_{doc_id}_") for eid in existing_ids)
+            for doc_id in src_data["ids"]
+        )
+        if already_done:
+            logger.info(f"⏭ [{coll_name}] 가상 질문 이미 생성됨 (총 {q_col.count()}개) → 스킵")
+            _ready_question_collections.add(q_coll_name)
+            continue
 
         logger.info(f"📝 [{coll_name}] 가상 질문 생성 시작: {total}개 문서")
 
@@ -111,10 +130,12 @@ async def build_hypothetical_questions(
         ):
             # 이미 처리된 문서 스킵
             if any(eid.startswith(f"hq_{doc_id}_") for eid in existing_ids):
+                processed += 1
                 continue
 
             questions = await _generate_questions(openai_client, document)
             if not questions:
+                processed += 1
                 continue
 
             # 질문 임베딩 후 저장
@@ -137,11 +158,15 @@ async def build_hypothetical_questions(
                 metadatas=q_metas,
             )
             new_count += len(questions)
+            processed += 1
+
+            logger.info(f"   [{coll_name}] 진행: {processed}/{total} | 최근 질문: {questions[0][:40]}...")
 
             # API rate limit 방지
             await asyncio.sleep(0.3)
 
+        _ready_question_collections.add(q_coll_name)
         logger.info(
-            f"✓ [{coll_name}] 가상 질문 저장 완료: "
-            f"{new_count}개 추가 (총 {q_col.count()}개)"
+            f"✅ [{coll_name}] 가상 질문 생성 완료: "
+            f"{new_count}개 추가 (총 {q_col.count()}개) → 검색 활성화"
         )

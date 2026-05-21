@@ -54,8 +54,15 @@ class VectorDatabase:
                 logger.error(f"❌ 컬렉션 '{collection_name}' 초기화 실패: {e}")
 
     def get_collection(self, collection_name: str):
-        """특정 컬렉션을 반환합니다."""
-        return self.collections.get(collection_name)
+        """특정 컬렉션을 반환합니다. 캐시에 없으면 ChromaDB에서 직접 조회합니다."""
+        if collection_name in self.collections:
+            return self.collections[collection_name]
+        try:
+            col = self.client.get_collection(collection_name)
+            self.collections[collection_name] = col
+            return col
+        except Exception:
+            return None
 
     def list_collections(self):
         """모든 컬렉션 목록을 반환합니다."""
