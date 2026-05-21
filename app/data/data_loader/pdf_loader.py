@@ -110,54 +110,80 @@ class PDFDataLoader:
             return []
 
     def _try_rule_based_chunking(self, text: str) -> List[Dict[str, Any]]:
-        """규칙 번호 기준 분할 (제N항, N. 형태)"""
-        
-        # 더 유연한 패턴들
-        patterns = [
-            r'제(\d+)항[.\s]*([^제]+?)(?=제\d+항|\Z)',  # 제N항 패턴
-            r'(\d+)\.\s*([^0-9]+?)(?=\d+\.|\Z)',        # 1. 2. 3. 형태
-        ]
-        
-        for pattern in patterns:
-            matches = re.findall(pattern, text, re.DOTALL)
-            if len(matches) > 5:  # 충분한 규칙이 있으면 성공
-                return self._build_rule_chunks(matches, pattern)
-        
+        """규칙 번호 기준 분할 (제N항 패턴)"""
+
+        pattern = r'제(\d+)항\s*(.*?)(?=제\d+항|부록|\Z)'
+        matches = re.findall(pattern, text, re.DOTALL)
+
+        if len(matches) > 5:
+            chunks = self._build_rule_chunks(matches, pattern)
+
+            # 부록(문장 부호) 별도 추출 - 부호 종류별로 분할
+            appendix_match = re.search(r'부록.*?문장 부호(.*?)(?=\Z)', text, re.DOTALL)
+            if appendix_match:
+                appendix_content = appendix_match.group(1).strip()
+                # 마침표, 물음표 등 각 부호별 섹션으로 분할
+                sections = re.split(r'\n(?=\d+\.\s)', appendix_content)
+                for j, section in enumerate(sections):
+                    section = section.strip()
+                    if len(section) < 20:
+                        continue
+                    chunks.append({
+                        "id": f"korean_grammar_appendix_{j}",
+                        "text": f"[부록 문장 부호] {section}",
+                        "metadata": {
+                            "source": "korean_grammar_official.pdf",
+                            "document_type": "official_grammar_rule",
+                            "rule_number": 0,
+                            "sub_index": len(chunks) + j,
+                            "authority": "문화체육관광부",
+                            "year": "2017",
+                            "topics": "문장 부호",
+                            "examples": "",
+                            "difficulty_level": "elementary",
+                            "chunk_method": "rule_based"
+                        }
+                    })
+
+            return chunks
+
         raise ValueError("규칙 패턴을 찾을 수 없음")
     
     def _build_rule_chunks(self, matches: List, pattern: str) -> List[Dict[str, Any]]:
-        """규칙 매칭 결과를 청크로 변환"""
-        chunks = []
-        
+        """규칙 매칭 결과를 청크로 변환 (중복 rule_number는 긴 것 우선)"""
+        seen: dict = {}  # rule_number → (index, content)
+
         for i, match in enumerate(matches):
             rule_number, content = match
-            
-            # 내용 정리
             clean_content = content.strip()
-            if len(clean_content) < 10:  # 너무 짧은 내용 제외
+            if len(clean_content) < 10:
                 continue
-            
-            # 초등학생용 주제 추출
+            # 중복 시 더 긴 내용(더 완전한 추출)을 유지
+            if rule_number not in seen or len(clean_content) > len(seen[rule_number][1]):
+                seen[rule_number] = (i, clean_content)
+
+        chunks = []
+        for rule_number, (i, clean_content) in sorted(seen.items(), key=lambda x: int(x[0])):
             topics = self._extract_elementary_topics(clean_content)
             examples = self._extract_examples(clean_content)
-            
+
             chunks.append({
-                "id": f"korean_grammar_rule_{rule_number}_{i}",  # 고유 인덱스 추가
+                "id": f"korean_grammar_rule_{rule_number}",
                 "text": f"제{rule_number}항: {clean_content}",
                 "metadata": {
                     "source": "korean_grammar_official.pdf",
                     "document_type": "official_grammar_rule",
                     "rule_number": int(rule_number),
-                    "sub_index": i,  # 하위 청크 인덱스
+                    "sub_index": i,
                     "authority": "문화체육관광부",
                     "year": "2017",
-                    "topics": ", ".join(topics) if topics else "",  # 리스트 → 문자열
-                    "examples": ", ".join(examples) if examples else "",  # 리스트 → 문자열
-                    "difficulty_level": "elementary",  # 초등학생용
+                    "topics": ", ".join(topics) if topics else "",
+                    "examples": ", ".join(examples) if examples else "",
+                    "difficulty_level": "elementary",
                     "chunk_method": "rule_based"
                 }
             })
-        
+
         logger.info(f"✅ 규칙 기반 청킹 완료: {len(chunks)}개")
         return chunks
 

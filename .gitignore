@@ -10,3 +10,5 @@ __pycache__/
 chroma_db
 
 .DS_Store
+
+.serena
