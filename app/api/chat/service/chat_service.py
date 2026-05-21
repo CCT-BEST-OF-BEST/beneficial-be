@@ -2,20 +2,21 @@ from typing import List, Dict, Any
 from app.infrastructure.external.openai_client import OpenAIClient
 from app.infrastructure.db.vector.vector_db import get_vector_db
 from app.infrastructure.embedding.embedding_model import get_embedding_model
+from app.infrastructure.search.hybrid_search import get_hybrid_search_service
 from app.common.logging.logging_config import get_logger
 
 logger = get_logger(__name__)
 
 
 class ChatService:
-    """사용자 채팅 서비스 (RAG 포함)"""
+    """사용자 채팅 서비스 (하이브리드 RAG: BM25 + Dense + RRF)"""
 
     def __init__(self, openai_client: OpenAIClient = None,
                  vector_db=None, embedding_model=None):
-        # 의존성 주입 또는 기본값 사용
         self.openai_client = openai_client or OpenAIClient()
         self.vector_db = vector_db or get_vector_db()
         self.embedding_model = embedding_model or get_embedding_model()
+        self.hybrid_search = get_hybrid_search_service()
 
         self.default_system_prompt = """너는 초등학생 돌봄선생님이야. 
     주어진 참고 자료를 바탕으로 정확하고 친근하게 답변해줘.
@@ -66,66 +67,38 @@ class ChatService:
             logger.error(f"❌ RAG 채팅 실패: {e}")
             return f"죄송합니다. 채팅 처리 중 오류가 발생했습니다: {str(e)}"
 
-    async def search_relevant_documents(self, query: str, collection_name: str = None, top_k: int = 3,
-                                      similarity_threshold: float = 0.3) -> List[Dict[str, Any]]:
-        """관련 문서 검색"""
+    async def search_relevant_documents(
+        self,
+        query: str,
+        collection_name: str = None,
+        top_k: int = 5,
+        similarity_threshold: float = 0.3,
+    ) -> List[Dict[str, Any]]:
+        """BM25 + Dense 하이브리드 검색 (RRF 결합)"""
         try:
-            logger.debug(f"🔍 문서 검색 시작: '{query}' (top_k={top_k}, 임계값={similarity_threshold})")
-            
-            query_embedding = await self.embedding_model.get_embedding(query)
-            logger.debug(f" 쿼리 임베딩 생성 완료: {len(query_embedding)}차원")
-            
+            hybrid_results = await self.hybrid_search.search(
+                query=query,
+                collection_name=collection_name,
+                top_k=top_k,
+            )
+
+            # hybrid_search 결과를 기존 포맷으로 변환
             results = []
+            for item in hybrid_results:
+                # 가상 질문 문서면 원본 텍스트를 컨텍스트로 사용
+                doc_text = item["metadata"].get("original_text") or item["document"]
+                results.append({
+                    "document": doc_text,
+                    "metadata": item["metadata"],
+                    "distance": item["distance"],
+                    "collection": item["collection"],
+                    "rrf_score": item.get("rrf_score", 0),
+                })
 
-            # 검색할 컬렉션 결정
-            if collection_name:
-                collections = [collection_name]
-            else:
-                # PDF 문서를 포함한 모든 컬렉션에서 검색
-                collections = ["korean_word_problems", "card_check", "pdf_documents"]
-
-            logger.debug(f"📂 검색할 컬렉션: {collections}")
-
-            # 각 컬렉션에서 검색
-            for coll_name in collections:
-                collection = self.vector_db.get_collection(coll_name)
-                if collection:
-                    logger.debug(f"🔍 {coll_name} 컬렉션에서 검색 중...")
-                    
-                    search_results = collection.query(
-                        query_embeddings=[query_embedding],
-                        n_results=top_k * 2  # 더 많은 결과를 가져와서 필터링
-                    )
-
-                    for i in range(len(search_results['documents'][0])):
-                        similarity = 1 - search_results['distances'][0][i]
-                        
-                        # 유사도 임계값 이상인 문서만 포함
-                        if similarity >= similarity_threshold:
-                            results.append({
-                                'document': search_results['documents'][0][i],
-                                'metadata': search_results['metadatas'][0][i],
-                                'distance': search_results['distances'][0][i],
-                                'collection': coll_name
-                            })
-                    
-                    logger.debug(f"✅ {coll_name}에서 {len(search_results['documents'][0])}개 문서 발견, {len([r for r in results if r['collection'] == coll_name])}개 필터링됨")
-                else:
-                    logger.warning(f"⚠️ {coll_name} 컬렉션을 찾을 수 없음")
-
-            # 유사도 순으로 정렬
-            results.sort(key=lambda x: x['distance'])
-            final_results = results[:top_k]
-            
-            logger.info(f"📚 최종 검색 결과: {len(final_results)}개 문서 (임계값: {similarity_threshold})")
-            for i, doc in enumerate(final_results):
-                similarity = round(1 - doc['distance'], 4)
-                logger.info(f"   {i+1}. [{doc['collection']}] 유사도: {similarity} - {doc['document'][:100]}...")
-
-            return final_results
+            return results
 
         except Exception as e:
-            logger.error(f"❌ 문서 검색 실패: {e}")
+            logger.error(f"❌ 하이브리드 검색 실패: {e}")
             return []
 
 
