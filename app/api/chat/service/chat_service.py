@@ -66,8 +66,8 @@ class ChatService:
             logger.error(f"❌ RAG 채팅 실패: {e}")
             return f"죄송합니다. 채팅 처리 중 오류가 발생했습니다: {str(e)}"
 
-    async def search_relevant_documents(self, query: str, collection_name: str = None, top_k: int = 3, 
-                                      similarity_threshold: float = 0.6) -> List[Dict[str, Any]]:
+    async def search_relevant_documents(self, query: str, collection_name: str = None, top_k: int = 3,
+                                      similarity_threshold: float = 0.3) -> List[Dict[str, Any]]:
         """관련 문서 검색"""
         try:
             logger.debug(f"🔍 문서 검색 시작: '{query}' (top_k={top_k}, 임계값={similarity_threshold})")

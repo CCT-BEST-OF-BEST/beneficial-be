@@ -1,4 +1,3 @@
-import logging
 from fastapi import FastAPI
 from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
@@ -7,14 +6,9 @@ from app.api.system.indexing import router as indexing_router
 from app.api.learning.learning_router import router as learning_router
 from app.api.learning.stage3_router import router as stage3_router
 from app.common.init.initialization import get_initialization_service
+from app.common.logging.logging_config import get_logger
 
-# 전역 로깅 설정
-logging.basicConfig(
-    level=logging.INFO,
-    format="%(asctime)s [%(levelname)s] %(name)s: %(message)s"
-)
-
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 app = FastAPI(
     title="🎓 CCT 백엔드 API",

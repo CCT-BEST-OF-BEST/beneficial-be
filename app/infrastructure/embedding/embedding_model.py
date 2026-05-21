@@ -32,16 +32,18 @@ class EmbeddingModel:
         # ThreadPoolExecutor 초기화
         self.executor = ThreadPoolExecutor(max_workers=self.max_workers)
 
-        # OpenAI API 키가 있으면 OpenAI 사용, 없으면 sentence-transformers 사용
-        self.model = None  # 로컬 모델은 필요 시 지연 로드
-        if self.openai_api_key:
+        # EMBEDDING_PROVIDER=local 이면 항상 로컬 모델 사용
+        embedding_provider = os.getenv("EMBEDDING_PROVIDER", "openai").lower()
+
+        self.model = None
+        if embedding_provider == "local" or not self.openai_api_key:
+            self.model = SentenceTransformer(model_name)
+            self.use_openai = False
+            logger.info(f"🤖 로컬 임베딩 모델 사용: {model_name}")
+        else:
             self.client = AsyncOpenAI(api_key=self.openai_api_key)
             self.use_openai = True
             logger.info("🔑 OpenAI 임베딩 모델 사용 (비동기)")
-        else:
-            self.model = SentenceTransformer(model_name)
-            self.use_openai = False
-            logger.info(f"🤖 Sentence Transformers 모델 사용: {model_name}")
 
     async def get_embedding(self, text: str) -> List[float]:
         """

@@ -32,19 +32,18 @@ class VectorDatabase:
         """필요한 컬렉션들을 초기화합니다."""
         collections_config = {
             "korean_word_problems": {
-                "metadata": {"type": "educational", "language": "korean"}
+                "metadata": {"type": "educational", "language": "korean", "hnsw:space": "cosine"}
             },
             "card_check": {
-                "metadata": {"type": "educational", "language": "korean"}
+                "metadata": {"type": "educational", "language": "korean", "hnsw:space": "cosine"}
             },
-            "pdf_documents": {  # 신규 추가
-                "metadata": {"type": "document", "language": "korean", "source": "pdf"}
+            "pdf_documents": {
+                "metadata": {"type": "document", "language": "korean", "source": "pdf", "hnsw:space": "cosine"}
             }
         }
 
         for collection_name, config in collections_config.items():
             try:
-                # description 파라미터 제거
                 collection = self.client.get_or_create_collection(
                     name=collection_name,
                     metadata=config["metadata"]

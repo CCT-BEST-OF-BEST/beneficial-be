@@ -7,6 +7,9 @@ from typing import Dict, Any
 from app.common.dependency.dependencies import initialize_dependencies
 from app.infrastructure.db.vector.vector_db import initialize_vector_db
 from app.api.system.indexing_service import get_indexing_service
+from app.data.data_loader.seed_mongo_loader import seed_mongo_data
+from app.data.data_loader.stage1_cards_loader import load_stage1_cards
+from app.data.data_loader.stage2_problems_loader import load_stage2_problems
 from app.data.data_loader.stage3_problems_loader import load_stage3_problems
 
 logger = logging.getLogger(__name__)
@@ -37,13 +40,19 @@ class InitializationService:
             self.vector_db = initialize_vector_db()
             logger.info("✅ 벡터 DB 초기화 완료")
 
-            # 3. 인덱싱 서비스 초기화
+            # 3. MongoDB 시드 데이터 삽입 (card_check, korean_word_problems)
+            seed_mongo_data()
+            logger.info("✅ MongoDB 시드 데이터 확인 완료")
+
+            # 4. 인덱싱 서비스 초기화
             self.indexing_service = get_indexing_service()
 
-            # 4. 데이터 상태 확인 및 자동 인덱싱
+            # 5. 데이터 상태 확인 및 자동 인덱싱
             indexing_result = await self._check_and_index_data()
 
-            # 5. 3단계 문제 데이터 로딩
+            # 6. Stage1/2/3 학습 데이터 로딩
+            load_stage1_cards()
+            load_stage2_problems()
             stage3_result = self._load_stage3_data()
 
             return {
