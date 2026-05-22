@@ -49,9 +49,9 @@ class VectorDatabase:
                     metadata=config["metadata"]
                 )
                 self.collections[collection_name] = collection
-                logger.info(f"✅ 컬렉션 '{collection_name}' 초기화 완료")
+                logger.info(f"[OK] 컬렉션 '{collection_name}' 초기화 완료")
             except Exception as e:
-                logger.error(f"❌ 컬렉션 '{collection_name}' 초기화 실패: {e}")
+                logger.error(f"[ERROR] 컬렉션 '{collection_name}' 초기화 실패: {e}")
 
     def get_collection(self, collection_name: str):
         """특정 컬렉션을 반환합니다. 캐시에 없으면 ChromaDB에서 직접 조회합니다."""

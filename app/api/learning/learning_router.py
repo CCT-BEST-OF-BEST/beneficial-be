@@ -80,7 +80,7 @@ async def get_stage1_cards() -> Dict[str, Any]:
             }
             pairs_response.append(pair_data)
 
-        logger.info(f"✅ 1단계 카드 쌍 {len(pairs_response)}개 조회 완료")
+        logger.info(f"[OK] 1단계 카드 쌍 {len(pairs_response)}개 조회 완료")
 
         return {
             "success": True,
@@ -91,7 +91,7 @@ async def get_stage1_cards() -> Dict[str, Any]:
     except HTTPException:
         raise
     except Exception as e:
-        logger.error(f"❌ 1단계 카드 조회 실패: {e}")
+        logger.error(f"[ERROR] 1단계 카드 조회 실패: {e}")
         raise HTTPException(status_code=500, detail="카드 조회에 실패했습니다")
 
 
@@ -143,7 +143,7 @@ async def get_stage2_problems() -> Dict[str, Any]:
         if not stage2_data:
             raise HTTPException(status_code=404, detail="2단계 문제 데이터를 찾을 수 없습니다")
 
-        logger.info(f"✅ 2단계 문제 {stage2_data['total_problems']}개 조회 완료")
+        logger.info(f"[OK] 2단계 문제 {stage2_data['total_problems']}개 조회 완료")
 
         return {
             "success": True,
@@ -158,7 +158,7 @@ async def get_stage2_problems() -> Dict[str, Any]:
     except HTTPException:
         raise
     except Exception as e:
-        logger.error(f"❌ 2단계 문제 조회 실패: {e}")
+        logger.error(f"[ERROR] 2단계 문제 조회 실패: {e}")
         raise HTTPException(status_code=500, detail="2단계 문제 조회에 실패했습니다")
 
 
@@ -219,5 +219,5 @@ async def get_image(filename: str):
     except HTTPException:
         raise
     except Exception as e:
-        logger.error(f"❌ 이미지 서빙 실패: {e}")
+        logger.error(f"[ERROR] 이미지 서빙 실패: {e}")
         raise HTTPException(status_code=500, detail="이미지 로딩에 실패했습니다")

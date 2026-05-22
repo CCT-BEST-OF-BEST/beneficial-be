@@ -12,22 +12,13 @@ _COLORS = {
     "DIM":      "\033[2m",
 }
 
-_ICONS = {
-    "DEBUG":    "·",
-    "INFO":     "✓",
-    "WARNING":  "⚠",
-    "ERROR":    "✗",
-    "CRITICAL": "‼",
-}
-
-
 class ColorFormatter(logging.Formatter):
     def format(self, record: logging.LogRecord) -> str:
         level = record.levelname
         color = _COLORS.get(level, "")
         reset = _COLORS["RESET"]
         dim   = _COLORS["DIM"]
-        icon  = _ICONS.get(level, "·")
+        level_label = f"[{level}]"
 
         # 모듈 이름 마지막 파트만 표시
         short_name = record.name.split(".")[-1]
@@ -39,7 +30,7 @@ class ColorFormatter(logging.Formatter):
 
         return (
             f"{dim}{time_str}{reset}  "
-            f"{color}{icon} {level:<7}{reset}  "
+            f"{color}{level_label:<10}{reset}  "
             f"{dim}{short_name:<22}{reset}  "
             f"{record.getMessage()}"
         )

@@ -76,7 +76,7 @@ def initialize_dependencies():
         get_vector_db_instance()
         get_embedding_model_instance()
         get_chat_service()
-        logger.info("✅ 모든 의존성 초기화 완료")
+        logger.info("[OK] 모든 의존성 초기화 완료")
     except Exception as e:
-        logger.error(f"❌ 의존성 초기화 실패: {e}")
+        logger.error(f"[ERROR] 의존성 초기화 실패: {e}")
         raise

@@ -69,7 +69,7 @@ async def chat_with_rag(request: ChatRequest):
             top_k=top_k
         )
 
-        logger.info(f"✅ 채팅 응답 완료: {len(response)}자")
+        logger.info(f"[OK] 채팅 응답 완료: {len(response)}자")
         
         return ChatResponse(
             status="success",
@@ -79,7 +79,7 @@ async def chat_with_rag(request: ChatRequest):
             top_k=top_k
         )
     except Exception as e:
-        logger.error(f"❌ 채팅 요청 실패: {e}")
+        logger.error(f"[ERROR] 채팅 요청 실패: {e}")
         raise HTTPException(status_code=500, detail=f"채팅 실패: {str(e)}")
 
 

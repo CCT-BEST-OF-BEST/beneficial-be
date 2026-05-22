@@ -53,7 +53,7 @@ class ChatService:
             GPT 응답
         """
         try:
-            logger.info(f"🔍 RAG 채팅 시작: '{prompt}' (top_k={top_k}, collection={collection_name or 'all'})")
+            logger.info(f"[SEARCH] RAG 채팅 시작: '{prompt}' (top_k={top_k}, collection={collection_name or 'all'})")
             
             response = await self.rag_service.answer(
                 query=prompt,
@@ -66,7 +66,7 @@ class ChatService:
             return response
 
         except Exception as e:
-            logger.error(f"❌ RAG 채팅 실패: {e}")
+            logger.error(f"[ERROR] RAG 채팅 실패: {e}")
             return f"죄송합니다. 채팅 처리 중 오류가 발생했습니다: {str(e)}"
 
     async def search_relevant_documents(
@@ -90,7 +90,7 @@ class ChatService:
             ]
 
         except Exception as e:
-            logger.error(f"❌ 하이브리드 검색 실패: {e}")
+            logger.error(f"[ERROR] 하이브리드 검색 실패: {e}")
             return []
 
 
@@ -105,11 +105,11 @@ class ChatService:
                 system_prompt=self.default_system_prompt
             )
             
-            logger.debug(f"✅ GPT 응답 생성 완료: {len(response)}자")
+            logger.debug(f"[OK] GPT 응답 생성 완료: {len(response)}자")
             return response
             
         except Exception as e:
-            logger.error(f"❌ GPT 응답 생성 실패: {e}")
+            logger.error(f"[ERROR] GPT 응답 생성 실패: {e}")
             return f"죄송합니다. 응답 생성 중 오류가 발생했습니다: {str(e)}"
 
 
@@ -135,7 +135,7 @@ class ChatService:
             GPT 응답
         """
         try:
-            logger.info(f"💬 간단 채팅: '{prompt}'")
+            logger.info(f"[CHAT] 간단 채팅: '{prompt}'")
             
             messages = [
                 {"role": "system", "content": self.default_system_prompt},
@@ -143,11 +143,11 @@ class ChatService:
             ]
             response = await self.openai_client.chat_completion(messages)
             
-            logger.info(f"✅ 간단 채팅 완료: {len(response)}자")
+            logger.info(f"[OK] 간단 채팅 완료: {len(response)}자")
             return response
             
         except Exception as e:
-            logger.error(f"❌ 간단 채팅 실패: {e}")
+            logger.error(f"[ERROR] 간단 채팅 실패: {e}")
             return f"죄송합니다. 응답 생성 중 오류가 발생했습니다: {str(e)}"
 
     def _is_korean_grammar_query(self, query: str) -> bool:

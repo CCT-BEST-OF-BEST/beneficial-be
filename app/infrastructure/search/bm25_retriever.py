@@ -53,7 +53,7 @@ class BM25Retriever:
     def build_index(self, vector_db) -> None:
         """ChromaDB 전체 컬렉션에서 문서를 로드해 BM25 인덱스를 구축한다."""
         if BM25Okapi is None:
-            logger.warning("⚠ BM25 인덱스: rank_bm25 패키지가 없어 비활성화합니다")
+            logger.warning("[WARN] BM25 인덱스: rank_bm25 패키지가 없어 비활성화합니다")
             return
 
         self._corpus = []
@@ -78,12 +78,12 @@ class BM25Retriever:
                 self._metadatas.append(meta or {})
 
         if not self._corpus:
-            logger.warning("⚠ BM25 인덱스: 문서 없음")
+            logger.warning("[WARN] BM25 인덱스: 문서 없음")
             return
 
         tokenized = [_tokenize_korean(doc) for doc in self._corpus]
         self._bm25 = BM25Okapi(tokenized)
-        logger.info(f"✓ BM25 인덱스 구축 완료: {len(self._corpus)}개 문서")
+        logger.info(f"[OK] BM25 인덱스 구축 완료: {len(self._corpus)}개 문서")
 
     def search(
         self, query: str, n_results: int = 20

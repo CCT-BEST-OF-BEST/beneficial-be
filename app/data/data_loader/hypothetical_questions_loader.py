@@ -87,10 +87,10 @@ async def build_hypothetical_questions(
     """
     api_key = os.getenv("OPENAI_API_KEY")
     if not api_key:
-        logger.warning("⚠ OPENAI_API_KEY 없음 → 가상 질문 생성 스킵")
+        logger.warning("[WARN] OPENAI_API_KEY 없음 → 가상 질문 생성 스킵")
         return
     if AsyncOpenAI is None:
-        logger.warning("⚠ openai 패키지 없음 → 가상 질문 생성 스킵")
+        logger.warning("[WARN] openai 패키지 없음 → 가상 질문 생성 스킵")
         return
 
     openai_client = AsyncOpenAI(api_key=api_key)
@@ -102,7 +102,7 @@ async def build_hypothetical_questions(
         try:
             src_col = chroma_client.get_collection(coll_name)
         except Exception:
-            logger.warning(f"⚠ 컬렉션 없음: {coll_name}")
+            logger.warning(f"[WARN] 컬렉션 없음: {coll_name}")
             continue
 
         # 가상 질문 컬렉션 (없으면 생성)
@@ -130,7 +130,7 @@ async def build_hypothetical_questions(
             _ready_question_collections.add(q_coll_name)
             continue
 
-        logger.info(f"📝 [{coll_name}] 가상 질문 생성 시작: {total}개 문서")
+        logger.info(f"[WRITE] [{coll_name}] 가상 질문 생성 시작: {total}개 문서")
 
         for doc_id, document, metadata in zip(
             src_data["ids"], src_data["documents"], src_data["metadatas"]
@@ -174,6 +174,6 @@ async def build_hypothetical_questions(
 
         _ready_question_collections.add(q_coll_name)
         logger.info(
-            f"✅ [{coll_name}] 가상 질문 생성 완료: "
+            f"[OK] [{coll_name}] 가상 질문 생성 완료: "
             f"{new_count}개 추가 (총 {q_col.count()}개) → 검색 활성화"
         )

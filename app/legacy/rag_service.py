@@ -50,7 +50,7 @@
 #                 await self._index_card_check_data()
 #
 #         except Exception as e:
-#             print(f"⚠️ 데이터 인덱싱 확인 중 오류: {e}")
+#             print(f"[WARN] 데이터 인덱싱 확인 중 오류: {e}")
 #
 #     async def _index_korean_word_problems(self):
 #         """한국어 단어 문제 데이터를 벡터 DB에 인덱싱"""
@@ -74,10 +74,10 @@
 #                 ids=ids,
 #                 metadatas=metadatas
 #             )
-#             print(f"✅ 한국어 단어 문제 {len(documents)}개 문서 인덱싱 완료")
+#             print(f"[OK] 한국어 단어 문제 {len(documents)}개 문서 인덱싱 완료")
 #
 #         except Exception as e:
-#             print(f"❌ 한국어 단어 문제 인덱싱 실패: {e}")
+#             print(f"[ERROR] 한국어 단어 문제 인덱싱 실패: {e}")
 #
 #     async def _index_card_check_data(self):
 #         """카드 체크 데이터를 벡터 DB에 인덱싱"""
@@ -101,10 +101,10 @@
 #                 ids=ids,
 #                 metadatas=metadatas
 #             )
-#             print(f"✅ 카드 체크 {len(documents)}개 문서 인덱싱 완료")
+#             print(f"[OK] 카드 체크 {len(documents)}개 문서 인덱싱 완료")
 #
 #         except Exception as e:
-#             print(f"❌ 카드 체크 인덱싱 실패: {e}")
+#             print(f"[ERROR] 카드 체크 인덱싱 실패: {e}")
 #
 #     async def search_relevant_documents(self, query: str, collection_name: str = None, top_k: int = 3) -> List[
 #         Dict[str, Any]]:
@@ -173,7 +173,7 @@
 #             return results[:top_k]  # 상위 top_k개 문서만 반환
 #
 #         except Exception as e:
-#             print(f"❌ 문서 검색 실패: {e}")
+#             print(f"[ERROR] 문서 검색 실패: {e}")
 #             return []
 #
 #     async def chat_with_rag(self, prompt: str, collection_name: str = None, top_k: int = 3) -> str:
@@ -220,7 +220,7 @@
 #             return response.choices[0].message.content
 #
 #         except Exception as e:
-#             print(f"❌ RAG 채팅 실패: {e}")
+#             print(f"[ERROR] RAG 채팅 실패: {e}")
 #             return f"죄송합니다. 오류가 발생했습니다: {str(e)}"
 #
 #     def _build_context(self, relevant_docs: List[Dict[str, Any]]) -> str:

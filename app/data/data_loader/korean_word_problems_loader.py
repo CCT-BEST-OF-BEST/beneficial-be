@@ -16,7 +16,7 @@ def get_korean_word_problems():
         docs = mongo_client.find_many("korean_word_problems")
 
         if not docs:
-            logger.warning("⚠️ 한국어 단어 문제 데이터가 없습니다.")
+            logger.warning("[WARN] 한국어 단어 문제 데이터가 없습니다.")
             return {}
 
         all_questions = []
@@ -41,7 +41,7 @@ def get_korean_word_problems():
             
             all_option_cards.extend(option_cards)
 
-        logger.info(f"✅ 한국어 단어 문제 데이터 로드 완료: 문제 {len(all_questions)}개, 옵션 카드 {len(all_option_cards)}개")
+        logger.info(f"[OK] 한국어 단어 문제 데이터 로드 완료: 문제 {len(all_questions)}개, 옵션 카드 {len(all_option_cards)}개")
 
         return {
             "option_cards": all_option_cards,
@@ -49,7 +49,7 @@ def get_korean_word_problems():
         }
 
     except Exception as e:
-        logger.error(f"❌ 한국어 단어 문제 데이터 로드 실패: {e}")
+        logger.error(f"[ERROR] 한국어 단어 문제 데이터 로드 실패: {e}")
         return {}
 
 

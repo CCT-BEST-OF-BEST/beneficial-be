@@ -134,18 +134,18 @@ async def startup_event():
         result = await init_service.initialize_application()
 
         if result["status"] == "success":
-            logger.info("🎉 애플리케이션 시작 완료!")
+            logger.info("[DONE] 애플리케이션 시작 완료!")
         else:
-            logger.warning(f"⚠️ 초기화 경고: {result['message']}")
+            logger.warning(f"[WARN] 초기화 경고: {result['message']}")
 
     except Exception as e:
-        logger.error(f"❌ 애플리케이션 시작 실패: {e}")
+        logger.error(f"[ERROR] 애플리케이션 시작 실패: {e}")
 
 
 @app.on_event("shutdown")
 async def shutdown_event():
     """애플리케이션 종료 시 실행될 이벤트"""
-    logger.info("🛑 Beneficial RAG System 종료 중...")
+    logger.info("[STOP] Beneficial RAG System 종료 중...")
 
 
 # 라우터 등록
