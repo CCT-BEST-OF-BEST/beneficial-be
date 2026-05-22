@@ -32,15 +32,18 @@ class EmbeddingModel:
         # ThreadPoolExecutor 초기화
         self.executor = ThreadPoolExecutor(max_workers=self.max_workers)
 
-        # OpenAI API 키가 있으면 OpenAI 사용, 없으면 sentence-transformers 사용
-        if self.openai_api_key:
+        # EMBEDDING_PROVIDER=local 이면 항상 로컬 모델 사용
+        embedding_provider = os.getenv("EMBEDDING_PROVIDER", "openai").lower()
+
+        self.model = None
+        if embedding_provider == "local" or not self.openai_api_key:
+            self.model = SentenceTransformer(model_name)
+            self.use_openai = False
+            logger.info(f"🤖 로컬 임베딩 모델 사용: {model_name}")
+        else:
             self.client = AsyncOpenAI(api_key=self.openai_api_key)
             self.use_openai = True
             logger.info("🔑 OpenAI 임베딩 모델 사용 (비동기)")
-        else:
-            self.model = SentenceTransformer(model_name)
-            self.use_openai = False
-            logger.info(f"🤖 Sentence Transformers 모델 사용: {model_name}")
 
     async def get_embedding(self, text: str) -> List[float]:
         """
@@ -105,6 +108,9 @@ class EmbeddingModel:
 
     async def _get_local_embeddings_batch(self, texts: List[str]) -> List[List[float]]:
         """로컬 모델 배치 처리 (ThreadPoolExecutor 사용)"""
+        if self.model is None:
+            logger.info(f"🤖 로컬 모델 지연 로드: {self.model_name}")
+            self.model = SentenceTransformer(self.model_name)
         loop = asyncio.get_event_loop()
 
         async def process_batch(batch_texts):

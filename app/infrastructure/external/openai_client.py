@@ -16,7 +16,7 @@ class OpenAIClient:
             raise ValueError("OpenAI API 키가 필요합니다.")
 
         self.client = AsyncOpenAI(api_key=self.api_key)
-        self.default_model = "gpt-3.5-turbo"
+        self.default_model = "gpt-4o-mini"
         self.max_tokens = 500
         self.temperature = 0.7
 

@@ -2,14 +2,21 @@
 애플리케이션 초기화 서비스
 main.py에서 복잡한 초기화 로직을 분리
 """
-import logging
 from typing import Dict, Any
 from app.common.dependency.dependencies import initialize_dependencies
 from app.infrastructure.db.vector.vector_db import initialize_vector_db
 from app.api.system.indexing_service import get_indexing_service
+from app.data.data_loader.seed_mongo_loader import seed_mongo_data
+from app.data.data_loader.stage1_cards_loader import load_stage1_cards
+from app.data.data_loader.stage2_problems_loader import load_stage2_problems
 from app.data.data_loader.stage3_problems_loader import load_stage3_problems
+from app.data.data_loader.hypothetical_questions_loader import build_hypothetical_questions
+from app.infrastructure.search.bm25_retriever import get_bm25_retriever
+from app.infrastructure.embedding.embedding_model import get_embedding_model
+from app.common.logging.logging_config import get_logger
+import chromadb
 
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 
 class InitializationService:
@@ -37,14 +44,27 @@ class InitializationService:
             self.vector_db = initialize_vector_db()
             logger.info("✅ 벡터 DB 초기화 완료")
 
-            # 3. 인덱싱 서비스 초기화
+            # 3. MongoDB 시드 데이터 삽입 (card_check, korean_word_problems)
+            seed_mongo_data()
+            logger.info("✅ MongoDB 시드 데이터 확인 완료")
+
+            # 4. 인덱싱 서비스 초기화
             self.indexing_service = get_indexing_service()
 
-            # 4. 데이터 상태 확인 및 자동 인덱싱
+            # 5. 데이터 상태 확인 및 자동 인덱싱
             indexing_result = await self._check_and_index_data()
 
-            # 5. 3단계 문제 데이터 로딩
+            # 6. Stage1/2/3 학습 데이터 로딩
+            load_stage1_cards()
+            load_stage2_problems()
             stage3_result = self._load_stage3_data()
+
+            # 7. BM25 인덱스 구축 (ChromaDB 전체 문서 기반)
+            bm25 = get_bm25_retriever()
+            bm25.build_index(self.vector_db)
+
+            # 8. 가상 질문 생성 (최초 1회, 이후 스킵)
+            await self._build_hypothetical_questions()
 
             return {
                 "status": "success",
@@ -95,6 +115,19 @@ class InitializationService:
                 "status": "error",
                 "message": f"데이터 처리 실패: {str(e)}"
             }
+
+    async def _build_hypothetical_questions(self) -> None:
+        """가상 질문 생성 (card_check, korean_word_problems만 대상 - PDF는 79개로 API 비용 절감)"""
+        try:
+            chroma_client = chromadb.PersistentClient(path="chroma_db")
+            embedding_model = get_embedding_model()
+            await build_hypothetical_questions(
+                chroma_client=chroma_client,
+                embedding_model=embedding_model,
+                collection_names=["card_check", "korean_word_problems"],
+            )
+        except Exception as e:
+            logger.warning(f"⚠ 가상 질문 생성 실패 (서비스는 계속): {e}")
 
     def _load_stage3_data(self) -> Dict[str, Any]:
         """3단계 문제 데이터 로딩"""

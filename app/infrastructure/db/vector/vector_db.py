@@ -32,19 +32,18 @@ class VectorDatabase:
         """필요한 컬렉션들을 초기화합니다."""
         collections_config = {
             "korean_word_problems": {
-                "metadata": {"type": "educational", "language": "korean"}
+                "metadata": {"type": "educational", "language": "korean", "hnsw:space": "cosine"}
             },
             "card_check": {
-                "metadata": {"type": "educational", "language": "korean"}
+                "metadata": {"type": "educational", "language": "korean", "hnsw:space": "cosine"}
             },
-            "pdf_documents": {  # 신규 추가
-                "metadata": {"type": "document", "language": "korean", "source": "pdf"}
+            "pdf_documents": {
+                "metadata": {"type": "document", "language": "korean", "source": "pdf", "hnsw:space": "cosine"}
             }
         }
 
         for collection_name, config in collections_config.items():
             try:
-                # description 파라미터 제거
                 collection = self.client.get_or_create_collection(
                     name=collection_name,
                     metadata=config["metadata"]
@@ -55,8 +54,15 @@ class VectorDatabase:
                 logger.error(f"❌ 컬렉션 '{collection_name}' 초기화 실패: {e}")
 
     def get_collection(self, collection_name: str):
-        """특정 컬렉션을 반환합니다."""
-        return self.collections.get(collection_name)
+        """특정 컬렉션을 반환합니다. 캐시에 없으면 ChromaDB에서 직접 조회합니다."""
+        if collection_name in self.collections:
+            return self.collections[collection_name]
+        try:
+            col = self.client.get_collection(collection_name)
+            self.collections[collection_name] = col
+            return col
+        except Exception:
+            return None
 
     def list_collections(self):
         """모든 컬렉션 목록을 반환합니다."""

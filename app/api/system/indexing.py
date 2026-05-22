@@ -4,6 +4,17 @@ from app.api.system.indexing_service import get_indexing_service
 router = APIRouter(prefix="/admin/indexing", tags=["admin"])
 
 
+@router.post("/pdf")
+async def reindex_pdf():
+    """PDF 문서를 재인덱싱합니다. (관리자 전용)"""
+    try:
+        indexing_service = get_indexing_service()
+        result = await indexing_service.index_pdf_documents()
+        return result
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"PDF 재인덱싱 실패: {str(e)}")
+
+
 @router.get("/status")
 async def get_indexing_status():
     """인덱싱 상태를 확인합니다. (관리자 전용)"""
