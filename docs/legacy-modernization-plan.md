@@ -115,6 +115,14 @@ app/
 
 단, 이 구조로 바로 옮기지 않는다. 새 도메인을 만들 때부터 이 구조를 따른다.
 
+현재 적용 상태:
+- `app/core` 패키지 골격 추가
+- `app/domains/auth` 패키지 골격 추가
+- `app/domains/learning` 패키지 골격 추가
+- `app/domains/agent` 패키지 골격 추가
+- `app/domains/rag` 패키지 골격 추가
+- 기존 `app/api`, `app/data`, `app/infrastructure` 코드는 아직 이동하지 않음
+
 ---
 
 ## 4. 재단장 순서
@@ -348,4 +356,3 @@ manual/admin:
 3. 기존 학습 플로우를 불필요하게 깨지 않는가?
 4. 테스트 가능한 단위로 쪼개지는가?
 5. 앱 시작과 API 요청의 책임이 분리되는가?
-
