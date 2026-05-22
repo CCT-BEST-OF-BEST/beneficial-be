@@ -1,10 +1,10 @@
 from fastapi import FastAPI
 from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
-from app.api.chat.chat_router import router as chat_router
-from app.api.system.indexing import router as indexing_router
-from app.api.learning.learning_router import router as learning_router
-from app.api.learning.stage3_router import router as stage3_router
+from app.domains.chat.router import router as chat_router
+from app.domains.admin.router import router as indexing_router
+from app.domains.learning.content_router import router as learning_router
+from app.domains.stage3.router import router as stage3_router
 from app.domains.auth.router import router as auth_router
 from app.domains.agent.router import router as agent_router
 from app.domains.learning.router import router as learning_records_router

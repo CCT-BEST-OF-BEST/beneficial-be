@@ -1,7 +1,7 @@
 from fastapi import Depends, HTTPException, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 
-from app.core.security import TokenError, decode_access_token
+from app.common.security import TokenError, decode_access_token
 from app.domains.auth.models import User
 from app.domains.auth.repository import AuthRepository
 from app.domains.auth.service import AuthService

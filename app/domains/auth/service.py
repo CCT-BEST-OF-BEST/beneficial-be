@@ -3,7 +3,7 @@ import secrets
 from datetime import timedelta
 from typing import Any, Dict, Optional
 
-from app.core.security import (
+from app.common.security import (
     create_access_token,
     create_refresh_token,
     hash_password,

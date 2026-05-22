@@ -2,7 +2,7 @@ from datetime import timedelta
 
 import pytest
 
-from app.core.security import (
+from app.common.security import (
     TokenError,
     create_access_token,
     decode_access_token,

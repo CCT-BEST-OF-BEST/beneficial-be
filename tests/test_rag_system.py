@@ -14,7 +14,7 @@ if os.getenv("RUN_INTEGRATION_TESTS") != "1":
     )
 
 from app.common.dependency.dependencies import get_vector_db, get_embedding_model
-from app.api.chat.service.chat_service import get_chat_service
+from app.domains.chat.service import get_chat_service
 
 
 @pytest.mark.asyncio

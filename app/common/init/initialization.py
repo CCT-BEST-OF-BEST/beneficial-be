@@ -5,7 +5,7 @@ main.py에서 복잡한 초기화 로직을 분리
 from typing import Dict, Any
 from app.common.dependency.dependencies import initialize_dependencies
 from app.infrastructure.db.vector.vector_db import initialize_vector_db
-from app.api.system.indexing_service import get_indexing_service
+from app.domains.admin.indexing_service import get_indexing_service
 from app.data.data_loader.seed_mongo_loader import seed_mongo_data
 from app.data.data_loader.stage1_cards_loader import load_stage1_cards
 from app.data.data_loader.stage2_problems_loader import load_stage2_problems

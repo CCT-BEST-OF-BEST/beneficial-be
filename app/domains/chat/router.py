@@ -1,5 +1,5 @@
 from fastapi import APIRouter, HTTPException
-from app.api.chat.service.chat_service import get_chat_service
+from app.domains.chat.service import get_chat_service
 from app.data.models.chat_models import ChatRequest, ChatResponse, ChatStatusResponse
 from app.common.logging.logging_config import get_logger
 

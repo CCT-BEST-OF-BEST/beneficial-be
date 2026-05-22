@@ -1,7 +1,7 @@
 # beneficial-be/app/api/learning/stage3_router.py
 
 from fastapi import APIRouter, Depends, HTTPException
-from app.api.learning.stage3_service import Stage3Service
+from app.domains.stage3.service import Stage3Service
 from app.domains.auth.dependencies import get_optional_current_user
 from app.domains.auth.models import User
 from app.domains.learning.dependencies import get_learning_record_service
