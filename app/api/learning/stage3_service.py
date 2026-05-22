@@ -4,6 +4,7 @@ from app.data.models.learning_models import (
     Stage3ProblemsResponse, Stage3ProblemResponse, 
     Stage3AnswerResponse, Stage3ProgressResponse
 )
+from app.domains.learning.service import LearningRecordService
 from app.infrastructure.db.mongo.mongo_client import MongoClient
 
 logger = logging.getLogger(__name__)
@@ -11,10 +12,11 @@ logger = logging.getLogger(__name__)
 class Stage3Service:
     """3단계 문제풀이 서비스"""
     
-    def __init__(self):
+    def __init__(self, learning_record_service: LearningRecordService = None):
         self.mongo_client = MongoClient()
         self.problems_collection = "stage3_problems"
         self.progress_collection = "stage3_progress"
+        self.learning_record_service = learning_record_service
     
     def get_problems(self) -> Stage3ProblemsResponse:
         """3단계 문제 목록 조회"""
@@ -124,7 +126,12 @@ class Stage3Service:
             logger.error(f"❌ 다음 문제 조회 실패: {e}")
             raise
     
-    def submit_answer(self, problem_id: int, user_answer: str) -> Stage3AnswerResponse:
+    def submit_answer(
+        self,
+        problem_id: int,
+        user_answer: str,
+        user_id: str = None,
+    ) -> Stage3AnswerResponse:
         """답변 제출 및 결과 처리"""
         try:
             # 문제 정보 조회
@@ -141,6 +148,16 @@ class Stage3Service:
             
             # 진행도 업데이트
             self._update_progress(problem_id, is_correct)
+
+            if user_id and self.learning_record_service:
+                self.learning_record_service.record_answer(
+                    user_id=user_id,
+                    stage=3,
+                    question_id=f"stage3_problem_{problem_id}",
+                    user_answer=user_answer,
+                    correct_answer=problem["correct_answer"],
+                    is_correct=is_correct,
+                )
             
             return Stage3AnswerResponse(
                 success=True,

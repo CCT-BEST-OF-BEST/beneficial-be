@@ -13,8 +13,14 @@ def test_domain_packages_are_importable():
         "app.domains.auth.schemas",
         "app.domains.auth.service",
         "app.domains.learning",
+        "app.domains.learning.models",
+        "app.domains.learning.repository",
+        "app.domains.learning.service",
         "app.domains.agent",
         "app.domains.rag",
+        "app.domains.rag.retriever",
+        "app.domains.rag.schemas",
+        "app.domains.rag.service",
     ]
 
     for module_name in modules:

@@ -11,7 +11,6 @@
 import asyncio
 from typing import List, Dict, Any
 import chromadb
-from openai import AsyncOpenAI
 from dotenv import load_dotenv
 import os
 
@@ -20,6 +19,11 @@ from app.common.logging.logging_config import get_logger
 
 load_dotenv()
 logger = get_logger(__name__)
+
+try:
+    from openai import AsyncOpenAI
+except ModuleNotFoundError:
+    AsyncOpenAI = None
 
 QUESTIONS_SUFFIX = "_questions"  # 가상 질문 컬렉션 접미사
 N_QUESTIONS = 3                  # 문서당 생성 질문 수
@@ -38,7 +42,7 @@ SYSTEM_PROMPT = """너는 초등학생 대상 한국어 맞춤법 교육 챗봇�
 
 
 async def _generate_questions(
-    openai_client: AsyncOpenAI,
+    openai_client,
     document: str,
     n: int = N_QUESTIONS,
 ) -> List[str]:
@@ -84,6 +88,9 @@ async def build_hypothetical_questions(
     api_key = os.getenv("OPENAI_API_KEY")
     if not api_key:
         logger.warning("⚠ OPENAI_API_KEY 없음 → 가상 질문 생성 스킵")
+        return
+    if AsyncOpenAI is None:
+        logger.warning("⚠ openai 패키지 없음 → 가상 질문 생성 스킵")
         return
 
     openai_client = AsyncOpenAI(api_key=api_key)

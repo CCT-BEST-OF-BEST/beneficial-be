@@ -3,13 +3,17 @@ import asyncio
 from typing import List, Dict, Any
 from concurrent.futures import ThreadPoolExecutor
 from sentence_transformers import SentenceTransformer
-from openai import AsyncOpenAI
 from dotenv import load_dotenv
 from app.common.logging.logging_config import get_logger
 
 load_dotenv()
 
 logger = get_logger(__name__)
+
+try:
+    from openai import AsyncOpenAI
+except ModuleNotFoundError:
+    AsyncOpenAI = None
 
 
 class EmbeddingModel:
@@ -36,7 +40,7 @@ class EmbeddingModel:
         embedding_provider = os.getenv("EMBEDDING_PROVIDER", "openai").lower()
 
         self.model = None
-        if embedding_provider == "local" or not self.openai_api_key:
+        if embedding_provider == "local" or not self.openai_api_key or AsyncOpenAI is None:
             self.model = SentenceTransformer(model_name)
             self.use_openai = False
             logger.info(f"🤖 로컬 임베딩 모델 사용: {model_name}")

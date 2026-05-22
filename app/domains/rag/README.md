@@ -9,3 +9,10 @@
 - `router.py`: legacy-compatible `/chat` 또는 실험용 RAG API
 
 기존 `HybridSearchService`, ChromaDB, PDF 인덱스는 유지하되 Agent가 호출하기 쉬운 tool 형태로 감싼다.
+
+현재 구현 상태:
+- `RagDocument`, `RagSearchResult` 스키마 추가
+- `RagRetriever` 추가
+- `RagService.search` 추가
+- `RagService.answer` 추가
+- 기존 `ChatService`가 `RagService`를 사용하도록 연결

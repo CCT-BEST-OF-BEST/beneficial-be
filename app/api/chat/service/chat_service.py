@@ -3,6 +3,8 @@ from app.infrastructure.external.openai_client import OpenAIClient
 from app.infrastructure.db.vector.vector_db import get_vector_db
 from app.infrastructure.embedding.embedding_model import get_embedding_model
 from app.infrastructure.search.hybrid_search import get_hybrid_search_service
+from app.domains.rag.retriever import RagRetriever
+from app.domains.rag.service import RagService
 from app.common.logging.logging_config import get_logger
 
 logger = get_logger(__name__)
@@ -17,6 +19,10 @@ class ChatService:
         self.vector_db = vector_db or get_vector_db()
         self.embedding_model = embedding_model or get_embedding_model()
         self.hybrid_search = get_hybrid_search_service()
+        self.rag_service = RagService(
+            retriever=RagRetriever(self.hybrid_search),
+            openai_client=self.openai_client,
+        )
 
         self.default_system_prompt = """너는 초등학생 돌봄선생님이야. 
     주어진 참고 자료를 바탕으로 정확하고 친근하게 답변해줘.
@@ -49,16 +55,12 @@ class ChatService:
         try:
             logger.info(f"🔍 RAG 채팅 시작: '{prompt}' (top_k={top_k}, collection={collection_name or 'all'})")
             
-            # 1. 관련 문서 검색
-            relevant_docs = await self.search_relevant_documents(prompt, collection_name, top_k)
-            logger.info(f"📚 검색된 문서 수: {len(relevant_docs)}개")
-
-            # 2. 컨텍스트 구성
-            context = self.build_context_from_documents(relevant_docs)
-            logger.info(f"📝 컨텍스트 길이: {len(context)}자")
-
-            # 3. GPT 응답 생성
-            response = await self.generate_response_with_context(prompt, context)
+            response = await self.rag_service.answer(
+                query=prompt,
+                system_prompt=self.default_system_prompt,
+                collection_name=collection_name,
+                top_k=top_k,
+            )
             logger.info(f" GPT 응답 생성 완료: {len(response)}자")
 
             return response
@@ -76,26 +78,16 @@ class ChatService:
     ) -> List[Dict[str, Any]]:
         """BM25 + Dense 하이브리드 검색 (RRF 결합)"""
         try:
-            hybrid_results = await self.hybrid_search.search(
+            search_result = await self.rag_service.search(
                 query=query,
                 collection_name=collection_name,
                 top_k=top_k,
             )
 
-            # hybrid_search 결과를 기존 포맷으로 변환
-            results = []
-            for item in hybrid_results:
-                # 가상 질문 문서면 원본 텍스트를 컨텍스트로 사용
-                doc_text = item["metadata"].get("original_text") or item["document"]
-                results.append({
-                    "document": doc_text,
-                    "metadata": item["metadata"],
-                    "distance": item["distance"],
-                    "collection": item["collection"],
-                    "rrf_score": item.get("rrf_score", 0),
-                })
-
-            return results
+            return [
+                doc.model_dump() if hasattr(doc, "model_dump") else doc.dict()
+                for doc in search_result.documents
+            ]
 
         except Exception as e:
             logger.error(f"❌ 하이브리드 검색 실패: {e}")
@@ -123,25 +115,10 @@ class ChatService:
 
     def build_context_from_documents(self, documents: List[Dict[str, Any]]) -> str:
         """문서 리스트를 컨텍스트로 변환"""
-        if not documents:
-            logger.warning("⚠️ 검색된 문서가 없어서 빈 컨텍스트 사용")
-            return "참고 자료가 없습니다."
+        from app.domains.rag.schemas import RagDocument
 
-        context_parts = []
-        for i, doc in enumerate(documents, 1):
-            similarity = round(1 - doc.get('distance', 0), 4)
-            content = doc.get('document', doc.get('text', ''))
-            collection = doc.get('collection', 'unknown')
-            
-            # 컬렉션별로 다른 형식으로 구성
-            if collection == "card_check":
-                context_parts.append(f"{i}. [카드] 유사도: {similarity} - {content}")
-            elif collection == "korean_word_problems":
-                context_parts.append(f"{i}. [문제] 유사도: {similarity} - {content}")
-            else:
-                context_parts.append(f"{i}. [기타] 유사도: {similarity} - {content}")
-
-        context = "\n".join(context_parts)
+        rag_documents = [RagDocument(**doc) for doc in documents]
+        context = self.rag_service.build_context(rag_documents)
         logger.debug(f" 컨텍스트 구성 완료: {len(documents)}개 문서, {len(context)}자")
         
         return context
