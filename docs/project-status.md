@@ -65,9 +65,9 @@
 Agent MVP가 LangGraph 위에서 동작하는 단계까지 도달했다.
 
 남은 주요 작업:
-- [ ] Stage 1/2 답변도 LearningRecord에 저장 (Agent 약점 판단 데이터 풍부화)
+- [x] Stage 1/2 답변도 LearningRecord에 저장 (Agent 약점 판단 데이터 풍부화)
+- [x] 앱 startup 무거움 해소 (seed/indexing/BM25를 admin API로 분리)
 - [ ] LangGraph 노드별 trace 로그 (디버깅)
-- [ ] 앱 startup 무거움 해소 (seed/indexing/BM25를 admin API로 분리)
 - [ ] `app/data/models/` → 도메인 `models.py`로 점진 이동
 - [ ] `/agent/chat` 통합 smoke test (`RUN_INTEGRATION_TESTS=1`)
 
@@ -75,27 +75,31 @@ Agent MVP가 LangGraph 위에서 동작하는 단계까지 도달했다.
 
 ## 다음 작업 (우선순위 순)
 
-### 우선순위 1. Stage 1/2 답변도 LearningRecord에 저장 ← 진행 중
+### ✅ 우선순위 1. Stage 1/2 답변도 LearningRecord에 저장 (완료)
 
-**목표:** Agent의 약점 판단 데이터를 풍부하게 만든다. 현재는 Stage 3 답변만 저장되어 학생의 전체 학습 흐름을 보지 못한다.
+- `POST /learning/stage1/submit-card-check` — 카드 쌍 정답 평가 + LearningRecord 저장
+- `POST /learning/stage2/submit-answer` — 문제 답안 평가 + LearningRecord 저장
+- `CONCEPT_KEY_BY_ANSWER`에 Stage 1 기본형 추가 → Stage 1/2/3 오답이 같은 concept_key로 묶임
+- `LearningRecordService.record_stage1_card_check`, `record_stage2_answer` 메서드 추가
+- 통합 동작 포함 8개 테스트 추가
 
-**현재 상태:**
-- Stage 1: `GET /learning/stage1/cards`만 존재 (submit 없음)
-- Stage 2: `GET /learning/stage2/problems`만 존재 (submit 없음)
-- Stage 3: 이미 `LearningRecordService.record_answer()` 연결됨
+### ✅ 우선순위 2. 앱 startup 무거움 해소 (완료)
 
-**해야 할 일:**
-- `POST /learning/stage1/submit-card-check` — `(pair_id, chosen_word)` 받아서 정답 확인 + LearningRecord 저장
-- `POST /learning/stage2/submit-answer` — `(problem_id, user_answer)` 받아서 정답 확인 + LearningRecord 저장
-- `CONCEPT_KEY_BY_ANSWER`에 Stage 1 기본형(가르치다, 가르키다 등) 추가
-- 비로그인 사용자는 정답만 반환, 로그인 시에만 LearningRecord 저장
-- Stage 1/2 단위 테스트 추가
+기존 startup은 8단계(시드, 인덱싱, BM25, 가상 질문 생성 등)를 한꺼번에 수행해 부팅이 무거웠음.
 
-**완료 기준:**
-- Stage 1/2 답변이 `LearningRecord`로 저장되고 `GET /learning/records/me`에서 조회됨
-- `GET /agent/profile/me`가 Stage 1/2 오답까지 집계해 weakness profile에 포함
+**변경 내용:**
+- `InitializationService`를 `startup_lightweight` / `seed_mongo_collections` / `rebuild_vector_index` / `rebuild_bm25_index` / `build_hypothetical_questions_index` / `full_initialization`로 분리
+- 기본 startup: lightweight (의존성 init + 벡터 DB 연결 + BM25 인메모리 인덱스 빌드)
+- 무거운 작업은 `/admin/*` 엔드포인트로 분리:
+  - `POST /admin/initialize-all` (최초 1회)
+  - `POST /admin/seed-data`
+  - `POST /admin/rebuild-vector-index`
+  - `POST /admin/rebuild-bm25`
+  - `POST /admin/build-hypothetical-questions`
+  - `GET /admin/system-status`
+- `AUTO_INIT_ON_STARTUP=1` 환경변수로 기존 동작(full init) 유지 가능 — 최초 배포에 편리
 
-### 우선순위 2. LangGraph 노드별 trace 로그
+### 우선순위 3. LangGraph 노드별 trace 로그
 
 **목표:** Agent 디버깅이 가능하도록 각 노드 실행 시 상태를 로깅한다.
 
@@ -109,14 +113,6 @@ Agent MVP가 LangGraph 위에서 동작하는 단계까지 도달했다.
 ```
 
 비용 거의 0, 디버깅 ROI 큼.
-
-### 우선순위 3. 앱 startup 무거움 해소
-
-현재 startup에서 seed / vector indexing / BM25 / 가상 질문 생성이 한꺼번에 실행됨.
-
-목표:
-- startup은 connection check + router mount만
-- 무거운 작업은 `POST /admin/seed`, `POST /admin/rebuild-index` 등 관리 API로 분리
 
 ### 우선순위 4. `app/data/models/` → 도메인 `models.py`로 이동
 

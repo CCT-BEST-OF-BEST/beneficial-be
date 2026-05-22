@@ -1,123 +1,110 @@
 """
-애플리케이션 초기화 서비스
-main.py에서 복잡한 초기화 로직을 분리
+애플리케이션 초기화 서비스.
+
+부팅 흐름은 두 가지:
+- startup_lightweight: 매 startup 시 호출. 연결 확인 + 인메모리 인덱스만.
+- full_initialization: 최초 배포/시드 필요 시 1회 호출 (admin endpoint 또는 AUTO_INIT_ON_STARTUP=1).
+
+무거운 작업 (시드 데이터 삽입, 벡터 인덱싱, 가상 질문 생성)은 admin API로 분리되어 있다.
 """
-from typing import Dict, Any
+from typing import Any, Dict, Optional
+
+import chromadb
+
 from app.common.dependency.dependencies import initialize_dependencies
-from app.infrastructure.db.vector.vector_db import initialize_vector_db
-from app.domains.admin.indexing_service import get_indexing_service
+from app.common.logging.logging_config import get_logger
+from app.data.data_loader.hypothetical_questions_loader import build_hypothetical_questions
 from app.data.data_loader.seed_mongo_loader import seed_mongo_data
 from app.data.data_loader.stage1_cards_loader import load_stage1_cards
 from app.data.data_loader.stage2_problems_loader import load_stage2_problems
 from app.data.data_loader.stage3_problems_loader import load_stage3_problems
-from app.data.data_loader.hypothetical_questions_loader import build_hypothetical_questions
-from app.infrastructure.search.bm25_retriever import get_bm25_retriever
+from app.domains.admin.indexing_service import get_indexing_service
+from app.infrastructure.db.vector.vector_db import initialize_vector_db
 from app.infrastructure.embedding.embedding_model import get_embedding_model
-from app.common.logging.logging_config import get_logger
-import chromadb
+from app.infrastructure.search.bm25_retriever import get_bm25_retriever
 
 logger = get_logger(__name__)
 
 
 class InitializationService:
-    """애플리케이션 초기화 서비스"""
+    """startup 부담을 줄이기 위해 lightweight / heavy 작업을 분리한 초기화 서비스."""
 
     def __init__(self):
         self.vector_db = None
         self.indexing_service = None
 
-    async def initialize_application(self) -> Dict[str, Any]:
-        """
-        애플리케이션 전체 초기화
+    # ------------------------------------------------------------------
+    # Startup (lightweight)
+    # ------------------------------------------------------------------
 
-        Returns:
-            초기화 결과 정보
+    async def startup_lightweight(self) -> Dict[str, Any]:
+        """
+        매 startup에서 호출. 다음만 수행한다:
+        - 의존성 초기화 (OpenAI client, 임베딩 모델 — RAG 첫 호출 지연 방지)
+        - 벡터 DB 연결
+        - BM25 인메모리 인덱스 빌드 (데이터 없으면 no-op)
+
+        시드 데이터/벡터 인덱싱/가상 질문 생성은 별도 admin API로 분리.
         """
         try:
-            logger.info("[START] 애플리케이션 초기화 시작...")
+            logger.info("[START] lightweight 초기화 시작...")
 
-            # 1. 의존성 초기화
             initialize_dependencies()
-            logger.info("[OK] 의존성 초기화 완료")
-
-            # 2. 벡터 DB 초기화
             self.vector_db = initialize_vector_db()
-            logger.info("[OK] 벡터 DB 초기화 완료")
-
-            # 3. MongoDB 시드 데이터 삽입 (card_check, korean_word_problems)
-            seed_mongo_data()
-            logger.info("[OK] MongoDB 시드 데이터 확인 완료")
-
-            # 4. 인덱싱 서비스 초기화
             self.indexing_service = get_indexing_service()
+            self._rebuild_bm25_safely()
 
-            # 5. 데이터 상태 확인 및 자동 인덱싱
-            indexing_result = await self._check_and_index_data()
+            logger.info("[OK] lightweight 초기화 완료")
+            return {"status": "success", "mode": "lightweight"}
 
-            # 6. Stage1/2/3 학습 데이터 로딩
+        except Exception as e:
+            logger.error(f"[ERROR] lightweight 초기화 실패: {e}")
+            return {"status": "error", "mode": "lightweight", "message": str(e)}
+
+    # ------------------------------------------------------------------
+    # Heavy operations (admin / opt-in)
+    # ------------------------------------------------------------------
+
+    def seed_mongo_collections(self) -> Dict[str, Any]:
+        """MongoDB에 카드/문제 시드 데이터를 적재한다. (admin)"""
+        try:
+            seed_mongo_data()
             load_stage1_cards()
             load_stage2_problems()
-            stage3_result = self._load_stage3_data()
-
-            # 7. BM25 인덱스 구축 (ChromaDB 전체 문서 기반)
-            bm25 = get_bm25_retriever()
-            bm25.build_index(self.vector_db)
-
-            # 8. 가상 질문 생성 (최초 1회, 이후 스킵)
-            await self._build_hypothetical_questions()
-
+            stage3_ok = load_stage3_problems()
+            logger.info("[OK] MongoDB 시드 적재 완료")
             return {
                 "status": "success",
-                "message": "애플리케이션 초기화 완료",
-                "indexing_result": indexing_result,
-                "stage3_result": stage3_result
+                "stage1": "loaded",
+                "stage2": "loaded",
+                "stage3": "loaded" if stage3_ok else "failed",
             }
-
         except Exception as e:
-            logger.error(f"[ERROR] 애플리케이션 초기화 실패: {e}")
-            return {
-                "status": "error",
-                "message": f"초기화 실패: {str(e)}"
-            }
+            logger.error(f"[ERROR] MongoDB 시드 적재 실패: {e}")
+            return {"status": "error", "message": str(e)}
 
-    async def _check_and_index_data(self) -> Dict[str, Any]:
-        """데이터 상태 확인 및 필요시 자동 인덱싱"""
+    async def rebuild_vector_index(self) -> Dict[str, Any]:
+        """ChromaDB에 모든 컬렉션을 재인덱싱한다. (admin)"""
         try:
-            # 기존 데이터 확인 (PDF 문서 컬렉션 포함)
-            korean_collection = self.vector_db.get_collection("korean_word_problems")
-            card_collection = self.vector_db.get_collection("card_check")
-            pdf_collection = self.vector_db.get_collection("pdf_documents")
-
-            korean_count = korean_collection.count() if korean_collection else 0
-            card_count = card_collection.count() if card_collection else 0
-            pdf_count = pdf_collection.count() if pdf_collection else 0
-
-            logger.info(f"[CHECK] 데이터 상태: 문제({korean_count}개), 카드({card_count}개), PDF({pdf_count}개)")
-
-            # 데이터가 없으면 자동 인덱싱
-            if korean_count == 0 or card_count == 0:
-                logger.info("[DATA] 데이터가 없어서 자동 인덱싱을 시작합니다...")
-                result = await self.indexing_service.index_all_data()
-                logger.info(f"[OK] 자동 인덱싱 완료: 성공 {result['successful_collections']}/{result['total_collections']}개 컬렉션")
-                return result
-            else:
-                logger.info("[STATUS] 기존 데이터가 충분합니다.")
-                return {
-                    "status": "no_indexing_needed",
-                    "korean_count": korean_count,
-                    "card_count": card_count,
-                    "pdf_count": pdf_count
-                }
-
+            indexing_service = self._ensure_indexing_service()
+            result = await indexing_service.index_all_data()
+            self._rebuild_bm25_safely()  # 새 벡터 데이터 반영
+            return {"status": "success", "indexing_result": result}
         except Exception as e:
-            logger.error(f"[ERROR] 데이터 확인/인덱싱 실패: {e}")
-            return {
-                "status": "error",
-                "message": f"데이터 처리 실패: {str(e)}"
-            }
+            logger.error(f"[ERROR] 벡터 인덱싱 실패: {e}")
+            return {"status": "error", "message": str(e)}
 
-    async def _build_hypothetical_questions(self) -> None:
-        """가상 질문 생성 (card_check, korean_word_problems만 대상 - PDF는 79개로 API 비용 절감)"""
+    def rebuild_bm25_index(self) -> Dict[str, Any]:
+        """ChromaDB 전체 문서를 기반으로 BM25 인덱스를 재구축한다. (admin)"""
+        try:
+            self._rebuild_bm25_safely()
+            return {"status": "success"}
+        except Exception as e:
+            logger.error(f"[ERROR] BM25 재구축 실패: {e}")
+            return {"status": "error", "message": str(e)}
+
+    async def build_hypothetical_questions_index(self) -> Dict[str, Any]:
+        """OpenAI로 가상 질문을 생성해 ChromaDB에 저장한다. (admin, 비용 발생)"""
         try:
             chroma_client = chromadb.PersistentClient(path="chroma_db")
             embedding_model = get_embedding_model()
@@ -126,68 +113,76 @@ class InitializationService:
                 embedding_model=embedding_model,
                 collection_names=["card_check", "korean_word_problems"],
             )
+            return {"status": "success"}
         except Exception as e:
-            logger.warning(f"[WARN] 가상 질문 생성 실패 (서비스는 계속): {e}")
+            logger.warning(f"[WARN] 가상 질문 생성 실패: {e}")
+            return {"status": "error", "message": str(e)}
 
-    def _load_stage3_data(self) -> Dict[str, Any]:
-        """3단계 문제 데이터 로딩"""
-        try:
-            result = load_stage3_problems()
-            if result:
-                logger.info("[OK] 3단계 문제 데이터 로딩 완료")
-                return {
-                    "status": "success",
-                    "message": "3단계 문제 데이터 로딩 완료"
-                }
-            else:
-                logger.warning("[WARN] 3단계 문제 데이터 로딩 실패")
-                return {
-                    "status": "warning",
-                    "message": "3단계 문제 데이터 로딩 실패"
-                }
-        except Exception as e:
-            logger.error(f"[ERROR] 3단계 문제 데이터 로딩 실패: {e}")
-            return {
-                "status": "error",
-                "message": f"3단계 문제 데이터 로딩 실패: {str(e)}"
-            }
+    async def full_initialization(self) -> Dict[str, Any]:
+        """최초 배포 시 1회 실행. lightweight + seed + 벡터 인덱싱 + 가상 질문 생성."""
+        logger.info("[START] full 초기화 시작...")
+
+        lightweight = await self.startup_lightweight()
+        seed = self.seed_mongo_collections()
+        index = await self.rebuild_vector_index()
+        hyp = await self.build_hypothetical_questions_index()
+
+        return {
+            "status": "success",
+            "mode": "full",
+            "lightweight": lightweight,
+            "seed": seed,
+            "vector_index": index,
+            "hypothetical_questions": hyp,
+        }
+
+    # ------------------------------------------------------------------
+    # Status / helpers
+    # ------------------------------------------------------------------
 
     def get_system_status(self) -> Dict[str, Any]:
-        """시스템 상태 확인"""
+        """ChromaDB 컬렉션별 문서 수와 상태 반환."""
         try:
+            vector_db = self.vector_db or initialize_vector_db()
             collections_info = {}
-            for collection_name in ["korean_word_problems", "card_check", "pdf_documents"]:
-                collection = self.vector_db.get_collection(collection_name)
+            for name in ["korean_word_problems", "card_check", "pdf_documents"]:
+                collection = vector_db.get_collection(name)
                 if collection:
-                    collections_info[collection_name] = {
+                    collections_info[name] = {
                         "document_count": collection.count(),
-                        "status": "available"
+                        "status": "available",
                     }
                 else:
-                    collections_info[collection_name] = {
+                    collections_info[name] = {
                         "document_count": 0,
-                        "status": "not_available"
+                        "status": "not_available",
                     }
-
-            return {
-                "status": "success",
-                "system": "active",
-                "collections": collections_info
-            }
+            return {"status": "success", "system": "active", "collections": collections_info}
         except Exception as e:
-            return {
-                "status": "error",
-                "message": f"상태 확인 실패: {str(e)}"
-            }
+            return {"status": "error", "message": str(e)}
+
+    def _ensure_indexing_service(self):
+        if self.indexing_service is None:
+            self.indexing_service = get_indexing_service()
+        if self.vector_db is None:
+            self.vector_db = initialize_vector_db()
+        return self.indexing_service
+
+    def _rebuild_bm25_safely(self) -> None:
+        try:
+            vector_db = self.vector_db or initialize_vector_db()
+            get_bm25_retriever().build_index(vector_db)
+        except Exception as e:
+            logger.warning(f"[WARN] BM25 인덱스 빌드 실패 (서비스는 계속): {e}")
 
 
 # 전역 초기화 서비스 인스턴스
-initialization_service = None
+_initialization_service: Optional[InitializationService] = None
 
 
 def get_initialization_service() -> InitializationService:
     """초기화 서비스 인스턴스 반환"""
-    global initialization_service
-    if initialization_service is None:
-        initialization_service = InitializationService()
-    return initialization_service
+    global _initialization_service
+    if _initialization_service is None:
+        _initialization_service = InitializationService()
+    return _initialization_service
