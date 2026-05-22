@@ -253,11 +253,11 @@ def load_stage3_problems():
 
         mongo_client.db[collection_name].drop()
         result = mongo_client.insert_one(collection_name, STAGE3_DATA)
-        logger.info(f"✅ 3단계 문제풀이 데이터 삽입 완료: {result}")
+        logger.info(f"[OK] 3단계 문제풀이 데이터 삽입 완료: {result}")
         return True
 
     except Exception as e:
-        logger.error(f"❌ 3단계 데이터 로딩 실패: {e}")
+        logger.error(f"[ERROR] 3단계 데이터 로딩 실패: {e}")
         return False
 
 

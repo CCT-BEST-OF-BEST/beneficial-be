@@ -17,7 +17,7 @@ logger = get_logger(__name__)
 
 def test_vector_db_initialization():
     """벡터 DB 초기화 및 기본 기능을 테스트합니다."""
-    logger.info("🚀 벡터 DB 초기화 테스트 시작...")
+    logger.info("[START] 벡터 DB 초기화 테스트 시작...")
 
     try:
         # 1. 설정 확인
@@ -31,10 +31,10 @@ def test_vector_db_initialization():
 
         # 3. 컬렉션 목록 확인
         collections = vector_db.list_collections()
-        logger.info(f"✅ 초기화된 컬렉션: {collections}")
+        logger.info(f"[OK] 초기화된 컬렉션: {collections}")
 
         # 4. 각 컬렉션 정보 확인
-        logger.info("📊 컬렉션 정보:")
+        logger.info("[STATUS] 컬렉션 정보:")
         for collection_name in collections:
             info = vector_db.collection_info(collection_name)
             if info:
@@ -48,11 +48,11 @@ def test_vector_db_initialization():
         logger.info(f"   클라이언트 타입: {type(client).__name__}")
         logger.info(f"   저장 경로: {vector_db.persist_directory}")
 
-        logger.info("🎉 벡터 DB 초기화 테스트 완료!")
+        logger.info("[DONE] 벡터 DB 초기화 테스트 완료!")
         return True
 
     except Exception as e:
-        logger.error(f"❌ 벡터 DB 초기화 테스트 실패: {e}")
+        logger.error(f"[ERROR] 벡터 DB 초기화 테스트 실패: {e}")
         import traceback
         traceback.print_exc()
         return False
@@ -60,7 +60,7 @@ def test_vector_db_initialization():
 
 def check_collection_status():
     """컬렉션 상태를 확인합니다."""
-    logger.info("\n🔍 컬렉션 상태 확인...")
+    logger.info("\n[SEARCH] 컬렉션 상태 확인...")
 
     try:
         vector_db = get_vector_db()
@@ -78,7 +78,7 @@ def check_collection_status():
                 logger.warning(f"   {collection_name}: 컬렉션을 찾을 수 없음")
 
     except Exception as e:
-        logger.error(f"❌ 컬렉션 상태 확인 실패: {e}")
+        logger.error(f"[ERROR] 컬렉션 상태 확인 실패: {e}")
 
 
 def main():
@@ -93,9 +93,9 @@ def main():
     if success:
         # 컬렉션 상태 확인
         check_collection_status()
-        logger.info("\n✅ 모든 테스트 통과!")
+        logger.info("\n[OK] 모든 테스트 통과!")
     else:
-        logger.error("\n❌ 테스트 실패!")
+        logger.error("\n[ERROR] 테스트 실패!")
         sys.exit(1)
 
 

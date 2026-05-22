@@ -1,10 +1,14 @@
 import os
 import asyncio
 from typing import List, Dict, Any
-from openai import AsyncOpenAI
 from dotenv import load_dotenv
 
 load_dotenv()
+
+try:
+    from openai import AsyncOpenAI
+except ModuleNotFoundError:
+    AsyncOpenAI = None
 
 
 class OpenAIClient:
@@ -14,6 +18,8 @@ class OpenAIClient:
         self.api_key = api_key or os.getenv("OPENAI_API_KEY")
         if not self.api_key:
             raise ValueError("OpenAI API 키가 필요합니다.")
+        if AsyncOpenAI is None:
+            raise ImportError("openai 패키지가 설치되어 있지 않습니다.")
 
         self.client = AsyncOpenAI(api_key=self.api_key)
         self.default_model = "gpt-4o-mini"

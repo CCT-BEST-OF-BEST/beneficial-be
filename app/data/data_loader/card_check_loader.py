@@ -16,7 +16,7 @@ def get_card_check_data():
         docs = mongo_client.find_many("card_check")
 
         if not docs:
-            logger.warning("⚠️ 카드 체크 데이터가 없습니다.")
+            logger.warning("[WARN] 카드 체크 데이터가 없습니다.")
             return []
 
         result = []
@@ -32,12 +32,12 @@ def get_card_check_data():
                     "examples": card.get('examples1', []) + card.get('examples2', [])
                 })
 
-        logger.info(f"✅ 카드 체크 데이터 로드 완료: {len(result)}개 카드")
+        logger.info(f"[OK] 카드 체크 데이터 로드 완료: {len(result)}개 카드")
 
         return result
 
     except Exception as e:
-        logger.error(f"❌ 카드 체크 데이터 로드 실패: {e}")
+        logger.error(f"[ERROR] 카드 체크 데이터 로드 실패: {e}")
         return []
 
 

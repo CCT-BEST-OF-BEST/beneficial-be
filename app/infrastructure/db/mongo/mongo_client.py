@@ -46,10 +46,10 @@ class MongoClient:
             # 연결 테스트
             self.client.admin.command('ping')
             self._is_connected = True
-            print(f"✅ MongoDB 연결 성공: {self.database_name}")
+            print(f"[OK] MongoDB 연결 성공: {self.database_name}")
 
         except Exception as e:
-            print(f"❌ MongoDB 연결 실패: {e}")
+            print(f"[ERROR] MongoDB 연결 실패: {e}")
             self._is_connected = False
             raise
 
@@ -199,7 +199,7 @@ class MongoClient:
         if self.client:
             self.client.close()
             self._is_connected = False
-            print("🔌 MongoDB 연결 종료")
+            print("[DB] MongoDB 연결 종료")
 
     def __enter__(self):
         """컨텍스트 매니저 진입"""

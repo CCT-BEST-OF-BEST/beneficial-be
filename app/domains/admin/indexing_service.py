@@ -21,12 +21,12 @@ class IndexingService:
         total_docs = len(documents)
         processed_docs = 0
 
-        logger.info(f"📚 {collection_name} 컬렉션에 {total_docs}개 문서 배치 인덱싱 시작...")
+        logger.info(f"[DATA] {collection_name} 컬렉션에 {total_docs}개 문서 배치 인덱싱 시작...")
 
         # 컬렉션 가져오기
         collection = self.vector_db.get_collection(collection_name)
         if not collection:
-            logger.error(f"❌ 컬렉션 '{collection_name}'을 찾을 수 없습니다.")
+            logger.error(f"[ERROR] 컬렉션 '{collection_name}'을 찾을 수 없습니다.")
             return 0
 
         for i in range(0, total_docs, self.batch_size):
@@ -52,17 +52,17 @@ class IndexingService:
 
                 processed_docs += batch_size_actual
                 progress = (processed_docs / total_docs) * 100
-                logger.info(f"⏳ {collection_name} 진행률: {processed_docs}/{total_docs} ({progress:.1f}%)")
+                logger.info(f"[WAIT] {collection_name} 진행률: {processed_docs}/{total_docs} ({progress:.1f}%)")
 
                 # 메모리 정리를 위한 잠시 대기
                 await asyncio.sleep(0.01)
 
             except Exception as e:
-                logger.error(f"❌ 배치 {i // self.batch_size + 1} 인덱싱 실패: {e}")
+                logger.error(f"[ERROR] 배치 {i // self.batch_size + 1} 인덱싱 실패: {e}")
                 # 실패한 배치는 건너뛰고 계속 진행
                 continue
 
-        logger.info(f"✅ {collection_name} 인덱싱 완료: {processed_docs}개 문서")
+        logger.info(f"[OK] {collection_name} 인덱싱 완료: {processed_docs}개 문서")
         return processed_docs
 
     async def index_korean_word_problems(self) -> Dict[str, Any]:
@@ -145,7 +145,7 @@ class IndexingService:
 
     async def index_all_data(self) -> Dict[str, Any]:
         """모든 데이터를 병렬로 인덱싱"""
-        logger.info("🚀 전체 데이터 인덱싱 시작...")
+        logger.info("[START] 전체 데이터 인덱싱 시작...")
 
         # 병렬 실행을 위한 태스크 생성
         tasks = [
@@ -175,7 +175,7 @@ class IndexingService:
             else:
                 detailed_results[collection_name] = result
 
-        logger.info(f"✅ 전체 인덱싱 완료: {successful_collections}/{total_collections}개 성공")
+        logger.info(f"[OK] 전체 인덱싱 완료: {successful_collections}/{total_collections}개 성공")
 
         return {
             "total_collections": total_collections,
@@ -190,7 +190,7 @@ class IndexingService:
             if collection:
                 # 컬렉션 삭제
                 self.vector_db.client.delete_collection(collection_name)
-                logger.info(f"✅ {collection_name} 컬렉션 삭제 완료")
+                logger.info(f"[OK] {collection_name} 컬렉션 삭제 완료")
                 return {
                     "status": "success",
                     "message": f"{collection_name} 컬렉션이 삭제되었습니다."

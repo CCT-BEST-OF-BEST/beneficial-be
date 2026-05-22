@@ -181,11 +181,11 @@ def load_stage2_problems():
 
         mongo_client.db[collection_name].drop()
         result = mongo_client.insert_one(collection_name, STAGE2_DATA)
-        logger.info(f"✅ 2단계 예제풀이 데이터 삽입 완료: {result}")
+        logger.info(f"[OK] 2단계 예제풀이 데이터 삽입 완료: {result}")
         return True
 
     except Exception as e:
-        logger.error(f"❌ 2단계 데이터 로딩 실패: {e}")
+        logger.error(f"[ERROR] 2단계 데이터 로딩 실패: {e}")
         return False
 
 

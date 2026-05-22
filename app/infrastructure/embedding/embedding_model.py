@@ -3,13 +3,17 @@ import asyncio
 from typing import List, Dict, Any
 from concurrent.futures import ThreadPoolExecutor
 from sentence_transformers import SentenceTransformer
-from openai import AsyncOpenAI
 from dotenv import load_dotenv
 from app.common.logging.logging_config import get_logger
 
 load_dotenv()
 
 logger = get_logger(__name__)
+
+try:
+    from openai import AsyncOpenAI
+except ModuleNotFoundError:
+    AsyncOpenAI = None
 
 
 class EmbeddingModel:
@@ -36,14 +40,14 @@ class EmbeddingModel:
         embedding_provider = os.getenv("EMBEDDING_PROVIDER", "openai").lower()
 
         self.model = None
-        if embedding_provider == "local" or not self.openai_api_key:
+        if embedding_provider == "local" or not self.openai_api_key or AsyncOpenAI is None:
             self.model = SentenceTransformer(model_name)
             self.use_openai = False
-            logger.info(f"🤖 로컬 임베딩 모델 사용: {model_name}")
+            logger.info(f"[MODEL] 로컬 임베딩 모델 사용: {model_name}")
         else:
             self.client = AsyncOpenAI(api_key=self.openai_api_key)
             self.use_openai = True
-            logger.info("🔑 OpenAI 임베딩 모델 사용 (비동기)")
+            logger.info("[AUTH] OpenAI 임베딩 모델 사용 (비동기)")
 
     async def get_embedding(self, text: str) -> List[float]:
         """
@@ -109,7 +113,7 @@ class EmbeddingModel:
     async def _get_local_embeddings_batch(self, texts: List[str]) -> List[List[float]]:
         """로컬 모델 배치 처리 (ThreadPoolExecutor 사용)"""
         if self.model is None:
-            logger.info(f"🤖 로컬 모델 지연 로드: {self.model_name}")
+            logger.info(f"[MODEL] 로컬 모델 지연 로드: {self.model_name}")
             self.model = SentenceTransformer(self.model_name)
         loop = asyncio.get_event_loop()
 

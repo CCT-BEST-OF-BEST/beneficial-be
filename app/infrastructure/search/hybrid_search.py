@@ -99,7 +99,7 @@ class HybridSearchService:
         for coll_name in collections:
             # 가상 질문 컬렉션은 생성 완료 전까지 스킵
             if coll_name.endswith("_questions") and not is_question_collection_ready(coll_name):
-                logger.info(f"⏳ [{coll_name}] 아직 생성 중 → 이번 검색에서 제외")
+                logger.info(f"[WAIT] [{coll_name}] 아직 생성 중 → 이번 검색에서 제외")
                 continue
 
             try:
@@ -114,7 +114,7 @@ class HybridSearchService:
                     include=["documents", "metadatas", "distances"],
                 )
             except Exception as e:
-                logger.warning(f"⚠ [{coll_name}] 검색 실패 (스킵): {e}")
+                logger.warning(f"[WARN] [{coll_name}] 검색 실패 (스킵): {e}")
                 continue
 
             is_question_coll = coll_name.endswith("_questions")
@@ -175,7 +175,7 @@ class HybridSearchService:
 
         # 로그
         logger.info(
-            f"🔀 하이브리드 검색 완료: dense={len(dense_results)}개, "
+            f"[HYBRID] 하이브리드 검색 완료: dense={len(dense_results)}개, "
             f"sparse={len(sparse_results)}개 → 최종 {len(final)}개"
         )
         for i, item in enumerate(final):

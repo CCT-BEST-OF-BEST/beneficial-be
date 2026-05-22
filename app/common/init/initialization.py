@@ -5,7 +5,7 @@ main.py에서 복잡한 초기화 로직을 분리
 from typing import Dict, Any
 from app.common.dependency.dependencies import initialize_dependencies
 from app.infrastructure.db.vector.vector_db import initialize_vector_db
-from app.api.system.indexing_service import get_indexing_service
+from app.domains.admin.indexing_service import get_indexing_service
 from app.data.data_loader.seed_mongo_loader import seed_mongo_data
 from app.data.data_loader.stage1_cards_loader import load_stage1_cards
 from app.data.data_loader.stage2_problems_loader import load_stage2_problems
@@ -34,19 +34,19 @@ class InitializationService:
             초기화 결과 정보
         """
         try:
-            logger.info("🚀 애플리케이션 초기화 시작...")
+            logger.info("[START] 애플리케이션 초기화 시작...")
 
             # 1. 의존성 초기화
             initialize_dependencies()
-            logger.info("✅ 의존성 초기화 완료")
+            logger.info("[OK] 의존성 초기화 완료")
 
             # 2. 벡터 DB 초기화
             self.vector_db = initialize_vector_db()
-            logger.info("✅ 벡터 DB 초기화 완료")
+            logger.info("[OK] 벡터 DB 초기화 완료")
 
             # 3. MongoDB 시드 데이터 삽입 (card_check, korean_word_problems)
             seed_mongo_data()
-            logger.info("✅ MongoDB 시드 데이터 확인 완료")
+            logger.info("[OK] MongoDB 시드 데이터 확인 완료")
 
             # 4. 인덱싱 서비스 초기화
             self.indexing_service = get_indexing_service()
@@ -74,7 +74,7 @@ class InitializationService:
             }
 
         except Exception as e:
-            logger.error(f"❌ 애플리케이션 초기화 실패: {e}")
+            logger.error(f"[ERROR] 애플리케이션 초기화 실패: {e}")
             return {
                 "status": "error",
                 "message": f"초기화 실패: {str(e)}"
@@ -92,16 +92,16 @@ class InitializationService:
             card_count = card_collection.count() if card_collection else 0
             pdf_count = pdf_collection.count() if pdf_collection else 0
 
-            logger.info(f"🩺 데이터 상태: 문제({korean_count}개), 카드({card_count}개), PDF({pdf_count}개)")
+            logger.info(f"[CHECK] 데이터 상태: 문제({korean_count}개), 카드({card_count}개), PDF({pdf_count}개)")
 
             # 데이터가 없으면 자동 인덱싱
             if korean_count == 0 or card_count == 0:
-                logger.info("📚 데이터가 없어서 자동 인덱싱을 시작합니다...")
+                logger.info("[DATA] 데이터가 없어서 자동 인덱싱을 시작합니다...")
                 result = await self.indexing_service.index_all_data()
-                logger.info(f"✅ 자동 인덱싱 완료: 성공 {result['successful_collections']}/{result['total_collections']}개 컬렉션")
+                logger.info(f"[OK] 자동 인덱싱 완료: 성공 {result['successful_collections']}/{result['total_collections']}개 컬렉션")
                 return result
             else:
-                logger.info("📊 기존 데이터가 충분합니다.")
+                logger.info("[STATUS] 기존 데이터가 충분합니다.")
                 return {
                     "status": "no_indexing_needed",
                     "korean_count": korean_count,
@@ -110,7 +110,7 @@ class InitializationService:
                 }
 
         except Exception as e:
-            logger.error(f"❌ 데이터 확인/인덱싱 실패: {e}")
+            logger.error(f"[ERROR] 데이터 확인/인덱싱 실패: {e}")
             return {
                 "status": "error",
                 "message": f"데이터 처리 실패: {str(e)}"
@@ -127,26 +127,26 @@ class InitializationService:
                 collection_names=["card_check", "korean_word_problems"],
             )
         except Exception as e:
-            logger.warning(f"⚠ 가상 질문 생성 실패 (서비스는 계속): {e}")
+            logger.warning(f"[WARN] 가상 질문 생성 실패 (서비스는 계속): {e}")
 
     def _load_stage3_data(self) -> Dict[str, Any]:
         """3단계 문제 데이터 로딩"""
         try:
             result = load_stage3_problems()
             if result:
-                logger.info("✅ 3단계 문제 데이터 로딩 완료")
+                logger.info("[OK] 3단계 문제 데이터 로딩 완료")
                 return {
                     "status": "success",
                     "message": "3단계 문제 데이터 로딩 완료"
                 }
             else:
-                logger.warning("⚠️ 3단계 문제 데이터 로딩 실패")
+                logger.warning("[WARN] 3단계 문제 데이터 로딩 실패")
                 return {
                     "status": "warning",
                     "message": "3단계 문제 데이터 로딩 실패"
                 }
         except Exception as e:
-            logger.error(f"❌ 3단계 문제 데이터 로딩 실패: {e}")
+            logger.error(f"[ERROR] 3단계 문제 데이터 로딩 실패: {e}")
             return {
                 "status": "error",
                 "message": f"3단계 문제 데이터 로딩 실패: {str(e)}"

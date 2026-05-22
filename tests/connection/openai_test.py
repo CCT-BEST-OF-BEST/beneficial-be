@@ -1,53 +1,33 @@
+"""
+OpenAI 연결 통합 테스트.
+
+기본 pytest 실행에서는 외부 API를 호출하지 않는다.
+실행하려면 RUN_INTEGRATION_TESTS=1 과 OPENAI_API_KEY 를 설정한다.
+"""
 import os
-from openai import OpenAI
-from dotenv import load_dotenv
-from app.legacy.rag_service import get_rag_service
-from app.common.logging.logging_config import get_logger
 
-logger = get_logger(__name__)
 import pytest
+from dotenv import load_dotenv
 
-load_dotenv()  # .env 파일에서 환경변수 읽어오기
+load_dotenv()
+
+if os.getenv("RUN_INTEGRATION_TESTS") != "1":
+    pytest.skip(
+        "OpenAI integration test requires RUN_INTEGRATION_TESTS=1",
+        allow_module_level=True,
+    )
+
+if not os.getenv("OPENAI_API_KEY"):
+    pytest.skip("OPENAI_API_KEY is required for this integration test", allow_module_level=True)
+
+from app.domains.chat.service import get_chat_service
 
 
 @pytest.mark.asyncio
+@pytest.mark.integration
 async def test_chat_with_gpt():
-    prompt = "맞히다와 맞추다의 차이 알려줘"
-    """
-    RAG 시스템을 사용하여 GPT와 대화합니다.
+    chat_service = get_chat_service()
+    response = await chat_service.simple_chat("맞히다와 맞추다의 차이를 짧게 알려줘")
 
-    Args:
-        prompt: 사용자 질문
-
-    Returns:
-        GPT 응답
-    """
-    try:
-        # RAG 서비스 사용
-        rag_service = await get_rag_service()
-        response = await rag_service.chat_with_rag(prompt)
-        assert response is not None and len(response) > 0
-    except Exception as e:
-        logger.error(f"RAG 시스템 오류: {e}")
-        # RAG 실패 시 기본 GPT 응답으로 폴백
-        response = await _fallback_gpt_response(prompt)
-        assert response is not None and len(response) > 0
-
-
-async def _fallback_gpt_response(prompt: str):
-    """RAG 실패 시 기본 GPT 응답"""
-    api_key = os.getenv("OPENAI_API_KEY")
-    if not api_key:
-        raise Exception("API Key not found in environment variable!")
-
-    client = OpenAI(api_key=api_key)
-
-    response = await client.chat.completions.create(
-        model="gpt-3.5-turbo",  # or "gpt-4" if 계정 허용시
-        messages=[
-            {"role": "system", "content": "너는 초등학생 돌봄선생님이야."},
-            {"role": "user", "content": prompt}
-        ],
-        max_tokens=100
-    )
-    return response.choices[0].message.content
+    assert isinstance(response, str)
+    assert len(response) > 0

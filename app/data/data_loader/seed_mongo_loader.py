@@ -292,20 +292,20 @@ def seed_mongo_data() -> bool:
         existing_cards = mongo_client.count_documents("card_check")
         if existing_cards == 0:
             mongo_client.insert_many("card_check", CARD_CHECK_SEED)
-            logger.info(f"✅ card_check 시드 완료: {len(CARD_CHECK_SEED)}개 차시")
+            logger.info(f"[OK] card_check 시드 완료: {len(CARD_CHECK_SEED)}개 차시")
         else:
-            logger.info(f"📊 card_check 데이터 이미 존재: {existing_cards}개")
+            logger.info(f"[STATUS] card_check 데이터 이미 존재: {existing_cards}개")
 
         # ── korean_word_problems ──
         existing_problems = mongo_client.count_documents("korean_word_problems")
         if existing_problems == 0:
             mongo_client.insert_many("korean_word_problems", KOREAN_WORD_PROBLEMS_SEED)
-            logger.info(f"✅ korean_word_problems 시드 완료: {len(KOREAN_WORD_PROBLEMS_SEED)}개 차시")
+            logger.info(f"[OK] korean_word_problems 시드 완료: {len(KOREAN_WORD_PROBLEMS_SEED)}개 차시")
         else:
-            logger.info(f"📊 korean_word_problems 데이터 이미 존재: {existing_problems}개")
+            logger.info(f"[STATUS] korean_word_problems 데이터 이미 존재: {existing_problems}개")
 
         return True
 
     except Exception as e:
-        logger.error(f"❌ MongoDB 시드 실패: {e}")
+        logger.error(f"[ERROR] MongoDB 시드 실패: {e}")
         return False

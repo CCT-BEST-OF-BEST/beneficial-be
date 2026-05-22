@@ -8,6 +8,8 @@ numpy
 pydantic
 sentence-transformers
 pytest
+pytest-asyncio
+rank-bm25
 
 # PDF 처리용 라이브러리 (경량화)
 PyPDF2==3.0.1

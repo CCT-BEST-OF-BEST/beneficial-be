@@ -45,7 +45,7 @@ class LearningService:
             }
             
         except Exception as e:
-            logger.error(f"❌ 답변 제출 실패: {e}")
+            logger.error(f"[ERROR] 답변 제출 실패: {e}")
             raise
 
     async def _check_answer(self, request: SubmitAnswerRequest) -> bool:
@@ -200,7 +200,7 @@ class LearningService:
             )
 
         except Exception as e:
-            logger.error(f"❌ 단원 데이터 조회 실패: {e}")
+            logger.error(f"[ERROR] 단원 데이터 조회 실패: {e}")
             raise
 
     async def get_stage1_data(self, chapter_id: str, lesson_id: str) -> Stage1Response:
@@ -234,7 +234,7 @@ class LearningService:
             )
 
         except Exception as e:
-            logger.error(f"❌ 1단계 데이터 조회 실패: {e}")
+            logger.error(f"[ERROR] 1단계 데이터 조회 실패: {e}")
             raise
 
     async def complete_stage1(self, request: Stage1CompleteRequest) -> Dict[str, Any]:
@@ -279,7 +279,7 @@ class LearningService:
             }
 
         except Exception as e:
-            logger.error(f"❌ 1단계 완료 처리 실패: {e}")
+            logger.error(f"[ERROR] 1단계 완료 처리 실패: {e}")
             raise
 
     async def _get_lesson_progress(
@@ -337,7 +337,7 @@ class LearningService:
             return False
             
         except Exception as e:
-            logger.error(f"❌ 차시 잠금 상태 확인 실패: {e}")
+            logger.error(f"[ERROR] 차시 잠금 상태 확인 실패: {e}")
             return True  # 에러 발생시 안전하게 잠금
 
 # 전역 서비스 인스턴스

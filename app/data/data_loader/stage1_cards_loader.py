@@ -112,11 +112,11 @@ def load_stage1_cards():
 
         mongo_client.db[collection_name].drop()
         result = mongo_client.insert_many(collection_name, STAGE1_CARD_PAIRS)
-        logger.info(f"✅ 1단계 카드 쌍 데이터 {len(result.inserted_ids)}개 삽입 완료")
+        logger.info(f"[OK] 1단계 카드 쌍 데이터 {len(result.inserted_ids)}개 삽입 완료")
         return True
 
     except Exception as e:
-        logger.error(f"❌ 1단계 카드 데이터 로딩 실패: {e}")
+        logger.error(f"[ERROR] 1단계 카드 데이터 로딩 실패: {e}")
         return False
 
 

@@ -71,11 +71,11 @@ class PDFDataLoader:
                         # 페이지 구분자 추가
                         full_text += f"\n\n[페이지 {page_num}]\n{text}"
             
-            logger.info(f"✅ PDF 텍스트 추출 완료: {len(full_text)}자")
+            logger.info(f"[OK] PDF 텍스트 추출 완료: {len(full_text)}자")
             return full_text
             
         except Exception as e:
-            logger.error(f"❌ PDF 텍스트 추출 실패: {e}")
+            logger.error(f"[ERROR] PDF 텍스트 추출 실패: {e}")
             return ""
     
     def chunk_pdf_text(self, text: str, pdf_filename: str) -> List[Dict[str, Any]]:
@@ -87,26 +87,26 @@ class PDFDataLoader:
             try:
                 rule_chunks = self._try_rule_based_chunking(text)
                 if len(rule_chunks) > 0:
-                    logger.info("✅ 규칙 기반 청킹 성공")
+                    logger.info("[OK] 규칙 기반 청킹 성공")
                     return rule_chunks
             except Exception as e:
-                logger.warning(f"⚠️ 규칙 기반 청킹 실패: {e}")
+                logger.warning(f"[WARN] 규칙 기반 청킹 실패: {e}")
             
             # 2단계: 의미 단위 분할 (Fallback #1)
             try:
                 semantic_chunks = self._try_semantic_chunking(text)
                 if len(semantic_chunks) > 0:
-                    logger.info("✅ 의미 기반 청킹 성공")
+                    logger.info("[OK] 의미 기반 청킹 성공")
                     return semantic_chunks
             except Exception as e:
-                logger.warning(f"⚠️ 의미 기반 청킹 실패: {e}")
+                logger.warning(f"[WARN] 의미 기반 청킹 실패: {e}")
             
             # 3단계: 기본 분할 (Final Fallback)
-            logger.warning("🔄 기본 청킹으로 폴백")
+            logger.warning("[REVIEW] 기본 청킹으로 폴백")
             return self._basic_chunking(text, pdf_filename)
             
         except Exception as e:
-            logger.error(f"❌ 모든 청킹 방식 실패: {e}")
+            logger.error(f"[ERROR] 모든 청킹 방식 실패: {e}")
             return []
 
     def _try_rule_based_chunking(self, text: str) -> List[Dict[str, Any]]:
@@ -184,7 +184,7 @@ class PDFDataLoader:
                 }
             })
 
-        logger.info(f"✅ 규칙 기반 청킹 완료: {len(chunks)}개")
+        logger.info(f"[OK] 규칙 기반 청킹 완료: {len(chunks)}개")
         return chunks
 
     def _try_semantic_chunking(self, text: str) -> List[Dict[str, Any]]:
@@ -254,7 +254,7 @@ class PDFDataLoader:
                 }
             })
         
-        logger.info(f"✅ 기본 청킹 완료: {len(processed_chunks)}개")
+        logger.info(f"[OK] 기본 청킹 완료: {len(processed_chunks)}개")
         return processed_chunks
 
     def _detect_topic(self, text: str, keywords: List[str]) -> str:
@@ -362,9 +362,9 @@ def load_pdf_documents(pdf_directory: str = "app/data/pdfs/") -> List[Dict[str, 
         chunks = loader.chunk_pdf_text(full_text, target_file)
         all_documents.extend(chunks)
         
-        logger.info(f"✅ {target_file} 처리 완료: {len(chunks)}개 청크")
+        logger.info(f"[OK] {target_file} 처리 완료: {len(chunks)}개 청크")
     else:
-        logger.error(f"❌ {target_file} 텍스트 추출 실패")
+        logger.error(f"[ERROR] {target_file} 텍스트 추출 실패")
     
-    logger.info(f"✅ 총 {len(all_documents)}개 PDF 문서 청크 로드 완료")
+    logger.info(f"[OK] 총 {len(all_documents)}개 PDF 문서 청크 로드 완료")
     return all_documents

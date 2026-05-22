@@ -1,5 +1,5 @@
 from fastapi import APIRouter, HTTPException
-from app.api.system.indexing_service import get_indexing_service
+from app.domains.admin.indexing_service import get_indexing_service
 
 router = APIRouter(prefix="/admin/indexing", tags=["admin"])
 

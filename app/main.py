@@ -1,10 +1,13 @@
 from fastapi import FastAPI
 from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
-from app.api.chat.chat_router import router as chat_router
-from app.api.system.indexing import router as indexing_router
-from app.api.learning.learning_router import router as learning_router
-from app.api.learning.stage3_router import router as stage3_router
+from app.domains.chat.router import router as chat_router
+from app.domains.admin.router import router as indexing_router
+from app.domains.learning.content_router import router as learning_router
+from app.domains.stage3.router import router as stage3_router
+from app.domains.auth.router import router as auth_router
+from app.domains.agent.router import router as agent_router
+from app.domains.learning.router import router as learning_records_router
 from app.common.init.initialization import get_initialization_service
 from app.common.logging.logging_config import get_logger
 
@@ -133,23 +136,26 @@ async def startup_event():
         result = await init_service.initialize_application()
 
         if result["status"] == "success":
-            logger.info("🎉 애플리케이션 시작 완료!")
+            logger.info("[DONE] 애플리케이션 시작 완료!")
         else:
-            logger.warning(f"⚠️ 초기화 경고: {result['message']}")
+            logger.warning(f"[WARN] 초기화 경고: {result['message']}")
 
     except Exception as e:
-        logger.error(f"❌ 애플리케이션 시작 실패: {e}")
+        logger.error(f"[ERROR] 애플리케이션 시작 실패: {e}")
 
 
 @app.on_event("shutdown")
 async def shutdown_event():
     """애플리케이션 종료 시 실행될 이벤트"""
-    logger.info("🛑 Beneficial RAG System 종료 중...")
+    logger.info("[STOP] Beneficial RAG System 종료 중...")
 
 
 # 라우터 등록
+app.include_router(auth_router)
+app.include_router(agent_router)
 app.include_router(chat_router)
 app.include_router(learning_router)
+app.include_router(learning_records_router)
 app.include_router(stage3_router)
 app.include_router(indexing_router)
 
@@ -182,4 +188,3 @@ def read_root():
         "version": "1.0.0",
         "description": "초등학생 돌봄반 학생들을 위한 한국어 교육을 위한 시스템"
     }
-

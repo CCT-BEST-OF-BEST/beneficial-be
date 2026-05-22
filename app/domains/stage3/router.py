@@ -1,7 +1,10 @@
 # beneficial-be/app/api/learning/stage3_router.py
 
-from fastapi import APIRouter, HTTPException
-from app.api.learning.stage3_service import Stage3Service
+from fastapi import APIRouter, Depends, HTTPException
+from app.domains.stage3.service import Stage3Service
+from app.domains.auth.dependencies import get_optional_current_user
+from app.domains.auth.models import User
+from app.domains.learning.dependencies import get_learning_record_service
 from app.data.models.learning_models import (
     Stage3ProblemsResponse, Stage3AnswerRequest, Stage3AnswerResponse,
     Stage3ProgressResponse
@@ -11,8 +14,8 @@ from app.common.logging.logging_config import get_logger
 router = APIRouter(prefix="/learning/stage3", tags=["stage3"])
 logger = get_logger(__name__)
 
-# 서비스 인스턴스
-stage3_service = Stage3Service()
+def create_stage3_service(learning_record_service=None) -> Stage3Service:
+    return Stage3Service(learning_record_service=learning_record_service)
 
 
 @router.get(
@@ -53,12 +56,12 @@ stage3_service = Stage3Service()
 async def get_stage3_problems() -> Stage3ProblemsResponse:
     """3단계 문제 목록 조회"""
     try:
-        response = stage3_service.get_problems()
-        logger.info(f"✅ 3단계 문제 목록 조회 완료: {response.total_problems}개")
+        response = create_stage3_service().get_problems()
+        logger.info(f"[OK] 3단계 문제 목록 조회 완료: {response.total_problems}개")
         return response
         
     except Exception as e:
-        logger.error(f"❌ 3단계 문제 목록 조회 실패: {e}")
+        logger.error(f"[ERROR] 3단계 문제 목록 조회 실패: {e}")
         raise HTTPException(status_code=500, detail="3단계 문제 목록 조회에 실패했습니다")
 
 
@@ -115,7 +118,7 @@ async def get_stage3_problems() -> Stage3ProblemsResponse:
 async def get_next_problem() -> dict:
     """다음 문제 조회"""
     try:
-        problem = stage3_service.get_next_problem()
+        problem = create_stage3_service().get_next_problem()
         
         if not problem:
             return {
@@ -133,7 +136,7 @@ async def get_next_problem() -> dict:
             "badge": problem.get("badge")
         }
         
-        logger.info(f"✅ 3단계 다음 문제 조회 완료: 문제 ID {problem['problem_id']}")
+        logger.info(f"[OK] 3단계 다음 문제 조회 완료: 문제 ID {problem['problem_id']}")
         
         return {
             "success": True,
@@ -142,7 +145,7 @@ async def get_next_problem() -> dict:
         }
         
     except Exception as e:
-        logger.error(f"❌ 3단계 다음 문제 조회 실패: {e}")
+        logger.error(f"[ERROR] 3단계 다음 문제 조회 실패: {e}")
         raise HTTPException(status_code=500, detail="다음 문제 조회에 실패했습니다")
 
 
@@ -194,21 +197,30 @@ async def get_next_problem() -> dict:
     """,
     response_model=Stage3AnswerResponse
 )
-async def submit_stage3_answer(request: Stage3AnswerRequest) -> Stage3AnswerResponse:
+async def submit_stage3_answer(
+    request: Stage3AnswerRequest,
+    current_user: User | None = Depends(get_optional_current_user),
+) -> Stage3AnswerResponse:
     """답변 제출"""
     try:
-        response = stage3_service.submit_answer(
+        service = create_stage3_service(
+            learning_record_service=get_learning_record_service()
+            if current_user
+            else None
+        )
+        response = service.submit_answer(
             request.problem_id,
-            request.user_answer
+            request.user_answer,
+            user_id=current_user.user_id if current_user else None,
         )
         
         status_text = "정답" if response.is_correct else "오답"
-        logger.info(f"✅ 3단계 답변 제출 완료: 문제 ID {request.problem_id} - {status_text}")
+        logger.info(f"[OK] 3단계 답변 제출 완료: 문제 ID {request.problem_id} - {status_text}")
         
         return response
         
     except Exception as e:
-        logger.error(f"❌ 3단계 답변 제출 실패: {e}")
+        logger.error(f"[ERROR] 3단계 답변 제출 실패: {e}")
         raise HTTPException(status_code=500, detail="답변 제출에 실패했습니다")
 
 
@@ -248,12 +260,12 @@ async def submit_stage3_answer(request: Stage3AnswerRequest) -> Stage3AnswerResp
 async def get_stage3_progress() -> Stage3ProgressResponse:
     """진행도 조회"""
     try:
-        response = stage3_service.get_progress()
-        logger.info(f"✅ 3단계 진행도 조회 완료: 정답 {response.progress.correct_count}개, 오답 {response.progress.wrong_count}개")
+        response = create_stage3_service().get_progress()
+        logger.info(f"[OK] 3단계 진행도 조회 완료: 정답 {response.progress.correct_count}개, 오답 {response.progress.wrong_count}개")
         return response
         
     except Exception as e:
-        logger.error(f"❌ 3단계 진행도 조회 실패: {e}")
+        logger.error(f"[ERROR] 3단계 진행도 조회 실패: {e}")
         raise HTTPException(status_code=500, detail="진행도 조회에 실패했습니다")
 
 
@@ -282,6 +294,7 @@ async def get_stage3_progress() -> Stage3ProgressResponse:
 async def reset_stage3_progress() -> dict:
     """진행도 초기화 (개발/테스트용)"""
     try:
+        stage3_service = create_stage3_service()
         # 진행도 컬렉션에서 해당 문서 삭제
         stage3_service.mongo_client.delete_one(
             stage3_service.progress_collection,
@@ -307,7 +320,7 @@ async def reset_stage3_progress() -> dict:
             initial_progress
         )
         
-        logger.info(f"✅ 3단계 진행도 초기화 완료: {initial_progress}")
+        logger.info(f"[OK] 3단계 진행도 초기화 완료: {initial_progress}")
         
         return {
             "success": True,
@@ -315,5 +328,5 @@ async def reset_stage3_progress() -> dict:
         }
         
     except Exception as e:
-        logger.error(f"❌ 3단계 진행도 초기화 실패: {e}")
+        logger.error(f"[ERROR] 3단계 진행도 초기화 실패: {e}")
         raise HTTPException(status_code=500, detail="진행도 초기화에 실패했습니다") 
