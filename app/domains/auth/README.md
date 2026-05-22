@@ -10,3 +10,13 @@
 - `router.py`: `/auth/*` API
 
 초기 목표는 Agent 학습 기록을 영속적인 `user_id`에 연결하는 것이다.
+
+현재 구현 상태:
+- `/auth/signup`
+- `/auth/login`
+- `/auth/refresh`
+- `/auth/logout`
+- `/auth/me`
+- PBKDF2-HMAC-SHA256 비밀번호 해시
+- HS256 access token
+- 서버 저장 refresh token session

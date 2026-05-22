@@ -4,8 +4,14 @@ import importlib
 def test_domain_packages_are_importable():
     modules = [
         "app.core",
+        "app.core.security",
         "app.domains",
         "app.domains.auth",
+        "app.domains.auth.models",
+        "app.domains.auth.repository",
+        "app.domains.auth.router",
+        "app.domains.auth.schemas",
+        "app.domains.auth.service",
         "app.domains.learning",
         "app.domains.agent",
         "app.domains.rag",

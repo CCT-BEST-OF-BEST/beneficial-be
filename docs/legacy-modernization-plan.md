@@ -118,6 +118,7 @@ app/
 현재 적용 상태:
 - `app/core` 패키지 골격 추가
 - `app/domains/auth` 패키지 골격 추가
+- `app/domains/auth` 인증 MVP 구현 (`/auth/signup`, `/auth/login`, `/auth/refresh`, `/auth/logout`, `/auth/me`)
 - `app/domains/learning` 패키지 골격 추가
 - `app/domains/agent` 패키지 골격 추가
 - `app/domains/rag` 패키지 골격 추가

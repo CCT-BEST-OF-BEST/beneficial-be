@@ -5,6 +5,7 @@ from app.api.chat.chat_router import router as chat_router
 from app.api.system.indexing import router as indexing_router
 from app.api.learning.learning_router import router as learning_router
 from app.api.learning.stage3_router import router as stage3_router
+from app.domains.auth.router import router as auth_router
 from app.common.init.initialization import get_initialization_service
 from app.common.logging.logging_config import get_logger
 
@@ -148,6 +149,7 @@ async def shutdown_event():
 
 
 # 라우터 등록
+app.include_router(auth_router)
 app.include_router(chat_router)
 app.include_router(learning_router)
 app.include_router(stage3_router)
@@ -182,4 +184,3 @@ def read_root():
         "version": "1.0.0",
         "description": "초등학생 돌봄반 학생들을 위한 한국어 교육을 위한 시스템"
     }
-
