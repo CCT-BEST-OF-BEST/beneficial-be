@@ -80,52 +80,38 @@ class AgentService:
         self.learning_record_service = learning_record_service
         self.openai_client = openai_client
 
+        from app.domains.agent.graph import build_agent_graph
+        self._graph = build_agent_graph(self)
+
     async def chat(
         self,
         user_id: str,
         message: str,
         session_id: Optional[str] = None,
     ) -> dict:
-        session = self.session_service.get_or_create(user_id, session_id)
-        weakness_profile = self.learning_record_service.get_weakness_profile(user_id)
-
-        user_msg = ChatMessage(role="user", content=message, created_at=utc_now())
-        session = self.session_service.append_message(session, user_msg)
-
-        recent = self.session_service.get_recent_messages(session)
-        decision = self._decide(message, weakness_profile, recent)
-
-        rag_context = ""
-        used_tools: List[str] = []
-        if decision.should_use_rag:
-            search_result = await self.rag_service.search(message)
-            rag_context = search_result.context
-            used_tools.append("rag_search")
-
-        system_prompt = self._build_system_prompt(weakness_profile, decision)
-        response_text = await self.openai_client.generate_response_with_context(
-            prompt=message,
-            context=rag_context or None,
-            system_prompt=system_prompt,
-        )
-
-        assistant_msg = ChatMessage(
-            role="assistant",
-            content=response_text,
-            agent_action=decision.action,
-            target_concept=decision.target_concept,
-            used_tools=used_tools,
-            created_at=utc_now(),
-        )
-        session = self.session_service.append_message(session, assistant_msg)
-
+        from app.domains.agent.graph import AgentState
+        initial: AgentState = {
+            "user_id": user_id,
+            "session_id": session_id,
+            "user_message": message,
+            "session": None,
+            "weakness_profile": None,
+            "recent_messages": [],
+            "decision": None,
+            "rag_context": "",
+            "used_tools": [],
+            "response": "",
+        }
+        result = await self._graph.ainvoke(initial)
         return {
-            "session_id": session.session_id,
-            "response": response_text,
-            "agent_action": decision.action,
-            "target_concept": decision.target_concept,
-            "used_tools": used_tools,
-            "weak_concepts": [wc.concept_key for wc in weakness_profile.weak_concepts],
+            "session_id": result["session"].session_id,
+            "response": result["response"],
+            "agent_action": result["decision"].action,
+            "target_concept": result["decision"].target_concept,
+            "used_tools": result.get("used_tools", []),
+            "weak_concepts": [
+                wc.concept_key for wc in result["weakness_profile"].weak_concepts
+            ],
         }
 
     def _decide(
