@@ -121,7 +121,9 @@ app/
 - `app/domains/auth` 인증 MVP 구현 (`/auth/signup`, `/auth/login`, `/auth/refresh`, `/auth/logout`, `/auth/me`)
 - `app/domains/learning` 패키지 골격 추가
 - `app/domains/learning` 학습 기록 MVP 구현 (`LearningRecord`, `concept_key`, 약점 프로파일 집계)
+- `app/domains/learning` 학습 기록 조회 API 추가 (`/learning/records/me`)
 - `app/domains/agent` 패키지 골격 추가
+- `app/domains/agent` 약점 프로파일 조회 API 추가 (`/agent/profile/me`)
 - `app/domains/rag` 패키지 골격 추가
 - `app/domains/rag` RAG tool MVP 구현 (`RagRetriever`, `RagService`)
 - 기존 `app/api`, `app/data`, `app/infrastructure` 코드는 아직 이동하지 않음

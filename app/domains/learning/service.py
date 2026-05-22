@@ -109,6 +109,12 @@ class LearningRecordService:
         weak_concepts.sort(key=lambda item: item.priority, reverse=True)
         return StudentWeaknessProfile(user_id=user_id, weak_concepts=weak_concepts)
 
+    def get_records(self, user_id: str) -> list[LearningRecord]:
+        return [
+            LearningRecord(**record)
+            for record in self.repository.find_records_by_user(user_id)
+        ]
+
 
 def resolve_concept_key(correct_answer: str, user_answer: str | None = None) -> str:
     correct = correct_answer.strip()

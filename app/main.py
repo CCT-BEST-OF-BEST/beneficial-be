@@ -6,6 +6,8 @@ from app.api.system.indexing import router as indexing_router
 from app.api.learning.learning_router import router as learning_router
 from app.api.learning.stage3_router import router as stage3_router
 from app.domains.auth.router import router as auth_router
+from app.domains.agent.router import router as agent_router
+from app.domains.learning.router import router as learning_records_router
 from app.common.init.initialization import get_initialization_service
 from app.common.logging.logging_config import get_logger
 
@@ -150,8 +152,10 @@ async def shutdown_event():
 
 # 라우터 등록
 app.include_router(auth_router)
+app.include_router(agent_router)
 app.include_router(chat_router)
 app.include_router(learning_router)
+app.include_router(learning_records_router)
 app.include_router(stage3_router)
 app.include_router(indexing_router)
 

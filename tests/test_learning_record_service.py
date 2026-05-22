@@ -76,6 +76,33 @@ def test_weakness_profile_groups_wrong_answers_by_concept():
     assert profile.weak_concepts[0].wrong_count == 2
 
 
+def test_get_records_returns_user_records_as_models():
+    repository = FakeLearningRecordRepository()
+    service = LearningRecordService(repository)
+    service.record_answer(
+        user_id="user_123",
+        stage=3,
+        question_id="stage3_problem_16",
+        user_answer="되",
+        correct_answer="돼",
+        is_correct=False,
+    )
+    service.record_answer(
+        user_id="other_user",
+        stage=3,
+        question_id="stage3_problem_17",
+        user_answer="되고",
+        correct_answer="되고",
+        is_correct=True,
+    )
+
+    records = service.get_records("user_123")
+
+    assert len(records) == 1
+    assert records[0].user_id == "user_123"
+    assert records[0].concept_key == "되/돼"
+
+
 def test_resolve_concept_key_falls_back_to_answer():
     assert resolve_concept_key("돼") == "되/돼"
     assert resolve_concept_key("처음보는정답") == "처음보는정답"

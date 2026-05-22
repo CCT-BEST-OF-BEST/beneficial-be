@@ -16,5 +16,7 @@
 - `WeakConcept`, `StudentWeaknessProfile` 모델 추가
 - `LearningRecordRepository` 추가
 - `LearningRecordService.record_answer` 추가
+- `LearningRecordService.get_records` 추가
 - `LearningRecordService.get_weakness_profile` 추가
 - Stage 3 답변 제출 시 로그인 사용자의 학습 기록 저장
+- `/learning/records/me` 추가
