@@ -16,6 +16,9 @@ def pytest_configure(config):
     config.addinivalue_line(
         "markers", "asyncio: mark test as async"
     )
+    config.addinivalue_line(
+        "markers", "integration: tests that call external services or local databases"
+    )
 
 @pytest.fixture(scope="session")
 def event_loop():

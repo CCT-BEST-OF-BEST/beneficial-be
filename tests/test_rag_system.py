@@ -3,12 +3,15 @@
 RAG 시스템 테스트
 """
 import pytest
-import asyncio
 import sys
 import os
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-# pytest-asyncio는 pytest.ini에서 설정
+if os.getenv("RUN_INTEGRATION_TESTS") != "1":
+    pytest.skip(
+        "RAG integration tests require RUN_INTEGRATION_TESTS=1 and local services",
+        allow_module_level=True,
+    )
 
 from app.common.dependency.dependencies import get_vector_db, get_embedding_model
 from app.api.chat.service.chat_service import get_chat_service
