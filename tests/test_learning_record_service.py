@@ -106,3 +106,140 @@ def test_get_records_returns_user_records_as_models():
 def test_resolve_concept_key_falls_back_to_answer():
     assert resolve_concept_key("돼") == "되/돼"
     assert resolve_concept_key("처음보는정답") == "처음보는정답"
+
+
+def test_resolve_concept_key_handles_stage1_base_forms():
+    # Stage 1 카드 쌍은 기본형(가르치다/가르키다 등)으로 노출되므로 매핑이 필요하다
+    assert resolve_concept_key("가르치다") == "가르치다/가르키다"
+    assert resolve_concept_key("가르키다") == "가르치다/가르키다"
+    assert resolve_concept_key("되다") == "되/돼"  # Stage 2/3와 동일 concept_key
+    assert resolve_concept_key("돼다") == "되/돼"
+    assert resolve_concept_key("맞추다") == "맞추다/맞히다"
+    assert resolve_concept_key("이따가") == "이따가/있다가"
+
+
+def test_record_stage1_card_check_correct_saves_record():
+    repository = FakeLearningRecordRepository()
+    service = LearningRecordService(repository)
+
+    is_correct, concept_key = service.record_stage1_card_check(
+        pair_id="pair_1",
+        correct_word="가르치다",
+        chosen_word="가르치다",
+        user_id="user_123",
+    )
+
+    assert is_correct is True
+    assert concept_key == "가르치다/가르키다"
+    assert len(repository.records) == 1
+    record = repository.records[0]
+    assert record["stage"] == 1
+    assert record["question_id"] == "stage1_pair_1"
+    assert record["is_correct"] is True
+    assert record["concept_key"] == "가르치다/가르키다"
+
+
+def test_record_stage1_card_check_wrong_saves_record():
+    repository = FakeLearningRecordRepository()
+    service = LearningRecordService(repository)
+
+    is_correct, concept_key = service.record_stage1_card_check(
+        pair_id="pair_1",
+        correct_word="가르치다",
+        chosen_word="가르키다",
+        user_id="user_123",
+    )
+
+    assert is_correct is False
+    assert concept_key == "가르치다/가르키다"
+    assert repository.records[0]["is_correct"] is False
+    assert repository.records[0]["user_answer"] == "가르키다"
+
+
+def test_record_stage1_card_check_anonymous_does_not_save():
+    repository = FakeLearningRecordRepository()
+    service = LearningRecordService(repository)
+
+    is_correct, concept_key = service.record_stage1_card_check(
+        pair_id="pair_1",
+        correct_word="가르치다",
+        chosen_word="가르키다",
+        user_id=None,
+    )
+
+    assert is_correct is False
+    assert concept_key == "가르치다/가르키다"
+    assert repository.records == []  # 비로그인은 저장 안 됨
+
+
+def test_record_stage2_answer_correct_saves_record():
+    repository = FakeLearningRecordRepository()
+    service = LearningRecordService(repository)
+
+    is_correct, concept_key = service.record_stage2_answer(
+        problem_id=1,
+        correct_answer="가르쳐",
+        user_answer="가르쳐",
+        user_id="user_123",
+    )
+
+    assert is_correct is True
+    assert concept_key == "가르치다/가르키다"
+    record = repository.records[0]
+    assert record["stage"] == 2
+    assert record["question_id"] == "stage2_problem_1"
+    assert record["is_correct"] is True
+
+
+def test_record_stage2_answer_wrong_creates_weak_concept():
+    repository = FakeLearningRecordRepository()
+    service = LearningRecordService(repository)
+
+    service.record_stage2_answer(
+        problem_id=13, correct_answer="되고", user_answer="돼고", user_id="user_123"
+    )
+    service.record_stage2_answer(
+        problem_id=14, correct_answer="돼", user_answer="되", user_id="user_123"
+    )
+
+    profile = service.get_weakness_profile("user_123", min_wrong_count=2)
+    assert len(profile.weak_concepts) == 1
+    assert profile.weak_concepts[0].concept_key == "되/돼"
+    assert profile.weak_concepts[0].wrong_count == 2
+
+
+def test_record_stage2_answer_anonymous_does_not_save():
+    repository = FakeLearningRecordRepository()
+    service = LearningRecordService(repository)
+
+    is_correct, _ = service.record_stage2_answer(
+        problem_id=1, correct_answer="가르쳐", user_answer="가르켜", user_id=None
+    )
+
+    assert is_correct is False
+    assert repository.records == []
+
+
+def test_stage1_and_stage2_share_same_concept_key():
+    """Stage 1 기본형과 Stage 2 활용형이 같은 weak_concept으로 묶이는지 검증."""
+    repository = FakeLearningRecordRepository()
+    service = LearningRecordService(repository)
+
+    service.record_stage1_card_check(
+        pair_id="pair_1",
+        correct_word="가르치다",
+        chosen_word="가르키다",  # 오답
+        user_id="user_123",
+    )
+    service.record_stage2_answer(
+        problem_id=1,
+        correct_answer="가르쳐",
+        user_answer="가르켜",  # 오답
+        user_id="user_123",
+    )
+
+    profile = service.get_weakness_profile("user_123", min_wrong_count=2)
+    assert len(profile.weak_concepts) == 1
+    # Stage 1, Stage 2 오답이 같은 concept_key 아래 집계됨
+    assert profile.weak_concepts[0].concept_key == "가르치다/가르키다"
+    assert profile.weak_concepts[0].wrong_count == 2

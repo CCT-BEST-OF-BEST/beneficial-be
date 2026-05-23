@@ -1,3 +1,5 @@
+import os
+
 from fastapi import FastAPI
 from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
@@ -129,16 +131,27 @@ app.mount("/images", StaticFiles(directory="app/static/images"), name="images")
 
 @app.on_event("startup")
 async def startup_event():
-    """애플리케이션 시작 시 실행될 이벤트"""
-    try:
-        # 초기화 서비스를 통한 간단한 초기화
-        init_service = get_initialization_service()
-        result = await init_service.initialize_application()
+    """
+    애플리케이션 시작 시 실행될 이벤트.
 
-        if result["status"] == "success":
-            logger.info("[DONE] 애플리케이션 시작 완료!")
+    기본: lightweight (연결 확인 + BM25 인메모리 인덱스만).
+    AUTO_INIT_ON_STARTUP=1 일 때 시드 데이터/벡터 인덱싱/가상 질문 생성까지 수행.
+    무거운 작업은 평소엔 `/admin/*` 엔드포인트로 호출.
+    """
+    try:
+        init_service = get_initialization_service()
+        auto_full = os.getenv("AUTO_INIT_ON_STARTUP", "0") == "1"
+
+        if auto_full:
+            logger.info("[START] AUTO_INIT_ON_STARTUP=1 - full initialization 실행")
+            result = await init_service.full_initialization()
         else:
-            logger.warning(f"[WARN] 초기화 경고: {result['message']}")
+            result = await init_service.startup_lightweight()
+
+        if result.get("status") == "success":
+            logger.info(f"[DONE] 애플리케이션 시작 완료 (mode={result.get('mode')})")
+        else:
+            logger.warning(f"[WARN] 초기화 경고: {result.get('message')}")
 
     except Exception as e:
         logger.error(f"[ERROR] 애플리케이션 시작 실패: {e}")

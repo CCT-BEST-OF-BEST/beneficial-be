@@ -11,6 +11,7 @@ from app.domains.learning.repository import LearningRecordRepository
 
 
 CONCEPT_KEY_BY_ANSWER = {
+    # Stage 2/3 활용형
     "가르쳐": "가르치다/가르키다",
     "가르켰다": "가르치다/가르키다",
     "맞췄다": "맞추다/맞히다",
@@ -31,10 +32,26 @@ CONCEPT_KEY_BY_ANSWER = {
     "돼서": "되/돼",
     "안": "안/않다",
     "않다": "안/않다",
+    "않고": "안/않다",
     "반드시": "반드시/반듯이",
     "반듯이": "반드시/반듯이",
     "이따가": "이따가/있다가",
     "있다가": "이따가/있다가",
+    # Stage 1 기본형 (카드 쌍 word1/word2)
+    "가르치다": "가르치다/가르키다",
+    "가르키다": "가르치다/가르키다",
+    "맞추다": "맞추다/맞히다",
+    "맞히다": "맞추다/맞히다",
+    "잊다": "잊다/잃다",
+    "잃다": "잊다/잃다",
+    "메다": "메다/매다",
+    "매다": "메다/매다",
+    "바라다": "바라다/바래다",
+    "바래다": "바라다/바래다",
+    "부치다": "부치다/붙이다",
+    "붙이다": "부치다/붙이다",
+    "되다": "되/돼",
+    "돼다": "되/돼",
 }
 
 
@@ -114,6 +131,56 @@ class LearningRecordService:
             LearningRecord(**record)
             for record in self.repository.find_records_by_user(user_id)
         ]
+
+    def record_stage1_card_check(
+        self,
+        pair_id: str,
+        correct_word: str,
+        chosen_word: str,
+        user_id: Optional[str] = None,
+    ) -> tuple[bool, str]:
+        """1단계 카드 확인 결과를 평가하고, 로그인 사용자면 기록을 저장한다.
+
+        Returns: (is_correct, concept_key)
+        """
+        is_correct = chosen_word.strip() == correct_word.strip()
+        concept_key = resolve_concept_key(correct_word, chosen_word)
+        if user_id:
+            self.record_answer(
+                user_id=user_id,
+                stage=1,
+                question_id=f"stage1_{pair_id}",
+                user_answer=chosen_word,
+                correct_answer=correct_word,
+                is_correct=is_correct,
+                concept_key=concept_key,
+            )
+        return is_correct, concept_key
+
+    def record_stage2_answer(
+        self,
+        problem_id: int,
+        correct_answer: str,
+        user_answer: str,
+        user_id: Optional[str] = None,
+    ) -> tuple[bool, str]:
+        """2단계 문제 답안을 평가하고, 로그인 사용자면 기록을 저장한다.
+
+        Returns: (is_correct, concept_key)
+        """
+        is_correct = user_answer.strip() == correct_answer.strip()
+        concept_key = resolve_concept_key(correct_answer, user_answer)
+        if user_id:
+            self.record_answer(
+                user_id=user_id,
+                stage=2,
+                question_id=f"stage2_problem_{problem_id}",
+                user_answer=user_answer,
+                correct_answer=correct_answer,
+                is_correct=is_correct,
+                concept_key=concept_key,
+            )
+        return is_correct, concept_key
 
 
 def resolve_concept_key(correct_answer: str, user_answer: str | None = None) -> str:
