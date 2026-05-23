@@ -253,20 +253,21 @@ Stage 1 (카드 학습) · Stage 2 (드래그&드롭) 컨텐츠와 이미지 서
 **Errors**: `404` pair_id 없음.
 
 ### 4.3 `GET /learning/stage2/problems`
-**Response 200**
+**Response 200** (`Stage2ProblemsResponse`)
 ```json
 {
   "success": true,
   "lesson_id": "lesson1",
   "title": "2단계 예제풀이",
   "instruction": "맞춤법에 맞는 낱말 카드를 선택하세요",
-  "total_problems": 8,
-  "answer_options": ["가르쳐", "맞힐", "..."],
+  "total_problems": 20,
+  "answer_options": ["가르쳐", "가르켜", "맞혀", "맞춰", "..."],
   "problems": [
-    { "problem_id": 1, "sentence_part1": "왜 화가 났는지", "correct_answer": "가르쳐", "sentence_part2": "줘", "full_sentence": "왜 화가 났는지 가르쳐 줘" }
+    { "problem_id": 1, "sentence_part1": "선생님이 수학 공식을", "sentence_part2": "주셨다." }
   ]
 }
 ```
+- `correct_answer`와 `full_sentence`는 응답에 포함되지 않는다 (정답 노출 방지). 채점은 [`POST /learning/stage2/submit-answer`](#44-post-learningstage2submit-answer)가 담당하며 제출 시점에 둘 다 함께 돌려준다.
 
 ### 4.4 `POST /learning/stage2/submit-answer`
 **Request** (`Stage2SubmitRequest`)
