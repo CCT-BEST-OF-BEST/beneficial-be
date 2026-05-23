@@ -9,6 +9,7 @@ LangGraph 기반 학습 Agent 상태 머신.
     → save_turn
     → END
 """
+import logging
 from typing import Any, List, Optional
 
 from typing_extensions import TypedDict
@@ -17,6 +18,16 @@ from langgraph.graph import END, StateGraph
 
 from app.common.security import utc_now
 from app.domains.agent.models import ChatMessage
+
+logger = logging.getLogger(__name__)
+
+
+def _short(text: Optional[str], limit: int = 40) -> str:
+    """로그 한 줄에 들어갈 만큼만 잘라서 보여준다."""
+    if not text:
+        return ""
+    flat = text.replace("\n", " ").strip()
+    return flat if len(flat) <= limit else flat[: limit - 1] + "…"
 
 
 # ---------------------------------------------------------------------------
@@ -70,6 +81,14 @@ def build_agent_graph(agent_service: Any):
             state["user_id"]
         )
         recent = agent_service.session_service.get_recent_messages(session)
+        logger.info(
+            "[AGENT] load_context: user_id=%s session=%s weak_concepts=%d recent=%d msg=%r",
+            state["user_id"],
+            session.session_id,
+            len(getattr(weakness_profile, "weak_concepts", []) or []),
+            len(recent),
+            _short(state["user_message"]),
+        )
         return {
             "session": session,
             "session_id": session.session_id,
@@ -84,12 +103,25 @@ def build_agent_graph(agent_service: Any):
             state["weakness_profile"],
             state["recent_messages"],
         )
+        logger.info(
+            "[AGENT] decide_action: action=%s target=%s use_rag=%s reason=%r",
+            decision.action,
+            decision.target_concept,
+            decision.should_use_rag,
+            _short(decision.reason, 60),
+        )
         return {"decision": decision}
 
     async def rag_search(state: AgentState) -> dict:
         """RagService를 호출해 관련 문서를 검색한다."""
         result = await agent_service.rag_service.search(state["user_message"])
-        return {"rag_context": result.context, "used_tools": ["rag_search"]}
+        context = result.context or ""
+        logger.info(
+            "[AGENT] rag_search: query=%r context_chars=%d",
+            _short(state["user_message"]),
+            len(context),
+        )
+        return {"rag_context": context, "used_tools": ["rag_search"]}
 
     async def generate_response(state: AgentState) -> dict:
         """시스템 프롬프트 + (선택적) RAG context로 LLM 응답을 생성한다."""
@@ -101,6 +133,12 @@ def build_agent_graph(agent_service: Any):
             prompt=state["user_message"],
             context=context,
             system_prompt=system_prompt,
+        )
+        logger.info(
+            "[AGENT] generate_response: has_rag=%s response_chars=%d preview=%r",
+            context is not None,
+            len(response or ""),
+            _short(response, 60),
         )
         return {"response": response}
 
@@ -118,12 +156,20 @@ def build_agent_graph(agent_service: Any):
         session = agent_service.session_service.append_message(
             state["session"], assistant_msg
         )
+        logger.info(
+            "[AGENT] save_turn: session=%s total_messages=%d tools=%s",
+            session.session_id,
+            len(session.messages),
+            state.get("used_tools", []),
+        )
         return {"session": session}
 
     # ── 라우팅 ───────────────────────────────────────────────────────────
 
     def route_after_decision(state: AgentState) -> str:
-        return "rag_search" if state["decision"].should_use_rag else "generate_response"
+        next_node = "rag_search" if state["decision"].should_use_rag else "generate_response"
+        logger.debug("[AGENT] route_after_decision → %s", next_node)
+        return next_node
 
     # ── 그래프 조립 ──────────────────────────────────────────────────────
 

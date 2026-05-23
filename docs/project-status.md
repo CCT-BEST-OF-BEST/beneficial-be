@@ -1,6 +1,6 @@
 # 프로젝트 현황 및 다음 작업
 
-> 최종 업데이트: 2026-05-22  
+> 최종 업데이트: 2026-05-23  
 > 관련 문서: [AI Agent 요구사항](./agent-requirements.md) · [AI Agent 설계](./ai-agent-design.md) · [레거시 재단장 계획](./legacy-modernization-plan.md)
 
 ---
@@ -58,16 +58,21 @@
 - [x] `should_use_rag` 기반 conditional edge
 - [x] `AgentService.chat()`이 그래프 `ainvoke`로 위임
 
+### LangGraph 노드별 trace 로그 (완료)
+- [x] 각 노드 진입 시 INFO 로그 (`[AGENT] load_context/decide_action/rag_search/generate_response/save_turn`)
+- [x] `route_after_decision` DEBUG 로그
+- [x] 사용자 메시지/응답 미리보기는 `_short()`로 잘라서 한 줄 유지
+
 ---
 
 ## 현재 중요한 상태
 
-Agent MVP가 LangGraph 위에서 동작하는 단계까지 도달했다.
+Agent MVP가 LangGraph 위에서 동작하고, 각 노드 흐름이 로그로 추적된다.
 
 남은 주요 작업:
 - [x] Stage 1/2 답변도 LearningRecord에 저장 (Agent 약점 판단 데이터 풍부화)
 - [x] 앱 startup 무거움 해소 (seed/indexing/BM25를 admin API로 분리)
-- [ ] LangGraph 노드별 trace 로그 (디버깅)
+- [x] LangGraph 노드별 trace 로그 (디버깅)
 - [ ] `app/data/models/` → 도메인 `models.py`로 점진 이동
 - [ ] `/agent/chat` 통합 smoke test (`RUN_INTEGRATION_TESTS=1`)
 
@@ -99,20 +104,18 @@ Agent MVP가 LangGraph 위에서 동작하는 단계까지 도달했다.
   - `GET /admin/system-status`
 - `AUTO_INIT_ON_STARTUP=1` 환경변수로 기존 동작(full init) 유지 가능 — 최초 배포에 편리
 
-### 우선순위 3. LangGraph 노드별 trace 로그
+### ✅ 우선순위 3. LangGraph 노드별 trace 로그 (완료)
 
-**목표:** Agent 디버깅이 가능하도록 각 노드 실행 시 상태를 로깅한다.
+각 노드 실행 시 INFO 로그를 남기고, 사용자 메시지/응답 미리보기는 `_short()` 헬퍼로 한 줄에 들어가게 잘라서 표시한다.
 
-추가할 로그:
+실제 출력 예시:
 ```
-[AGENT] load_context: user_id=user_1, session=sess_xxx, weak_concepts=2
-[AGENT] decide_action: action=proactive_hint, target=되/돼, use_rag=True
-[AGENT] rag_search: query="...", docs=3
-[AGENT] generate_response: tokens=120
-[AGENT] save_turn: session=sess_xxx, total_messages=5
+[AGENT] load_context: user_id=user_1 session=sess_xxx weak_concepts=1 recent=1 msg='되/돼 차이가 뭐야?'
+[AGENT] decide_action: action=answer_with_rag target=None use_rag=True reason='사용자가 질문을 했습니다.'
+[AGENT] rag_search: query='되/돼 차이가 뭐야?' context_chars=6
+[AGENT] generate_response: has_rag=True response_chars=13 preview='되는 경우엔 돼를 써요!'
+[AGENT] save_turn: session=sess_xxx total_messages=2 tools=['rag_search']
 ```
-
-비용 거의 0, 디버깅 ROI 큼.
 
 ### 우선순위 4. `app/data/models/` → 도메인 `models.py`로 이동
 
@@ -129,7 +132,7 @@ Agent MVP가 LangGraph 위에서 동작하는 단계까지 도달했다.
 
 ```bash
 pytest -q
-# 현재: 32 passed, 2 skipped
+# 현재: 40 passed, 2 skipped
 
 python3 -c "import app.main; print('main import ok')"
 ```
