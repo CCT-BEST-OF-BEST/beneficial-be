@@ -16,10 +16,10 @@ def test_domain_packages_are_importable():
         "app.domains.auth.service",
         "app.domains.chat",
         "app.domains.chat.router",
+        "app.domains.chat.schemas",
         "app.domains.chat.service",
         "app.domains.learning",
         "app.domains.learning.content_router",
-        "app.domains.learning.content_service",
         "app.domains.learning.models",
         "app.domains.learning.repository",
         "app.domains.learning.router",
@@ -34,6 +34,7 @@ def test_domain_packages_are_importable():
         "app.domains.rag.service",
         "app.domains.stage3",
         "app.domains.stage3.router",
+        "app.domains.stage3.schemas",
         "app.domains.stage3.service",
     ]
 

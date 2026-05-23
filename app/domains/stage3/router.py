@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException
 
 from app.common.logging.logging_config import get_logger
-from app.data.models.learning_models import (
+from app.domains.stage3.schemas import (
     Stage3AnswerRequest,
     Stage3AnswerResponse,
     Stage3ProblemsResponse,

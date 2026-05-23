@@ -1,5 +1,5 @@
-from app.data.models.chat_models import ChatRequest, ChatResponse
-from app.data.models.learning_models import Stage3AnswerRequest
+from app.domains.chat.schemas import ChatRequest, ChatResponse
+from app.domains.stage3.schemas import Stage3AnswerRequest
 
 
 def test_chat_request_model():

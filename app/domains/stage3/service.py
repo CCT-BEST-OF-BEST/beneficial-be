@@ -1,7 +1,7 @@
 import logging
 from typing import Any, Dict, List, Optional
 
-from app.data.models.learning_models import (
+from app.domains.stage3.schemas import (
     Stage3AnswerResponse,
     Stage3ProblemsResponse,
     Stage3ProblemResponse,
