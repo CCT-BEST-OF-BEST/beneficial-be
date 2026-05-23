@@ -10,6 +10,8 @@ from app.domains.learning.dependencies import get_learning_record_service
 from app.domains.learning.schemas import (
     Stage1SubmitRequest,
     Stage1SubmitResponse,
+    Stage2ProblemResponse,
+    Stage2ProblemsResponse,
     Stage2SubmitRequest,
     Stage2SubmitResponse,
 )
@@ -139,30 +141,36 @@ async def get_stage1_cards() -> Dict[str, Any]:
 }
 ```
     """,
-    response_model=Dict[str, Any]
+    response_model=Stage2ProblemsResponse,
 )
-async def get_stage2_problems() -> Dict[str, Any]:
-    """2단계 예제풀이 문제 조회"""
+async def get_stage2_problems() -> Stage2ProblemsResponse:
+    """2단계 예제풀이 문제 조회. 정답(`correct_answer`, `full_sentence`)은 응답에서 제외된다."""
     try:
         mongo_client = get_mongo_client()
-
-        # 2단계 문제 데이터 조회
         stage2_data = mongo_client.find_one("stage2_problems", {"lesson_id": "lesson1"})
 
         if not stage2_data:
             raise HTTPException(status_code=404, detail="2단계 문제 데이터를 찾을 수 없습니다")
 
+        problems = [
+            Stage2ProblemResponse(
+                problem_id=p["problem_id"],
+                sentence_part1=p["sentence_part1"],
+                sentence_part2=p["sentence_part2"],
+            )
+            for p in stage2_data["problems"]
+        ]
+
         logger.info(f"[OK] 2단계 문제 {stage2_data['total_problems']}개 조회 완료")
 
-        return {
-            "success": True,
-            "lesson_id": stage2_data["lesson_id"],
-            "title": stage2_data["title"],
-            "instruction": stage2_data["instruction"],
-            "total_problems": stage2_data["total_problems"],
-            "answer_options": stage2_data["answer_options"],
-            "problems": stage2_data["problems"]
-        }
+        return Stage2ProblemsResponse(
+            lesson_id=stage2_data["lesson_id"],
+            title=stage2_data["title"],
+            instruction=stage2_data["instruction"],
+            total_problems=stage2_data["total_problems"],
+            answer_options=stage2_data["answer_options"],
+            problems=problems,
+        )
 
     except HTTPException:
         raise
