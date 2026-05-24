@@ -4,7 +4,7 @@
 > 대상: 프론트엔드 / 프론트 에이전트의 리팩토링 작업
 > 관련 문서: [프로젝트 현황](./project-status.md) · [Agent 설계](./ai-agent-design.md)
 
-이 문서는 백엔드가 노출하는 모든 HTTP 엔드포인트의 **요청/응답 스키마**, **인증 요구사항**, **에러 케이스**를 정리한다. 코드 상의 권위 있는 정의는 `app/domains/<domain>/router.py` 와 `schemas.py`이고, 이 문서는 그것을 사람이 읽기 좋게 재구성한 것이다.
+이 문서는 백엔드가 노출하는 모든 HTTP 엔드포인트의 **요청/응답 스키마**, **인증 요구사항**, **에러 케이스**를 정리한다. 코드 상의 권위 있는 HTTP 정의는 `app/interfaces/**/` 라우터이고, 도메인 스키마는 `app/domains/**/schemas.py`에 있다.
 
 ---
 
@@ -12,7 +12,7 @@
 
 ### 1.1 베이스 URL
 - 로컬 개발: `http://localhost:8000`
-- 라우터 prefix가 곧 도메인 경로다 (전역 prefix 없음). 예: `/auth/login`, `/agent/chat`, `/learning/stage3/next-problem`.
+- 라우터 prefix가 곧 도메인 경로다 (전역 prefix 없음). 예: `/auth/login`, `/agent/chat`, `/student/learning/stage3/next-problem`.
 
 ### 1.2 인증 모델
 | 요소 | 위치 | 비고 |
@@ -37,9 +37,9 @@
 | `/` | 시스템 메타 정보 (`GET /`만) | — |
 | `/auth` | 회원가입 / 로그인 / 세션 | 일부 보호 (`/me`) |
 | `/agent` | 학습 코치 Agent (LangGraph) | 전부 보호 |
-| `/learning` | Stage 1·2 컨텐츠 + 이미지 | 전부 보호 |
-| `/learning/records` | 학습 기록 조회 | 보호 |
-| `/learning/stage3` | Stage 3 문제풀이 | 전부 보호 |
+| `/student/learning` | Stage 1·2 컨텐츠 + 시각 힌트 | 전부 보호 |
+| `/student/learning/records` | 학습 기록 조회 | 보호 |
+| `/student/learning/stage3` | Stage 3 문제풀이 | 전부 보호 |
 | `/chat` | 단발 RAG 채팅 (Agent와 별개) | 전부 보호 |
 | `/admin` | 시스템 관리, 시드/인덱싱 | **현재 미인증** (운영 적용 예정) |
 
@@ -201,21 +201,21 @@ LangGraph 기반 학습 코치. 모든 엔드포인트가 `get_current_user`로 
 
 ---
 
-## 4. 학습 컨텐츠 (`/learning`)
+## 4. 학습 컨텐츠 (`/student/learning`)
 
 Stage 1 (카드 학습) · Stage 2 (드래그&드롭) 컨텐츠.
 이미지 파일 경로는 내려주지 않고, 프론트가 아이콘/컴포넌트로 매핑할 시각 힌트만 제공한다.
 
 | Method | Path | 인증 | 설명 |
 | --- | --- | --- | --- |
-| GET | `/learning/stage1/cards` | 보호 | Stage 1 카드 쌍 목록 |
-| POST | `/learning/stage1/submit-card-check` | 보호 | Stage 1 답안 확인 |
-| GET | `/learning/stage2/problems` | 보호 | Stage 2 문제 + 답안 풀 |
-| POST | `/learning/stage2/submit-answer` | 보호 | Stage 2 답안 제출 |
+| GET | `/student/learning/stage1/cards` | 보호 | Stage 1 카드 쌍 목록 |
+| POST | `/student/learning/stage1/submit-card-check` | 보호 | Stage 1 답안 확인 |
+| GET | `/student/learning/stage2/problems` | 보호 | Stage 2 문제 + 답안 풀 |
+| POST | `/student/learning/stage2/submit-answer` | 보호 | Stage 2 답안 제출 |
 
 > 모든 답안 제출 결과는 `LearningRecord`에 저장되어 Agent의 약점 분석에 반영된다.
 
-### 4.1 `GET /learning/stage1/cards`
+### 4.1 `GET /student/learning/stage1/cards`
 **Response 200** (`Stage1CardsResponse`)
 ```json
 {
@@ -249,7 +249,7 @@ Stage 1 (카드 학습) · Stage 2 (드래그&드롭) 컨텐츠.
 ```
 - `word1`이 **항상** 맞춤법상 정답인 단어다.
 
-### 4.2 `POST /learning/stage1/submit-card-check`
+### 4.2 `POST /student/learning/stage1/submit-card-check`
 **Request** (`Stage1SubmitRequest`)
 ```json
 { "pair_id": "pair_1", "chosen_word": "가르치다" }
@@ -266,7 +266,7 @@ Stage 1 (카드 학습) · Stage 2 (드래그&드롭) 컨텐츠.
 ```
 **Errors**: `404` pair_id 없음.
 
-### 4.3 `GET /learning/stage2/problems`
+### 4.3 `GET /student/learning/stage2/problems`
 **Response 200** (`Stage2ProblemsResponse`)
 ```json
 {
@@ -281,9 +281,9 @@ Stage 1 (카드 학습) · Stage 2 (드래그&드롭) 컨텐츠.
   ]
 }
 ```
-- `correct_answer`와 `full_sentence`는 응답에 포함되지 않는다 (정답 노출 방지). 채점은 [`POST /learning/stage2/submit-answer`](#44-post-learningstage2submit-answer)가 담당하며 제출 시점에 둘 다 함께 돌려준다.
+- `correct_answer`와 `full_sentence`는 응답에 포함되지 않는다 (정답 노출 방지). 채점은 [`POST /student/learning/stage2/submit-answer`](#44-post-learningstage2submit-answer)가 담당하며 제출 시점에 둘 다 함께 돌려준다.
 
-### 4.4 `POST /learning/stage2/submit-answer`
+### 4.4 `POST /student/learning/stage2/submit-answer`
 **Request** (`Stage2SubmitRequest`)
 ```json
 { "problem_id": 1, "user_answer": "가르쳐" }
@@ -301,13 +301,13 @@ Stage 1 (카드 학습) · Stage 2 (드래그&드롭) 컨텐츠.
 ```
 **Errors**: `404` lesson 데이터 / problem_id 없음.
 
-## 5. 학습 기록 (`/learning/records`)
+## 5. 학습 기록 (`/student/learning/records`)
 
 | Method | Path | 인증 | 설명 |
 | --- | --- | --- | --- |
-| GET | `/learning/records/me` | 보호 | 본인 학습 기록 전체 |
+| GET | `/student/learning/records/me` | 보호 | 본인 학습 기록 전체 |
 
-### 5.1 `GET /learning/records/me`
+### 5.1 `GET /student/learning/records/me`
 **Response 200** (`LearningRecordsResponse`)
 ```json
 {
@@ -330,20 +330,20 @@ Stage 1 (카드 학습) · Stage 2 (드래그&드롭) 컨텐츠.
 
 ---
 
-## 6. Stage 3 (`/learning/stage3`)
+## 6. Stage 3 (`/student/learning/stage3`)
 
 Stage 3는 "순차 학습 → 틀린 문제만 순환 복습" 알고리즘으로 별도 진행도(`stage3_progress`)를 갖는다.
 모든 엔드포인트가 로그인 필수이며, 진행도는 로그인한 사용자의 `user_id` 별로 저장된다.
 
 | Method | Path | 인증 | 설명 |
 | --- | --- | --- | --- |
-| GET | `/learning/stage3/problems` | 보호 | 전체 문제 목록 (관리/디버그용) |
-| GET | `/learning/stage3/next-problem` | 보호 | 다음 출제할 문제 1건 |
-| POST | `/learning/stage3/submit-answer` | 보호 | 답안 제출 + 진행도 갱신 |
-| GET | `/learning/stage3/progress` | 보호 | 진행도 조회 |
-| POST | `/learning/stage3/reset-progress` | 보호 | 진행도 초기화 |
+| GET | `/student/learning/stage3/problems` | 보호 | 전체 문제 목록 (관리/디버그용) |
+| GET | `/student/learning/stage3/next-problem` | 보호 | 다음 출제할 문제 1건 |
+| POST | `/student/learning/stage3/submit-answer` | 보호 | 답안 제출 + 진행도 갱신 |
+| GET | `/student/learning/stage3/progress` | 보호 | 진행도 조회 |
+| POST | `/student/learning/stage3/reset-progress` | 보호 | 진행도 초기화 |
 
-### 6.1 `GET /learning/stage3/problems`
+### 6.1 `GET /student/learning/stage3/problems`
 **Response 200** (`Stage3ProblemsResponse`)
 ```json
 {
@@ -365,7 +365,7 @@ Stage 3는 "순차 학습 → 틀린 문제만 순환 복습" 알고리즘으로
 }
 ```
 
-### 6.2 `GET /learning/stage3/next-problem`
+### 6.2 `GET /student/learning/stage3/next-problem`
 **Response 200** (dict, 두 케이스)
 - 진행 중:
   ```json
@@ -391,7 +391,7 @@ Stage 3는 "순차 학습 → 틀린 문제만 순환 복습" 알고리즘으로
   2. **복습 학습**: 모든 문제 시도 후 틀린 문제만 순환 출제
   3. **완료**: 복습 문제까지 모두 정답 시 `is_completed: true`
 
-### 6.3 `POST /learning/stage3/submit-answer`
+### 6.3 `POST /student/learning/stage3/submit-answer`
 **Request** (`Stage3AnswerRequest`)
 ```json
 { "problem_id": 1, "user_answer": "돼" }
@@ -411,7 +411,7 @@ Stage 3는 "순차 학습 → 틀린 문제만 순환 복습" 알고리즘으로
 }
 ```
 
-### 6.4 `GET /learning/stage3/progress`
+### 6.4 `GET /student/learning/stage3/progress`
 **Response 200** (`Stage3ProgressResponse`)
 ```json
 {
@@ -430,7 +430,7 @@ Stage 3는 "순차 학습 → 틀린 문제만 순환 복습" 알고리즘으로
 }
 ```
 
-### 6.5 `POST /learning/stage3/reset-progress`
+### 6.5 `POST /student/learning/stage3/reset-progress`
 **Response 200**: `{ "success": true, "message": "진행도가 초기화되었습니다." }`
 
 ---

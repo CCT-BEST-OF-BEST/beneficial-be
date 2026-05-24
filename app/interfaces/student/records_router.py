@@ -6,7 +6,7 @@ from app.domains.learning.dependencies import get_learning_record_service
 from app.domains.learning.schemas import LearningRecordResponse, LearningRecordsResponse
 from app.domains.learning.service import LearningRecordService
 
-router = APIRouter(prefix="/learning/records", tags=["learning"])
+router = APIRouter(prefix="/student/learning/records", tags=["student-learning"])
 
 
 @router.get("/me", response_model=LearningRecordsResponse)

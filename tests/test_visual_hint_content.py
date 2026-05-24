@@ -1,5 +1,5 @@
-from app.domains.learning.content_router import _stage1_pair_response
-from app.domains.learning.stage3_service import Stage3Service
+from app.domains.learning.stages.stage3_service import Stage3Service
+from app.interfaces.student.learning_router import _stage1_pair_response
 
 
 def test_stage1_card_response_removes_image_paths():

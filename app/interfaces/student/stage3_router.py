@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException
 
 from app.common.logging.logging_config import get_logger
-from app.domains.learning.stage3_schemas import (
+from app.domains.learning.stages.stage3_schemas import (
     Stage3AnswerRequest,
     Stage3AnswerResponse,
     Stage3ProblemsResponse,
@@ -10,9 +10,9 @@ from app.domains.learning.stage3_schemas import (
 from app.domains.auth.dependencies import get_current_user
 from app.domains.auth.models import User
 from app.domains.learning.dependencies import get_learning_record_service
-from app.domains.learning.stage3_service import get_stage3_service
+from app.domains.learning.stages.stage3_service import get_stage3_service
 
-router = APIRouter(prefix="/learning/stage3", tags=["stage3"])
+router = APIRouter(prefix="/student/learning/stage3", tags=["student-learning"])
 logger = get_logger(__name__)
 
 

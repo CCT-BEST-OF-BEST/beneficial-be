@@ -19,7 +19,7 @@ from app.domains.learning.service import LearningRecordService
 from app.domains.auth.whitelist import is_answer_bypass_email
 from app.infrastructure.db.mongo.mongo_client import get_mongo_client
 
-router = APIRouter(prefix="/learning", tags=["learning"])
+router = APIRouter(prefix="/student/learning", tags=["student-learning"])
 logger = get_logger(__name__)
 
 
