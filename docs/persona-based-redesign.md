@@ -288,11 +288,12 @@ class LearningRecord(BaseModel):
 
 ## 10. 백엔드 도메인 재정렬 (DDD + 페르소나 분리)
 
-해커톤 이후 재단장이므로 페르소나(인터페이스)와 도메인(비즈니스 개념)을 **두 축으로 명확히 분리**한다. 라우터를 도메인 폴더에서 끄집어내 페르소나별 진입점으로 묶고, 도메인은 비즈니스 개념 단위로만 구성한다.
+해커톤 이후 재단장이므로 도메인(비즈니스 개념)을 최상위 기준으로 삼고, 각 도메인 안에 `controller / service / repository / domain model / dto`를 모은다. 페르소나는 별도 최상위 패키지로 분리하지 않고, 각 도메인의 `controller` 안에서 라우터 prefix와 DTO로 표현한다.
 
 ### 10.1 원칙
 - **도메인은 페르소나가 아니라 비즈니스 개념을 기준으로 나눈다.** `learning`이라는 한 도메인을 학생(쓰기)·교사(읽기)·개발자(집계)가 다른 권한·DTO로 접근한다. 도메인을 페르소나별로 복제하지 않는다.
-- **페르소나는 인터페이스(라우터) 계층에서만 분리한다.** `/student/*`, `/teacher/*`, `/admin/*`은 라우터 prefix이지 도메인이 아니다.
+- **HTTP controller도 해당 도메인 안에 둔다.** Java/Spring식 패키징처럼 `domains/learning/controller/*`, `domains/classroom/controller/*`에 라우터와 controller DTO를 배치한다.
+- **페르소나는 controller의 라우터 prefix로 표현한다.** `/student/*`, `/teacher/*`, `/admin/*`은 도메인이 아니라 외부 API prefix다.
 - **Repository 인터페이스 분리**로 도메인 서비스가 DB 구현에 직접 의존하지 않게 한다 (DIP). 테스트 가능성·인프라 교체 자유도 확보.
 - **페르소나별 응답 DTO 분리**로 같은 도메인 엔티티라도 노출 필드를 다르게 한다 (ISP). 학생 응답에 `wrong_count`가 아예 없으면 클라이언트가 그 필드에 접근할 길이 없음 → 사고 방지.
 
@@ -300,29 +301,39 @@ class LearningRecord(BaseModel):
 
 ```
 app/
-  domains/                          # 비즈니스 도메인 (페르소나 무관)
-    auth/                           # 계정·세션·화이트리스트
-    learning/                       # Stage 1·2·3 콘텐츠 + 학습기록 (현 stage3 흡수)
-    classroom/                      # 단원·차시·Class·교사-학생 매핑 (신규)
-    instruction/                    # 교사 assignment, 맞춤 문제 생성 (신규, Phase 2)
+  domains/
+    auth/
+      controller/
+      domain/
+      repository/
+      service/
+
+    learning/
+      controller/
+        content_catalog_router.py
+        student_learning_router.py
+        student_records_router.py
+        student_progress_router.py
+        student_stage3_router.py
+        dto/
+      domain/
+      content/
+      stages/
+      repository/
+      service/
+
+    classroom/
+      controller/
+        teacher_classroom_router.py
+        teacher_student_view_router.py
+        dto/
+      domain/
+      repository/
+      service/
+
+    instruction/                    # 교사 assignment, 맞춤 문제 생성 (Phase 2)
     agent/                          # 이로 챗봇, 약점 분석
-    system/                         # 시드, 인덱싱, 운영 (현 admin 리네임)
-
-  interfaces/                       # HTTP 진입점 (페르소나별)
-    student/
-      learning_router.py            # /student/learning/*
-      agent_router.py               # /student/agent/*
-      progress_router.py            # /student/me/progress
-    teacher/
-      classroom_router.py           # /teacher/classes/*
-      student_view_router.py        # /teacher/students/*
-      instruction_router.py         # /teacher/instruction/*  (Phase 2)
-    admin/
-      system_router.py              # /admin/*
-
-  shared/
-    dependencies.py                 # get_current_student / teacher / developer
-    exceptions.py
+    system/                         # 시드, 인덱싱, 운영
 
   main.py
 ```
@@ -331,6 +342,16 @@ app/
 
 ```
 domains/learning/
+  controller/
+    student_learning_router.py
+    student_stage3_router.py
+    student_records_router.py
+    student_progress_router.py
+    content_catalog_router.py
+    dto/
+      request.py
+      response.py
+
   models.py            # 엔티티: LearningRecord, StageProblem 등 (Pydantic 도메인 모델)
   repositories/
     base.py            # LearningRecordRepository 인터페이스 (Protocol 또는 ABC)
@@ -364,7 +385,7 @@ domains/learning/
 | 원칙 | 적용 |
 |---|---|
 | **SRP** | Router=HTTP·인증만, Service=도메인 로직, Repository=DB. 현 `Stage3Service`가 DB·로직·응답 조립을 다 하는데 분해 대상. |
-| **OCP** | 새 페르소나 view 추가 = `interfaces/<persona>/` 신설. 도메인 서비스 미수정. |
+| **OCP** | 새 페르소나 view 추가 = 해당 도메인의 `controller/*_router.py`와 DTO 추가. 도메인 서비스의 핵심 정책은 유지. |
 | **LSP** | Repository 인터페이스에 대해 MongoDB 구현·인메모리 fake 구현이 치환 가능. 테스트에서 fake로 갈아끼움. |
 | **ISP** | 페르소나별 DTO 분리로 노출 필드 차등. 응답 모델로 강제. |
 | **DIP** | Router → 서비스 abstraction → repository abstraction. 모두 FastAPI `Depends`로 주입. |
@@ -387,14 +408,14 @@ domains/learning/
 선후 의존 관계 중심. 일정은 명시하지 않는다 (재단장 모드).
 
 ### Phase 0 — 도메인 재정렬 (구조 베이스)
-**목표**: 후속 Phase가 올라탈 깨끗한 도메인·인터페이스 분리. 외부 API 경로는 유지하고, 내부 폴더·import·의존성 구조만 정리한다.
+**목표**: 후속 Phase가 올라탈 깨끗한 도메인 중심 패키지 구조를 만든다. 각 도메인 안에 controller/service/repository/model/dto를 모으고, 외부 API prefix는 controller에서 관리한다.
 
 | 작업 | 영역 |
 |---|---|
 | `User.role` Literal 확장 및 `"admin"` → `"developer"` 정규화 | 백엔드 |
 | `whitelist.py`에 `TEACHER_WHITELIST_EMAILS`/`DEVELOPER_WHITELIST_EMAILS`/`ANSWER_BYPASS_WHITELIST_EMAILS` 추가 | 백엔드 |
 | `shared/dependencies.py`에 `get_current_student|teacher|developer` 추가 | 백엔드 |
-| `domains/stage3`를 `domains/learning`에 흡수 (`stage3_router.py`, `stage3_service.py`, `stage3_schemas.py`) | 백엔드 |
+| `domains/stage3`를 `domains/learning`에 흡수 (`controller/student_stage3_router.py`, `stages/stage3_service.py`, `stages/stage3_schemas.py`) | 백엔드 |
 | 핵심 도메인부터 `repositories/base.py` + Mongo 구현 분리 (`learning`, `classroom`) | 백엔드 |
 | 학생/교사용 DTO 분리 (`schemas/student.py`, `schemas/teacher.py`) — 우선 progress/profile 응답부터 | 백엔드 |
 | `domains/admin` → `domains/system` 리네임 | 백엔드 |
@@ -404,7 +425,7 @@ domains/learning/
 
 | 작업 | 영역 |
 |---|---|
-| `interfaces/student|teacher|admin/` 디렉토리 신설, 라우터 추출 | 백엔드 |
+| 도메인 내부 `controller/` 디렉토리에 학생/교사/개발자 라우터 배치 | 백엔드 |
 | `/learning/*`, `/agent/*`, `/learning/stage3/*` → `/student/...` 경로 전환 | 백엔드/프론트 |
 | `/student/me/progress` 신설, 학생의 `/agent/profile/me` 접근 제거 | 백엔드/프론트 |
 | `/admin/*`에 `get_current_developer` 적용 | 백엔드 |

@@ -3,16 +3,16 @@ import os
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from app.domains.chat.router import router as chat_router
+from app.domains.classroom.controller.teacher_classroom_router import router as teacher_classroom_router
+from app.domains.classroom.controller.teacher_student_view_router import router as teacher_student_view_router
+from app.domains.learning.controller.content_catalog_router import router as content_catalog_router
+from app.domains.learning.controller.student_learning_router import router as student_learning_router
+from app.domains.learning.controller.student_progress_router import router as student_progress_router
+from app.domains.learning.controller.student_records_router import router as student_records_router
+from app.domains.learning.controller.student_stage3_router import router as student_stage3_router
 from app.domains.system.router import router as system_router
 from app.domains.auth.router import router as auth_router
 from app.domains.agent.router import router as agent_router
-from app.interfaces.content.catalog_router import router as content_catalog_router
-from app.interfaces.student.learning_router import router as student_learning_router
-from app.interfaces.student.progress_router import router as student_progress_router
-from app.interfaces.student.records_router import router as student_records_router
-from app.interfaces.student.stage3_router import router as student_stage3_router
-from app.interfaces.teacher.classroom_router import router as teacher_classroom_router
-from app.interfaces.teacher.student_view_router import router as teacher_student_view_router
 from app.common.init.initialization import get_initialization_service
 from app.common.logging.logging_config import get_logger
 
