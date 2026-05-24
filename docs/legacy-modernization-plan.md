@@ -221,7 +221,7 @@ app/domains/agent/repository.py  ← MongoDB CRUD
 app/domains/agent/service.py     ← ChatSessionService
 app/domains/agent/schemas.py     ← 업데이트 (AgentChatRequest/Response)
 app/domains/agent/router.py      ← 업데이트 (/agent/chat, /agent/session/*)
-tests/test_agent_session_service.py
+tests/agent/test_session_service.py
 ```
 
 추가할 모델:
@@ -386,7 +386,7 @@ manual/admin (POST /admin/*):
 | integration | OpenAI, 실제 Mongo, 실제 Chroma 호출 | `RUN_INTEGRATION_TESTS=1`일 때만 |
 
 다음 추가할 테스트:
-1. `tests/test_agent_session_service.py` — `ChatSessionService` CRUD
+1. `tests/agent/test_session_service.py` — `ChatSessionService` CRUD
 2. `tests/test_agent_decision.py` — `AgentDecision` 판단 로직
 3. `tests/test_stage3_user_progress.py` — user_id 기준 진행도 격리
 
