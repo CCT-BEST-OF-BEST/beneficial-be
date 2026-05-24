@@ -104,6 +104,7 @@ class Stage3Service:
                 user_id=user_id,
                 stage=3,
                 question_id=f"stage3_problem_{problem_id}",
+                problem_id=problem_id,
                 user_answer=user_answer,
                 correct_answer=problem["correct_answer"],
                 is_correct=is_correct,

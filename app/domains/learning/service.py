@@ -70,16 +70,38 @@ class LearningRecordService:
         is_correct: bool,
         concept_key: Optional[str] = None,
         temp_user_id: Optional[str] = None,
+        class_id: Optional[str] = None,
+        unit_id: Optional[str] = None,
+        lesson_id: Optional[str] = None,
+        problem_id: str | int | None = None,
+        problem_key: Optional[str] = None,
+        source: str = "base",
+        assignment_id: Optional[str] = None,
     ) -> LearningRecord:
+        lesson_id = lesson_id or infer_lesson_id(stage, problem_id or question_id)
+        unit_id = unit_id or ("unit_1" if lesson_id else None)
+        problem_key = problem_key or build_problem_key(
+            stage=stage,
+            lesson_id=lesson_id,
+            problem_id=problem_id or question_id,
+        )
         record = LearningRecord(
             user_id=user_id,
             temp_user_id=temp_user_id,
+            class_id=class_id,
+            unit_id=unit_id,
+            lesson_id=lesson_id,
             stage=stage,
             question_id=question_id,
+            problem_key=problem_key,
+            problem_id=problem_id,
             concept_key=concept_key or resolve_concept_key(correct_answer, user_answer),
             user_answer=user_answer,
             correct_answer=correct_answer,
             is_correct=is_correct,
+            attempt_no=self._next_attempt_no(user_id=user_id, problem_key=problem_key),
+            source=source,
+            assignment_id=assignment_id,
         )
         self.repository.create_record(
             record.model_dump() if hasattr(record, "model_dump") else record.dict()
@@ -182,6 +204,8 @@ class LearningRecordService:
                 user_id=user_id,
                 stage=1,
                 question_id=f"stage1_{pair_id}",
+                lesson_id=infer_lesson_id(1, pair_id),
+                problem_id=pair_id,
                 user_answer=chosen_word,
                 correct_answer=correct_word,
                 is_correct=is_correct,
@@ -207,12 +231,25 @@ class LearningRecordService:
                 user_id=user_id,
                 stage=2,
                 question_id=f"stage2_problem_{problem_id}",
+                lesson_id=infer_lesson_id(2, problem_id),
+                problem_id=problem_id,
                 user_answer=user_answer,
                 correct_answer=correct_answer,
                 is_correct=is_correct,
                 concept_key=concept_key,
             )
         return is_correct, concept_key
+
+    def _next_attempt_no(self, user_id: str, problem_key: str | None) -> int:
+        if not problem_key:
+            return 1
+        records = self.repository.find_records_by_user(user_id)
+        previous_attempts = sum(
+            1
+            for record in records
+            if record.get("problem_key") == problem_key
+        )
+        return previous_attempts + 1
 
 
 def resolve_concept_key(correct_answer: str, user_answer: str | None = None) -> str:
@@ -223,6 +260,47 @@ def resolve_concept_key(correct_answer: str, user_answer: str | None = None) -> 
         or CONCEPT_KEY_BY_ANSWER.get(submitted)
         or correct
     )
+
+
+def build_problem_key(
+    stage: int,
+    lesson_id: str | None,
+    problem_id: str | int | None,
+) -> str | None:
+    if lesson_id is None or problem_id is None:
+        return None
+    return f"stage{stage}:{lesson_id}:{problem_id}"
+
+
+def infer_lesson_id(stage: int, problem_id: str | int | None) -> str | None:
+    if problem_id is None:
+        return None
+
+    if stage == 1:
+        pair_no = _extract_last_int(problem_id)
+        if pair_no is None:
+            return None
+        return f"lesson_{((pair_no - 1) // 2) + 1}"
+
+    numeric_problem_id = _extract_last_int(problem_id)
+    if numeric_problem_id is None:
+        return None
+
+    if stage == 2:
+        return f"lesson_{((numeric_problem_id - 1) // 4) + 1}"
+    if stage == 3:
+        return f"lesson_{((numeric_problem_id - 1) // 5) + 1}"
+    return None
+
+
+def _extract_last_int(value: str | int) -> int | None:
+    if isinstance(value, int):
+        return value
+    parts = str(value).split("_")
+    for part in reversed(parts):
+        if part.isdigit():
+            return int(part)
+    return None
 
 
 def _calculate_priority(wrong_count: int) -> float:

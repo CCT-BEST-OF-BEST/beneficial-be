@@ -1,6 +1,11 @@
 from datetime import datetime, timedelta, timezone
 
-from app.domains.learning.service import LearningRecordService, resolve_concept_key
+from app.domains.learning.service import (
+    LearningRecordService,
+    build_problem_key,
+    infer_lesson_id,
+    resolve_concept_key,
+)
 
 
 class FakeLearningRecordRepository:
@@ -33,6 +38,11 @@ def test_record_answer_stores_agent_readable_fields():
     assert record.user_answer == "되"
     assert record.correct_answer == "돼"
     assert repository.records[0]["is_correct"] is False
+    assert repository.records[0]["lesson_id"] == "lesson_4"
+    assert repository.records[0]["unit_id"] == "unit_1"
+    assert repository.records[0]["problem_key"] == "stage3:lesson_4:stage3_problem_16"
+    assert repository.records[0]["attempt_no"] == 1
+    assert repository.records[0]["source"] == "base"
 
 
 def test_weakness_profile_groups_wrong_answers_by_concept():
@@ -135,6 +145,9 @@ def test_record_stage1_card_check_correct_saves_record():
     record = repository.records[0]
     assert record["stage"] == 1
     assert record["question_id"] == "stage1_pair_1"
+    assert record["lesson_id"] == "lesson_1"
+    assert record["problem_id"] == "pair_1"
+    assert record["problem_key"] == "stage1:lesson_1:pair_1"
     assert record["is_correct"] is True
     assert record["concept_key"] == "가르치다/가르키다"
 
@@ -188,7 +201,44 @@ def test_record_stage2_answer_correct_saves_record():
     record = repository.records[0]
     assert record["stage"] == 2
     assert record["question_id"] == "stage2_problem_1"
+    assert record["lesson_id"] == "lesson_1"
+    assert record["problem_id"] == 1
+    assert record["problem_key"] == "stage2:lesson_1:1"
     assert record["is_correct"] is True
+
+
+def test_record_answer_increments_attempt_no_per_problem_key():
+    repository = FakeLearningRecordRepository()
+    service = LearningRecordService(repository)
+
+    first = service.record_answer(
+        user_id="user_123",
+        stage=2,
+        question_id="stage2_problem_1",
+        problem_id=1,
+        user_answer="가르켜",
+        correct_answer="가르쳐",
+        is_correct=False,
+    )
+    second = service.record_answer(
+        user_id="user_123",
+        stage=2,
+        question_id="stage2_problem_1",
+        problem_id=1,
+        user_answer="가르쳐",
+        correct_answer="가르쳐",
+        is_correct=True,
+    )
+
+    assert first.attempt_no == 1
+    assert second.attempt_no == 2
+
+
+def test_learning_record_key_helpers_map_existing_content_ranges():
+    assert infer_lesson_id(1, "pair_3") == "lesson_2"
+    assert infer_lesson_id(2, 13) == "lesson_4"
+    assert infer_lesson_id(3, 21) == "lesson_5"
+    assert build_problem_key(2, "lesson_1", 1) == "stage2:lesson_1:1"
 
 
 def test_record_stage2_answer_wrong_creates_weak_concept():

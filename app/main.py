@@ -6,6 +6,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from app.domains.chat.router import router as chat_router
 from app.domains.system.router import router as system_router
 from app.domains.learning.content_router import router as learning_router
+from app.domains.learning.content_tree_router import router as content_tree_router
 from app.domains.learning.stage3_router import router as stage3_router
 from app.domains.auth.router import router as auth_router
 from app.domains.agent.router import router as agent_router
@@ -171,6 +172,7 @@ app.include_router(auth_router)
 app.include_router(agent_router)
 app.include_router(chat_router)
 app.include_router(learning_router)
+app.include_router(content_tree_router)
 app.include_router(learning_records_router)
 app.include_router(stage3_router)
 app.include_router(student_progress_router)

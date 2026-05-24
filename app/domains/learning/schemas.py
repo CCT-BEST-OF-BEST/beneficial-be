@@ -6,12 +6,20 @@ from pydantic import BaseModel, Field
 class LearningRecordResponse(BaseModel):
     user_id: str
     temp_user_id: str | None = None
+    class_id: str | None = None
+    unit_id: str | None = None
+    lesson_id: str | None = None
     stage: int
     question_id: str
+    problem_key: str | None = None
+    problem_id: str | int | None = None
     concept_key: str
     user_answer: str
     correct_answer: str
     is_correct: bool
+    attempt_no: int = 1
+    source: str = "base"
+    assignment_id: str | None = None
     created_at: datetime
 
 
