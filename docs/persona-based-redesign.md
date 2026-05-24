@@ -474,21 +474,135 @@ domains/learning/
 
 ---
 
-## 12. 합의가 필요한 것
+## 12. 2026-05-24 작업 기록 및 다음 작업
+
+### 12.1 오늘 정리한 방향
+
+- 최상위 `interfaces/` 분리 방식은 중단하고, Java/Spring식에 가까운 **도메인 내부 패키징**으로 방향을 확정했다.
+- HTTP 라우터는 각 도메인의 `controller/` 아래에 둔다.
+- 도메인은 비즈니스 개념 기준으로 유지한다: `auth`, `learning`, `classroom`, `agent`, `rag`, `system`.
+- 페르소나는 도메인을 나누는 기준이 아니라 controller prefix와 DTO 노출 정책으로 표현한다.
+
+### 12.2 오늘 완료한 백엔드 작업
+
+- 역할 모델을 `student | teacher | developer`로 정리하고, 기존 `admin`은 `developer`로 정규화했다.
+- whitelist를 권한용(`TEACHER`, `DEVELOPER`)과 Stage 2 답안 우회용(`ANSWER_BYPASS`)으로 분리했다.
+- `domains/admin`을 `domains/system`으로 정리하고 `/admin/*`는 developer 권한으로 보호했다.
+- Stage 3를 `learning` 도메인으로 흡수하고, 현재는 `domains/learning/stages/` 아래에 배치했다.
+- 학생용 `GET /student/me/progress`를 추가하고, 학생의 `/agent/profile/me` 접근은 차단했다.
+- `classroom` 도메인을 추가해 `classes` 컬렉션 기반 교사-학생 매핑을 표현했다.
+- 교사용 읽기 API를 추가했다:
+  - `GET /teacher/classes`
+  - `GET /teacher/classes/{class_id}/students`
+  - `GET /teacher/students/{user_id}/profile`
+  - `GET /teacher/students/{user_id}/records`
+- `units` / `lessons` 콘텐츠 계층과 조회 API를 추가했다.
+- `learning_records` 신규 기록에 `unit_id`, `lesson_id`, `problem_key`, `problem_id`, `attempt_no`, `source`, `assignment_id`, `class_id`를 저장하도록 확장했다.
+- Stage 1/3의 이미지 파일 의존을 제거하고 `visual_hint`, `color_theme`, `accent_color` 기반 응답으로 바꿨다.
+- `/images` static mount와 `/learning/images/{filename}` 이미지 서빙 엔드포인트를 제거했다.
+- 학생 학습 API prefix를 `/student/learning/*`로 전환했다.
+- 테스트 파일을 도메인별 디렉토리로 재구성했다:
+  - `tests/auth`
+  - `tests/learning`
+  - `tests/classroom`
+  - `tests/agent`
+  - `tests/rag`
+  - `tests/system`
+  - `tests/structure`
+  - `tests/integration`
+
+### 12.3 현재 주요 디렉토리 기준
+
+```text
+app/domains/learning/
+  controller/
+  content/
+  stages/
+  repositories/
+  models.py
+  schemas.py
+  service.py
+
+app/domains/classroom/
+  controller/
+    dto/
+  repositories/
+  models.py
+  service.py
+
+tests/
+  agent/
+  auth/
+  chat/
+  classroom/
+  integration/
+  learning/
+  rag/
+  structure/
+  system/
+```
+
+### 12.4 검증 상태
+
+- 도메인/라우터/서비스 중심 targeted suite: `52 passed`
+- 라우트 prefix 확인: `/student/learning/*` 등록, 기존 `/learning/stage*` 미등록 확인
+- 전체 `pytest -q`: `62 passed, 7 failed, 3 skipped`
+- 전체 실패 7건은 현재 작업과 별개로 남아 있는 환경/테스트 이슈:
+  - `langgraph` 미설치
+  - async 테스트 플러그인 인식 문제
+
+### 12.5 다음에 이어서 할 작업
+
+1. **현재 변경분을 의미 단위로 커밋**
+   - 권장 커밋:
+     - `refactor: 도메인 내부 controller 구조로 라우터 재배치`
+     - `test: 테스트 파일을 도메인별 디렉토리로 재구성`
+     - `refactor(learning): 이미지 파일 의존 제거 및 콘텐츠 구조 정리`
+
+2. **남은 루트 파일 정리**
+   - `domains/learning/service.py`를 `domains/learning/service/record_service.py`로 이동할지 결정
+   - `domains/learning/schemas.py`, `student_schemas.py`를 controller DTO와 domain schema로 분리
+   - `domains/learning/models.py`를 `domain/models.py`로 옮길지 결정
+   - `classroom/models.py`, `classroom/service.py`도 Java식 구조에 맞춰 `domain/`, `service/` 하위로 정리할지 결정
+
+3. **콘텐츠 데이터 구조 Phase 1 마무리**
+   - Stage 1/2/3 데이터를 실제 `lesson_id` 기준 도큐먼트로 재구성
+   - `lesson_1` 등 신규 lesson id와 기존 `lesson1` 호환 정리
+   - `stage3_progress`를 `user_id + lesson_id` 기준으로 재설계
+   - `lesson_progress` 또는 `stage_progress` 컬렉션 설계 확정
+
+4. **교사/학생 데이터 연결 보강**
+   - `classes` 시드 로더 추가
+   - 테스트용 교사 1명, 반 1개, 학생 몇 명을 초기 데이터로 넣을지 결정
+   - `learning_records.class_id`를 기록 시점에 실제 class에서 denormalize할지 구현
+
+5. **Agent 테스트 환경 이슈 해결**
+   - `langgraph` 의존성 설치 또는 테스트 stub 전략 결정
+   - async 테스트 플러그인 설정 정리
+   - 전체 `pytest -q`를 green으로 만드는 별도 작업 필요
+
+6. **Phase 2 준비**
+   - `instruction` 도메인 신설
+   - `teacher_assignments` 모델/repository/service 설계
+   - LLM 문제 생성 API는 `draft -> assigned -> completed/cancelled` 흐름으로 구현
+
+---
+
+## 13. 합의가 필요한 것
 
 이 문서를 코드 작업으로 옮기기 전에 결정할 항목:
 
-### 12.1 명명·경로
+### 13.1 명명·경로
 1. **`role` 이름**: `"admin"`을 `"developer"`로 리네임한다.
 2. **`domains/admin` 폴더명**: `system`으로 리네임한다.
 3. **인터페이스 prefix**: Phase 0.5에서 `/student/learning/*` 식으로 페르소나 prefix를 강제한다.
 
-### 12.2 도메인 분리 깊이
+### 13.2 도메인 분리 깊이
 4. **Repository 인터페이스 분리**: 우선 `learning`, `classroom`, `instruction` 핵심 도메인에 적용한다. 단순 system 작업은 과도하게 분리하지 않는다.
-5. **`interfaces/` 추출 시점**: 내부 구조 정리 후 Phase 0.5에서 API prefix 전환과 함께 진행한다.
+5. **controller 배치 방식**: 최상위 `interfaces/`는 두지 않고, 각 도메인 내부 `controller/`에 라우터를 둔다.
 6. **Use Case 서비스 도입 여부**: `/teacher/students/{id}/profile`처럼 다중 도메인 조합 엔드포인트에는 use case 레이어를 둔다. 단순 단일 도메인 호출은 라우터에서 직접 서비스를 호출한다.
 
-### 12.3 페르소나·콘텐츠
+### 13.3 페르소나·콘텐츠
 7. **학생용 진척도 응답 분리**: 새 엔드포인트 `GET /student/me/progress`를 추가한다. 기존 `/agent/profile/me`는 학생에게 제공하지 않는다.
 8. **콘텐츠 구조**: stage 데이터는 차시별 도큐먼트로 쪼갠다. 전역 식별이 필요하면 `problem_key`를 사용한다.
 9. **AI 생성 문제**: `draft` → 교사 승인 → `assigned` 흐름으로 간다.
