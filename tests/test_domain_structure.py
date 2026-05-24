@@ -5,9 +5,9 @@ def test_domain_packages_are_importable():
     modules = [
         "app.common.security",
         "app.domains",
-        "app.domains.admin",
-        "app.domains.admin.indexing_service",
-        "app.domains.admin.router",
+        "app.domains.system",
+        "app.domains.system.indexing_service",
+        "app.domains.system.router",
         "app.domains.auth",
         "app.domains.auth.models",
         "app.domains.auth.repository",

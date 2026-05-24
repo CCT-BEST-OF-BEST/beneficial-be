@@ -29,9 +29,10 @@
 
 ### 2.1 권한 모델
 
-- `User.role` Literal을 `"student" | "teacher" | "developer"`로 확장. 기존 `"admin"`은 `"developer"`로 의미가 바뀐 셈이지만, 마이그레이션 부담을 피하려면 `"admin"` 키워드를 유지하고 의미만 "개발자/운영자"로 재정의해도 무방.
-- 역할 부여는 [현행 화이트리스트 패턴](../app/domains/auth/whitelist.py)을 확장: `TEACHER_WHITELIST_EMAILS`, `DEVELOPER_WHITELIST_EMAILS`(또는 `ADMIN_WHITELIST_EMAILS`). DB 마이그레이션 없이 이메일 기반 자동 승격.
-- 학생-교사 매핑은 새 컬렉션 `classes`로 표현: `{class_id, name, teacher_id, student_ids[]}`.
+- `User.role` Literal은 `"student" | "teacher" | "developer"`로 정리한다. 기존 `"admin"`은 재단장 과정에서 `"developer"`로 리네임한다.
+- 역할 부여는 [현행 화이트리스트 패턴](../app/domains/auth/whitelist.py)을 확장: `TEACHER_WHITELIST_EMAILS`, `DEVELOPER_WHITELIST_EMAILS`. DB 문서의 기존 `"admin"` 값은 마이그레이션 시 `"developer"`로 치환하거나, 인증 서비스에서 과도기적으로 `"admin"` → `"developer"`로 정규화한다.
+- 학생-교사 매핑은 Phase 1 MVP에서는 새 컬렉션 `classes`로 표현한다: `{class_id, name, teacher_id, student_ids[]}`.
+- 여러 반 소속, 전학/반 이동 이력, 기간별 담당 교사 같은 요구가 생기면 `class_memberships` 컬렉션으로 분리한다. 이 문서의 1차 구현 범위에는 포함하지 않는다.
 
 ---
 
@@ -73,8 +74,9 @@
 #### 4.2.3 AI 맞춤 문제 생성·배정 (Phase 2)
 - **약점 기반 문제 생성**: `POST /teacher/students/{user_id}/generate-problems`
   - 요청: `{concept_key, count, difficulty?}`
-  - 동작: 학생 약점 1개를 골라 LLM(gpt-4o)에게 같은 패턴의 새 예문 N개 생성 요청 → `teacher_assignments` 컬렉션에 저장 → 학생 큐에 진입
-  - 응답: 생성된 문제 미리보기
+  - 동작: 학생 약점 1개를 골라 LLM(gpt-4o)에게 같은 패턴의 새 예문 N개 생성 요청 → 서버 검증 → `teacher_assignments`에 `draft` 상태로 저장 → 교사 승인 시 `assigned`로 변경 → 학생 큐에 진입
+  - 응답: 생성된 문제 미리보기 + 검증 결과
+  - 검증: `concept_key` 허용 목록, 정답/빈칸 일치, 중복 문제 여부, 학생용 설명 난이도, JSON 스키마 유효성.
 - **반 전체 일괄 생성**: `POST /teacher/classes/{class_id}/generate-problems` — 반 공통 약점 기준 일괄.
 - **배정 회수/수정**: `DELETE /teacher/assignments/{assignment_id}`, `PATCH .../status`.
 
@@ -82,7 +84,7 @@
 - **반 공통 약점 집계**: `GET /teacher/classes/{class_id}/summary` — concept_key별 반 전체 wrong_count 합계, 참여율, 평균 진도.
 
 ### 4.3 권한 가드
-`get_current_teacher` 의존성: role이 `teacher` 또는 `developer`(admin)일 때 통과. 학생 조회 시 본인 담당 반에 속한 학생인지 검증(developer는 우회).
+`get_current_teacher` 의존성: role이 `teacher` 또는 `developer`일 때 통과. 학생 조회 시 본인 담당 반에 속한 학생인지 검증(developer는 우회).
 
 ---
 
@@ -101,9 +103,10 @@
 - "이로의 설명" 통로. 오답일 때 학생 입력을 메시지에 포함시켜 맞춤 피드백 생성 (이미 적용됨).
 
 #### 5.2.3 본인 진척도
-- **변경**: 기존 `/agent/profile/me`(약점 노출)는 학생용에서 제거하거나 응답 형태를 바꿈.
+- **변경**: 기존 `/agent/profile/me`(약점 노출)는 학생용에서 제거한다.
 - 학생용 진척도는 **긍정 지표만**: 오늘 푼 문제 수, 연속 정답, 획득 뱃지, 진도율(%). 정량적 wrong_count는 빠짐.
-- 엔드포인트 후보: `GET /student/me/progress` 또는 기존 `/agent/profile/me`를 학생 응답에서 필터링.
+- 새 엔드포인트: `GET /student/me/progress`.
+- 교사용 약점 데이터는 `GET /teacher/students/{user_id}/profile`에서만 제공한다. 같은 URL이 role에 따라 다른 의미의 응답을 내지 않도록 한다.
 
 ### 5.3 권한 가드
 모든 학생 엔드포인트는 본인 데이터에만 접근. 교사·개발자는 별도 경로(`/teacher/...`)로 접근.
@@ -123,7 +126,7 @@
 - **신규 추가 후보**: 트레이스 로그 조회, 사용량 통계, 에이전트 호출 모니터링 (Phase 3)
 
 ### 6.3 권한 가드
-운영 환경에서는 미인증 상태인 `/admin/*`에 [api-spec.md §1.4 비고](./api-spec.md)대로 인증을 적용. role이 `developer`(admin)인 경우만.
+운영 환경에서는 미인증 상태인 `/admin/*`에 [api-spec.md §1.4 비고](./api-spec.md)대로 인증을 적용. role이 `developer`인 경우만 통과한다.
 
 ---
 
@@ -149,9 +152,10 @@
 | 항목 | 변경 |
 |---|---|
 | 컬렉션 신설 | `units` (`unit_id, name, order, lesson_ids[]`), `lessons` (`lesson_id, unit_id, name, order, concept_keys[]`) |
-| 기존 `stage1_cards`/`stage2_problems`/`stage3_problems` | 각 도큐먼트에 `lesson_id` 필드 추가하여 차시에 귀속시킴 |
+| 기존 `stage1_cards`/`stage2_problems`/`stage3_problems` | **차시별 도큐먼트로 분리**. 예: `stage2_lesson_1`, `stage2_lesson_2`, `stage3_lesson_1`. 각 도큐먼트는 하나의 `lesson_id`만 가진다. |
+| 문제 식별자 | 차시 안에서는 `problem_id: 1..N` 허용. 전역 식별이 필요할 때는 `problem_key = "{stage}:{lesson_id}:{problem_id}"` 사용. |
 | 콘텐츠 조회 API | `GET /content/units`, `GET /content/lessons/{lesson_id}` 같은 콘텐츠 트리 조회 추가 |
-| 학생 진척도 | `Stage3Progress` 등에 `lesson_id`별 진척도 분리 |
+| 학생 진척도 | `Stage3Progress`는 `user_id + lesson_id` 기준으로 분리. `completed_problems`/`review_problems`는 해당 lesson 내부의 `problem_id`만 담는다. |
 
 ### 7.2 현재 콘텐츠 상태와 확장 전제
 - **현재 적재된 콘텐츠**: 약 2단원분 (해커톤 시연 시점에 채워 넣은 분량). 평면 구조로 흩어져 있어 단원·차시 계층 모델로 재정렬 필요.
@@ -168,7 +172,9 @@
 - AI로 이미지 생성도 가능하지만 한 장당 수십 초~분, 일관된 화풍 유지도 어려움.
 
 #### 7.3.2 재설계 방향
-백엔드는 **콘텐츠의 의미 데이터만** 제공하고, 프론트가 디자인 시스템(컴포넌트, 디자인 토큰, 아이콘 라이브러리)으로 시각 표현을 책임진다. 이미지 파일을 더 만들지 않는다.
+백엔드는 **콘텐츠의 의미 데이터와 시각 힌트 키만** 제공하고, 프론트가 디자인 시스템(컴포넌트, 디자인 토큰, 아이콘 라이브러리)으로 시각 표현을 책임진다. 이미지 파일을 더 만들지 않는다.
+
+즉 재단장 후 학생 학습 API는 PNG/JPG 파일 경로나 `/learning/images/...` URL을 넘기지 않는다. 백엔드는 `visual_hint`, `icon`, `accent_color` 같은 키만 내려주고, 프론트가 해당 키를 실제 아이콘·색·일러스트 컴포넌트로 매핑한다.
 
 #### 7.3.3 새 데이터 스키마 (제안)
 
@@ -211,33 +217,85 @@ class Stage3VisualHint(BaseModel):
 
 ---
 
-## 8. 데이터 모델 변경 요약
+## 8. 학습 기록과 진척도 데이터 분리
+
+현재 `learning_records`는 학생이 답을 제출할 때마다 쌓이는 **시도 이벤트 로그**에 가깝다. 같은 학생이 같은 문제를 여러 번 풀면 여러 문서가 생기는 것이 정상이다. 이 컬렉션을 "현재 진도 상태"로 직접 쓰면 중복 시도, 복습 시도, 차시 이동이 섞여 해석이 어려워진다.
+
+### 8.1 역할 분리
+
+| 데이터 | 역할 | 예시 |
+|---|---|---|
+| `learning_records` | 모든 풀이 시도를 시간순으로 보존하는 append-only 로그 | 교사용 타임라인, 약점 집계, 최근 활동 |
+| `stage_progress` 또는 `lesson_progress` | 학생의 현재 진척도 상태 | 완료 문제, 복습 큐, 진도율, 연속 정답 |
+| `teacher_assignments` | 교사가 배정한 문제 큐와 상태 | draft, assigned, completed, cancelled |
+
+### 8.2 `learning_records` 권장 스키마
+
+```python
+class LearningRecord(BaseModel):
+    record_id: str
+    user_id: str
+    class_id: str | None
+    unit_id: str | None
+    lesson_id: str
+    stage: Literal[1, 2, 3]
+    problem_key: str              # 예: "stage1:lesson_1:pair_1"
+    problem_id: str | int         # lesson 내부 ID. 기존 호환을 위해 보관 가능
+    concept_key: str
+    user_answer: str
+    correct_answer: str
+    is_correct: bool
+    attempt_no: int               # 같은 user_id + problem_key 기준 N번째 시도
+    source: Literal["base", "assignment"]
+    assignment_id: str | None
+    created_at: datetime
+```
+
+### 8.3 인덱스와 조회
+
+- 교사 타임라인: `{user_id: 1, created_at: -1}`
+- 약점 집계: `{user_id: 1, concept_key: 1, is_correct: 1, created_at: -1}`
+- 문제별 재시도 분석: `{user_id: 1, problem_key: 1, attempt_no: 1}`
+- 반 집계가 필요하면 `class_id`를 기록 시점에 denormalize한다. 학생이 나중에 다른 반으로 이동해도 과거 기록의 소속 반을 보존할 수 있다.
+
+### 8.4 설계 원칙
+
+- `learning_records`는 수정하지 않고 계속 쌓는다. 오답을 나중에 정답으로 맞혀도 과거 오답 기록은 남긴다.
+- 학생에게 보여줄 진척도는 `learning_records` 원본이 아니라 progress 컬렉션에서 만든 긍정 지표 DTO만 사용한다.
+- 교사용 약점 프로파일은 `learning_records`를 집계해 만든다. 같은 문제를 반복해서 틀린 것을 약점으로 볼지, 문제별 최신 시도만 볼지는 서비스 정책으로 분리한다.
+- 기존 `temp_user_id`는 레거시 호환 필드로만 유지하고, 재단장 이후 신규 기록에서는 사용하지 않는다.
+
+---
+
+## 9. 데이터 모델 변경 요약
 
 | 변경 | 종류 | 우선순위 |
 |---|---|---|
-| `User.role` Literal에 `"teacher"` 추가 (`"admin"` → 의미를 "developer"로 재정의) | 스키마 확장 | Phase 1 |
+| `User.role` Literal을 `"student" | "teacher" | "developer"`로 정리 (`"admin"` → `"developer"` 마이그레이션) | 스키마 확장 | Phase 0 |
 | `Class` 컬렉션 신설 (`class_id, name, teacher_id, student_ids[], created_at, updated_at`) | 신규 컬렉션 | Phase 1 |
-| `whitelist.py`에 `TEACHER_WHITELIST_EMAILS` 추가 | 상수 | Phase 1 |
+| `whitelist.py`에 `TEACHER_WHITELIST_EMAILS`, `DEVELOPER_WHITELIST_EMAILS` 추가 | 상수 | Phase 0 |
 | `units` / `lessons` 컬렉션 신설 — 단원·차시 계층 명시화 (`unit_id`, `lesson_id` 도입) | 신규 컬렉션 | Phase 1 |
-| 기존 `stage1_cards`/`stage2_problems`/`stage3_problems` 도큐먼트에 `lesson_id` 필드 추가 | 스키마 확장 | Phase 1 |
+| 기존 `stage1_cards`/`stage2_problems`/`stage3_problems`를 차시별 도큐먼트로 재구성 | 파괴적 변경 | Phase 1 |
+| `stage_progress`/`lesson_progress`를 `user_id + lesson_id` 기준으로 재설계 | 파괴적 변경 | Phase 1 |
+| `learning_records`에 `unit_id`, `lesson_id`, `problem_key`, `attempt_no`, `source`, `assignment_id` 추가 | 스키마 확장 | Phase 1 |
 | Stage 1 `card1.front_image`/`back_image` 제거, `CardContent` 스키마로 교체 | **파괴적 변경** (로더 + 라우터 + 프론트 동시 작업) | Phase 1 또는 별도 트랙 |
 | Stage 3 problem의 `image` 필드 제거, `Stage3VisualHint`로 교체 | **파괴적 변경** | Phase 1 또는 별도 트랙 |
-| `teacher_assignments` 컬렉션 신설 (`assignment_id, teacher_id, student_id, concept_key, problems[], created_at, status`) | 신규 컬렉션 | Phase 2 |
+| `teacher_assignments` 컬렉션 신설 (`assignment_id, teacher_id, student_id, concept_key, problems[], status, created_at`) | 신규 컬렉션 | Phase 2 |
 | Stage 3 `get_next_problem`이 `teacher_assignments` 큐를 우선 조회 | 로직 확장 | Phase 2 |
 
 ---
 
-## 9. 백엔드 도메인 재정렬 (DDD + 페르소나 분리)
+## 10. 백엔드 도메인 재정렬 (DDD + 페르소나 분리)
 
 해커톤 이후 재단장이므로 페르소나(인터페이스)와 도메인(비즈니스 개념)을 **두 축으로 명확히 분리**한다. 라우터를 도메인 폴더에서 끄집어내 페르소나별 진입점으로 묶고, 도메인은 비즈니스 개념 단위로만 구성한다.
 
-### 9.1 원칙
+### 10.1 원칙
 - **도메인은 페르소나가 아니라 비즈니스 개념을 기준으로 나눈다.** `learning`이라는 한 도메인을 학생(쓰기)·교사(읽기)·개발자(집계)가 다른 권한·DTO로 접근한다. 도메인을 페르소나별로 복제하지 않는다.
 - **페르소나는 인터페이스(라우터) 계층에서만 분리한다.** `/student/*`, `/teacher/*`, `/admin/*`은 라우터 prefix이지 도메인이 아니다.
 - **Repository 인터페이스 분리**로 도메인 서비스가 DB 구현에 직접 의존하지 않게 한다 (DIP). 테스트 가능성·인프라 교체 자유도 확보.
 - **페르소나별 응답 DTO 분리**로 같은 도메인 엔티티라도 노출 필드를 다르게 한다 (ISP). 학생 응답에 `wrong_count`가 아예 없으면 클라이언트가 그 필드에 접근할 길이 없음 → 사고 방지.
 
-### 9.2 새 디렉토리 구조
+### 10.2 새 디렉토리 구조
 
 ```
 app/
@@ -268,7 +326,7 @@ app/
   main.py
 ```
 
-### 9.3 도메인 내부 구조 (예: `learning`)
+### 10.3 도메인 내부 구조 (예: `learning`)
 
 ```
 domains/learning/
@@ -285,7 +343,7 @@ domains/learning/
     teacher.py         # 교사용 응답 (raw counts 포함)
 ```
 
-### 9.4 prefix 매핑
+### 10.4 prefix 매핑
 
 | prefix | 페르소나 | 호출하는 도메인 |
 |---|---|---|
@@ -300,7 +358,7 @@ domains/learning/
 
 기존 `/learning/*`, `/agent/*`, `/learning/stage3/*` 는 `/student/...`로 통합 리네임 (재단장이므로 호환성 부담 없음).
 
-### 9.5 SOLID 매핑 요약
+### 10.5 SOLID 매핑 요약
 
 | 원칙 | 적용 |
 |---|---|
@@ -310,49 +368,59 @@ domains/learning/
 | **ISP** | 페르소나별 DTO 분리로 노출 필드 차등. 응답 모델로 강제. |
 | **DIP** | Router → 서비스 abstraction → repository abstraction. 모두 FastAPI `Depends`로 주입. |
 
-### 9.6 도입할 디자인 패턴 (적정선)
+### 10.6 도입할 디자인 패턴 (적정선)
 - **Repository**: 모든 도메인에 적용. 인터페이스(Protocol) + Mongo 구현 분리.
 - **DTO (Pydantic schemas)**: 페르소나별로 응답 모델 분리. 단순 응답은 공통 모델 공유 가능 (과적용 금지).
 - **Application/Use Case service**: 라우터가 여러 도메인을 조합할 때만(예: `TeacherStudentViewUseCase`가 `classroom`+`learning` 호출). 단순 단일 도메인 호출은 라우터에서 직접.
 - **Dependency Injection**: FastAPI `Depends` 활용 (이미 사용 중).
 
-### 9.7 도입하지 않을 것
+### 10.7 도입하지 않을 것
 - CQRS, Event Sourcing — 데이터 흐름 규모에 맞지 않음.
 - 도메인 이벤트 버스 — 동기 직접 호출로 충분.
 - 모든 응답에 페르소나별 DTO 강제 — 공통으로 OK인 응답까지 분리하면 보일러플레이트만 늘어남.
 
 ---
 
-## 10. 로드맵
+## 11. 로드맵
 
 선후 의존 관계 중심. 일정은 명시하지 않는다 (재단장 모드).
 
 ### Phase 0 — 도메인 재정렬 (구조 베이스)
-**목표**: 후속 Phase가 올라탈 깨끗한 도메인·인터페이스 분리. **코드 동작은 동일**, 폴더·import 경로만 바뀜.
+**목표**: 후속 Phase가 올라탈 깨끗한 도메인·인터페이스 분리. 외부 API 경로는 유지하고, 내부 폴더·import·의존성 구조만 정리한다.
+
+| 작업 | 영역 |
+|---|---|
+| `User.role` Literal 확장 및 `"admin"` → `"developer"` 정규화 | 백엔드 |
+| `whitelist.py`에 `TEACHER_WHITELIST_EMAILS`/`DEVELOPER_WHITELIST_EMAILS` 추가 | 백엔드 |
+| `shared/dependencies.py`에 `get_current_student|teacher|developer` 추가 | 백엔드 |
+| `domains/stage3`를 `domains/learning`에 흡수 | 백엔드 |
+| 핵심 도메인부터 `repositories/base.py` + Mongo 구현 분리 (`learning`, `classroom`) | 백엔드 |
+| 학생/교사용 DTO 분리 (`schemas/student.py`, `schemas/teacher.py`) — 우선 progress/profile 응답부터 | 백엔드 |
+| `domains/admin` → `domains/system` 리네임 | 백엔드 |
+
+### Phase 0.5 — 페르소나 API Prefix 전환
+**목표**: 내부 정리가 끝난 뒤 외부 API 경로를 페르소나 기준으로 바꾼다. 프론트 API 클라이언트와 동시에 진행한다.
 
 | 작업 | 영역 |
 |---|---|
 | `interfaces/student|teacher|admin/` 디렉토리 신설, 라우터 추출 | 백엔드 |
-| `domains/stage3`를 `domains/learning`에 흡수 | 백엔드 |
-| 각 도메인에 `repositories/base.py` + Mongo 구현 분리 | 백엔드 |
-| 페르소나별 DTO 분리 (`schemas/student.py`, `schemas/teacher.py`) — 우선 필요한 도메인만 | 백엔드 |
-| `domains/admin` → `domains/system` 리네임 (또는 의미만 재정의 — §11에서 결정) | 백엔드 |
-| `shared/dependencies.py`에 `get_current_student|teacher|developer` 추가 | 백엔드 |
-| 프론트 API 클라이언트 경로 일괄 갱신 (`/learning/*` → `/student/learning/*`) | 프론트 |
+| `/learning/*`, `/agent/*`, `/learning/stage3/*` → `/student/...` 경로 전환 | 백엔드/프론트 |
+| `/student/me/progress` 신설, 학생의 `/agent/profile/me` 접근 제거 | 백엔드/프론트 |
+| `/admin/*`에 `get_current_developer` 적용 | 백엔드 |
 
 ### Phase 1 — 교사 읽기 전용 대시보드 + 콘텐츠 데이터화
 **목표**: 교사가 자기 반 학생들의 약점을 한눈에 본다. 단원·차시 모델 도입. Stage 1·3 이미지 의존 제거.
 
-선행: Phase 0.
+선행: Phase 0.5.
 
 | 작업 | 영역 |
 |---|---|
-| `User.role` Literal 확장 (`student | teacher | developer`), `whitelist.py`에 `TEACHER_WHITELIST_EMAILS`/`DEVELOPER_WHITELIST_EMAILS` | 백엔드 |
 | `classroom` 도메인: `Class` 모델, `units`/`lessons` 컬렉션, 시드(교사 1명, 반 1개, 더미 학생 몇 명) | 백엔드 |
-| `learning` 도메인: 기존 stage 도큐먼트에 `lesson_id` 추가, 단원·차시 트리 조회 API | 백엔드 |
+| `learning` 도메인: stage 데이터를 차시별 도큐먼트로 재구성, 단원·차시 트리 조회 API | 백엔드 |
+| `learning_records` 스키마 확장 및 신규 기록부터 `lesson_id`/`problem_key` 저장 | 백엔드 |
+| `stage_progress`/`lesson_progress`를 `user_id + lesson_id` 기준으로 재설계 | 백엔드 |
 | `GET /teacher/classes`, `GET /teacher/classes/{id}/students`, `GET /teacher/students/{user_id}/profile`, `GET /teacher/students/{user_id}/records` | 백엔드 |
 | `get_current_teacher` + 본인 반 검증 가드 | 백엔드 |
-| 학생용 진척도 응답 분리 (긍정 지표만) — `GET /student/me/progress` | 백엔드 |
 | Stage 1 `CardContent` 스키마, Stage 3 `Stage3VisualHint` 스키마 도입, 로더 재작성, 이미지 자산 제거 | 백엔드 |
 | `/teacher/dashboard`, `/teacher/students/:userId` 페이지 | 프론트 |
 | 카드·문제 컴포넌트(디자인 시스템 기반) + `visual_hint` 아이콘 매핑 | 프론트 |
@@ -367,6 +435,7 @@ domains/learning/
 |---|---|
 | `instruction` 도메인: `teacher_assignments` 모델·repository·service | 백엔드 |
 | LLM 문제 생성 프롬프트 설계·검증 (gpt-4o, JSON 스키마 응답) | 백엔드 |
+| 생성 문제를 `draft`로 저장하고 교사 승인 시 `assigned`로 전환 | 백엔드 |
 | `POST /teacher/instruction/generate-problems` (단일 학생/반 일괄) | 백엔드 |
 | `learning` 도메인의 `get_next_problem`이 `instruction` 도메인의 큐를 우선 조회하도록 확장 | 백엔드 |
 | 교사 페이지에 "문제 생성" UI, 생성 결과 미리보기·승인 | 프론트 |
@@ -380,27 +449,28 @@ domains/learning/
 - `system` 도메인에 트레이스 로그 조회, 사용량 통계, 에이전트 호출 모니터링 추가
 - 반 전체 약점 트렌드 차트
 - 교사 → 학생 메시지/격려
-- `/admin/*` 인증 적용 (developer role 강제)
 
 ---
 
-## 11. 합의가 필요한 것
+## 12. 합의가 필요한 것
 
 이 문서를 코드 작업으로 옮기기 전에 결정할 항목:
 
-### 11.1 명명·경로
-1. **`role` 이름**: `"admin"`을 `"developer"`로 바꿀지, 그냥 의미만 재정의할지. (재단장 모드이므로 리네임이 권장)
-2. **`domains/admin` 폴더명**: `system`으로 리네임할지(권장), 키워드만 유지할지.
-3. **인터페이스 prefix 확정**: `/student/learning/*` 식으로 페르소나 prefix 강제 vs 기존 도메인 prefix 일부 유지.
+### 12.1 명명·경로
+1. **`role` 이름**: `"admin"`을 `"developer"`로 리네임한다.
+2. **`domains/admin` 폴더명**: `system`으로 리네임한다.
+3. **인터페이스 prefix**: Phase 0.5에서 `/student/learning/*` 식으로 페르소나 prefix를 강제한다.
 
-### 11.2 도메인 분리 깊이
-4. **Repository 인터페이스 분리**: 모든 도메인에 Protocol+Mongo 구현 분리 vs 학습기록·classroom 등 핵심 도메인만 분리 (다른 도메인은 직접 클래스 1개).
-5. **`interfaces/` 추출 시점**: Phase 0에서 한 번에 전체 라우터 이동 vs 도메인별 점진 이동.
-6. **Use Case 서비스 도입 여부**: `/teacher/students/{id}/profile`처럼 다중 도메인 조합 엔드포인트에 별도 use case 레이어 둘지 vs 라우터 함수에서 직접 두 서비스 호출.
+### 12.2 도메인 분리 깊이
+4. **Repository 인터페이스 분리**: 우선 `learning`, `classroom`, `instruction` 핵심 도메인에 적용한다. 단순 system 작업은 과도하게 분리하지 않는다.
+5. **`interfaces/` 추출 시점**: 내부 구조 정리 후 Phase 0.5에서 API prefix 전환과 함께 진행한다.
+6. **Use Case 서비스 도입 여부**: `/teacher/students/{id}/profile`처럼 다중 도메인 조합 엔드포인트에는 use case 레이어를 둔다. 단순 단일 도메인 호출은 라우터에서 직접 서비스를 호출한다.
 
-### 11.3 페르소나·콘텐츠
-7. **학생용 진척도 응답 분리**: 새 엔드포인트(`/student/me/progress`) 추가 vs 기존 응답 필드 조건부 노출.
-8. **교사 계정 부트스트랩**: 화이트리스트 + 수동 반 시드만으로 시작 vs 교사 회원가입·반 생성 UI까지 Phase 1에 포함.
-9. **신규 단원 콘텐츠**: 추가할 단원 수·주제 (별도 콘텐츠 기획 필요, 코드 작업과 병렬 진행 가능).
+### 12.3 페르소나·콘텐츠
+7. **학생용 진척도 응답 분리**: 새 엔드포인트 `GET /student/me/progress`를 추가한다. 기존 `/agent/profile/me`는 학생에게 제공하지 않는다.
+8. **콘텐츠 구조**: stage 데이터는 차시별 도큐먼트로 쪼갠다. 전역 식별이 필요하면 `problem_key`를 사용한다.
+9. **AI 생성 문제**: `draft` → 교사 승인 → `assigned` 흐름으로 간다.
+10. **교사 계정 부트스트랩**: 화이트리스트 + 수동 반 시드만으로 시작 vs 교사 회원가입·반 생성 UI까지 Phase 1에 포함.
+11. **신규 단원 콘텐츠**: 추가할 단원 수·주제 (별도 콘텐츠 기획 필요, 코드 작업과 병렬 진행 가능).
 
 각 항목에 대해 결정되면 이 문서를 갱신하고 구현 PR로 진입한다.

@@ -1,15 +1,27 @@
-"""관리자 화이트리스트.
+"""역할 승격 화이트리스트.
 
-이메일이 ADMIN_WHITELIST_EMAILS에 포함된 사용자는 로그인/조회 시점에
-role이 자동으로 'admin'으로 승격된다. DB 문서는 수정하지 않는다.
+이메일이 화이트리스트에 포함된 사용자는 로그인/조회 시점에 role이 자동 승격된다.
+DB 문서는 수정하지 않는다.
 """
 
-ADMIN_WHITELIST_EMAILS: frozenset[str] = frozenset({
+TEACHER_WHITELIST_EMAILS: frozenset[str] = frozenset()
+
+DEVELOPER_WHITELIST_EMAILS: frozenset[str] = frozenset({
     "kgw1999zz@naver.com",
 })
 
 
-def is_admin_email(email: str | None) -> bool:
+def is_teacher_email(email: str | None) -> bool:
     if not email:
         return False
-    return email.strip().lower() in ADMIN_WHITELIST_EMAILS
+    return _normalize_email(email) in TEACHER_WHITELIST_EMAILS
+
+
+def is_developer_email(email: str | None) -> bool:
+    if not email:
+        return False
+    return _normalize_email(email) in DEVELOPER_WHITELIST_EMAILS
+
+
+def _normalize_email(email: str) -> str:
+    return email.strip().lower()

@@ -4,7 +4,7 @@ from fastapi import FastAPI
 from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
 from app.domains.chat.router import router as chat_router
-from app.domains.admin.router import router as indexing_router
+from app.domains.system.router import router as system_router
 from app.domains.learning.content_router import router as learning_router
 from app.domains.stage3.router import router as stage3_router
 from app.domains.auth.router import router as auth_router
@@ -170,7 +170,7 @@ app.include_router(chat_router)
 app.include_router(learning_router)
 app.include_router(learning_records_router)
 app.include_router(stage3_router)
-app.include_router(indexing_router)
+app.include_router(system_router)
 
 
 @app.get(

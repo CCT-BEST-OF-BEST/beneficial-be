@@ -13,7 +13,7 @@ from app.common.security import (
 )
 from app.domains.auth.models import User
 from app.domains.auth.repository import AuthRepository
-from app.domains.auth.whitelist import is_admin_email
+from app.domains.auth.whitelist import is_developer_email, is_teacher_email
 
 
 ACCESS_TOKEN_EXPIRE_SECONDS = 30 * 60
@@ -112,13 +112,19 @@ class AuthService:
         user_doc = self.repository.find_user_by_id(user_id)
         if not user_doc:
             return None
-        return User(**self._apply_admin_whitelist(user_doc))
+        return User(**self._apply_role_policy(user_doc))
 
     @staticmethod
-    def _apply_admin_whitelist(user_doc: Dict[str, Any]) -> Dict[str, Any]:
-        if is_admin_email(user_doc.get("email")) and user_doc.get("role") != "admin":
-            user_doc = {**user_doc, "role": "admin"}
-        return user_doc
+    def _apply_role_policy(user_doc: Dict[str, Any]) -> Dict[str, Any]:
+        role = _normalize_role(user_doc.get("role", "student"))
+        email = user_doc.get("email")
+
+        if is_developer_email(email):
+            role = "developer"
+        elif is_teacher_email(email) and role != "developer":
+            role = "teacher"
+
+        return {**user_doc, "role": role}
 
     def _issue_token_pair(
         self,
@@ -126,7 +132,7 @@ class AuthService:
         user_agent: Optional[str],
         ip_address: Optional[str],
     ) -> Dict[str, Any]:
-        user_doc = self._apply_admin_whitelist(user_doc)
+        user_doc = self._apply_role_policy(user_doc)
         access_token = create_access_token(
             subject=user_doc["user_id"],
             expires_delta=timedelta(seconds=ACCESS_TOKEN_EXPIRE_SECONDS),
@@ -165,3 +171,11 @@ class AuthService:
     def _validate_password(self, password: str) -> None:
         if len(password) < 8:
             raise AuthError("비밀번호는 8자 이상이어야 합니다.")
+
+
+def _normalize_role(role: str | None) -> str:
+    if role == "admin":
+        return "developer"
+    if role in {"student", "teacher", "developer"}:
+        return role
+    return "student"

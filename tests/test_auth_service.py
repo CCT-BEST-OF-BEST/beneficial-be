@@ -79,3 +79,24 @@ def test_login_rejects_wrong_password():
 
     with pytest.raises(InvalidCredentialsError):
         service.login("student@example.com", "wrong-password")
+
+
+def test_developer_whitelist_upgrades_role_on_login():
+    service = AuthService(FakeAuthRepository())
+    service.signup("kgw1999zz@naver.com", "password123", "개발자")
+
+    token_pair = service.login("kgw1999zz@naver.com", "password123")
+
+    assert token_pair["user"].role == "developer"
+
+
+def test_legacy_admin_role_is_normalized_to_developer():
+    repository = FakeAuthRepository()
+    service = AuthService(repository)
+    user = service.signup("legacy-admin@example.com", "password123", "관리자")
+    repository.users_by_id[user.user_id]["role"] = "admin"
+    repository.users_by_email[user.email]["role"] = "admin"
+
+    normalized_user = service.get_user(user.user_id)
+
+    assert normalized_user.role == "developer"

@@ -39,3 +39,36 @@ def get_current_user(
             detail="사용자를 찾을 수 없습니다.",
         )
     return user
+
+
+def get_current_student(
+    current_user: User = Depends(get_current_user),
+) -> User:
+    if current_user.role != "student":
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="학생 권한이 필요합니다.",
+        )
+    return current_user
+
+
+def get_current_teacher(
+    current_user: User = Depends(get_current_user),
+) -> User:
+    if current_user.role not in {"teacher", "developer"}:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="교사 권한이 필요합니다.",
+        )
+    return current_user
+
+
+def get_current_developer(
+    current_user: User = Depends(get_current_user),
+) -> User:
+    if current_user.role != "developer":
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="개발자 권한이 필요합니다.",
+        )
+    return current_user

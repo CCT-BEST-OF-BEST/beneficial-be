@@ -18,7 +18,7 @@ from app.data.data_loader.seed_mongo_loader import seed_mongo_data
 from app.data.data_loader.stage1_cards_loader import load_stage1_cards
 from app.data.data_loader.stage2_problems_loader import load_stage2_problems
 from app.data.data_loader.stage3_problems_loader import load_stage3_problems
-from app.domains.admin.indexing_service import get_indexing_service
+from app.domains.system.indexing_service import get_indexing_service
 from app.infrastructure.db.vector.vector_db import initialize_vector_db
 from app.infrastructure.embedding.embedding_model import get_embedding_model
 from app.infrastructure.search.bm25_retriever import get_bm25_retriever

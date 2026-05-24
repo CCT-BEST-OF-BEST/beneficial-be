@@ -2,14 +2,18 @@
 관리자용 API.
 
 평소 startup은 lightweight 이므로, 시드/인덱싱/가상 질문 생성은 여기서 호출한다.
-TODO: 운영 환경에서는 관리자 인증 적용 (현재는 모두 공개).
 """
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, Depends, HTTPException
 
 from app.common.init.initialization import get_initialization_service
-from app.domains.admin.indexing_service import get_indexing_service
+from app.domains.system.indexing_service import get_indexing_service
+from app.domains.auth.dependencies import get_current_developer
 
-router = APIRouter(prefix="/admin", tags=["admin"])
+router = APIRouter(
+    prefix="/admin",
+    tags=["admin"],
+    dependencies=[Depends(get_current_developer)],
+)
 
 
 # ----------------------------------------------------------------------
