@@ -4,7 +4,7 @@ from typing import Any, Dict
 import os
 
 from app.common.logging.logging_config import get_logger
-from app.domains.auth.dependencies import get_optional_current_user
+from app.domains.auth.dependencies import get_current_user
 from app.domains.auth.models import User
 from app.domains.learning.dependencies import get_learning_record_service
 from app.domains.learning.schemas import (
@@ -62,7 +62,9 @@ logger = get_logger(__name__)
     """,
     response_model=Dict[str, Any]
 )
-async def get_stage1_cards() -> Dict[str, Any]:
+async def get_stage1_cards(
+    current_user: User = Depends(get_current_user),
+) -> Dict[str, Any]:
     """1단계 어휘학습 카드 쌍 조회"""
     try:
         mongo_client = get_mongo_client()
@@ -143,7 +145,9 @@ async def get_stage1_cards() -> Dict[str, Any]:
     """,
     response_model=Stage2ProblemsResponse,
 )
-async def get_stage2_problems() -> Stage2ProblemsResponse:
+async def get_stage2_problems(
+    current_user: User = Depends(get_current_user),
+) -> Stage2ProblemsResponse:
     """2단계 예제풀이 문제 조회. 정답(`correct_answer`, `full_sentence`)은 응답에서 제외된다."""
     try:
         mongo_client = get_mongo_client()
@@ -208,7 +212,7 @@ async def get_stage2_problems() -> Stage2ProblemsResponse:
 )
 async def submit_stage1_card_check(
     request: Stage1SubmitRequest,
-    current_user: User | None = Depends(get_optional_current_user),
+    current_user: User = Depends(get_current_user),
     learning_record_service: LearningRecordService = Depends(get_learning_record_service),
 ) -> Stage1SubmitResponse:
     try:
@@ -221,7 +225,7 @@ async def submit_stage1_card_check(
             pair_id=request.pair_id,
             correct_word=correct_word,
             chosen_word=request.chosen_word,
-            user_id=current_user.user_id if current_user else None,
+            user_id=current_user.user_id,
         )
 
         logger.info(
@@ -271,7 +275,7 @@ async def submit_stage1_card_check(
 )
 async def submit_stage2_answer(
     request: Stage2SubmitRequest,
-    current_user: User | None = Depends(get_optional_current_user),
+    current_user: User = Depends(get_current_user),
     learning_record_service: LearningRecordService = Depends(get_learning_record_service),
 ) -> Stage2SubmitResponse:
     try:
@@ -293,7 +297,7 @@ async def submit_stage2_answer(
             problem_id=request.problem_id,
             correct_answer=correct_answer,
             user_answer=request.user_answer,
-            user_id=current_user.user_id if current_user else None,
+            user_id=current_user.user_id,
         )
 
         logger.info(
@@ -332,7 +336,10 @@ async def submit_stage2_answer(
 - 문제 이미지: `/learning/images/stage3/problem_1.png`
     """
 )
-async def get_image(filename: str):
+async def get_image(
+    filename: str,
+    current_user: User = Depends(get_current_user),
+):
     """이미지 파일 서빙"""
     try:
         # 이미지 파일 경로 (cards와 stage3 모두 지원)

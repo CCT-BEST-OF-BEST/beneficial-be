@@ -12,8 +12,6 @@ from app.infrastructure.db.mongo.mongo_client import MongoClient, get_mongo_clie
 
 logger = logging.getLogger(__name__)
 
-ANONYMOUS_USER_ID = "anonymous"
-
 
 class Stage3Service:
     problems_collection = "stage3_problems"
@@ -50,7 +48,7 @@ class Stage3Service:
             problems=problems,
         )
 
-    def get_next_problem(self, user_id: str = ANONYMOUS_USER_ID) -> Optional[Dict[str, Any]]:
+    def get_next_problem(self, user_id: str) -> Optional[Dict[str, Any]]:
         progress = self._load_progress(user_id)
 
         if not progress:
@@ -91,7 +89,7 @@ class Stage3Service:
         self,
         problem_id: int,
         user_answer: str,
-        user_id: str = ANONYMOUS_USER_ID,
+        user_id: str,
     ) -> Stage3AnswerResponse:
         problem = self._get_problem_by_id(problem_id)
         if not problem:
@@ -101,7 +99,7 @@ class Stage3Service:
         status, badge = self._determine_status(problem_id, is_correct, user_id)
         self._update_progress(problem_id, is_correct, user_id)
 
-        if user_id != ANONYMOUS_USER_ID and self.learning_record_service:
+        if self.learning_record_service:
             self.learning_record_service.record_answer(
                 user_id=user_id,
                 stage=3,
@@ -123,7 +121,7 @@ class Stage3Service:
             badge=badge,
         )
 
-    def get_progress(self, user_id: str = ANONYMOUS_USER_ID) -> Stage3ProgressResponse:
+    def get_progress(self, user_id: str) -> Stage3ProgressResponse:
         progress = self._load_progress(user_id)
         if not progress:
             total = self._get_total_problems()
@@ -137,7 +135,7 @@ class Stage3Service:
             success=True, progress=progress, is_completed=is_completed
         )
 
-    def reset_progress(self, user_id: str = ANONYMOUS_USER_ID) -> None:
+    def reset_progress(self, user_id: str) -> None:
         self.mongo_client.delete_one(
             self.progress_collection, {"user_id": user_id}
         )

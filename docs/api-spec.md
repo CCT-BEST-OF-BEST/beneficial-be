@@ -21,7 +21,7 @@
 | Refresh token | `refresh_token` 쿠키 (`HttpOnly`, path=`/auth`) **또는** request body | 14일 만료, rotation 적용 |
 
 - 보호 엔드포인트 (`Depends(get_current_user)`): access token 없거나 만료 시 `401`.
-- 옵셔널 엔드포인트 (`Depends(get_optional_current_user)`): 토큰 없으면 익명 사용자로 진행. 토큰이 있는데 잘못된 경우엔 `401`.
+- `/admin/*` 와 헬스 체크(`GET /`)를 제외한 **모든 서비스 엔드포인트는 로그인 필수**다. (해커톤 학습 목적 — Agent 개인화를 일관되게 적용하기 위한 결정)
 
 ### 1.3 공통 응답 규약
 - 성공 응답은 각 엔드포인트가 명시한 Pydantic 모델 형태 (대부분 JSON).
@@ -37,10 +37,10 @@
 | `/` | 시스템 메타 정보 (`GET /`만) | — |
 | `/auth` | 회원가입 / 로그인 / 세션 | 일부 보호 (`/me`) |
 | `/agent` | 학습 코치 Agent (LangGraph) | 전부 보호 |
-| `/learning` | Stage 1·2 컨텐츠 + 이미지 | 답안 제출만 옵셔널 인증 |
+| `/learning` | Stage 1·2 컨텐츠 + 이미지 | 전부 보호 |
 | `/learning/records` | 학습 기록 조회 | 보호 |
-| `/learning/stage3` | Stage 3 문제풀이 | 옵셔널 인증 |
-| `/chat` | 단발 RAG 채팅 (Agent와 별개) | 인증 없음 |
+| `/learning/stage3` | Stage 3 문제풀이 | 전부 보호 |
+| `/chat` | 단발 RAG 채팅 (Agent와 별개) | 전부 보호 |
 | `/admin` | 시스템 관리, 시드/인덱싱 | **현재 미인증** (운영 적용 예정) |
 
 ### 1.5 시스템 메타
@@ -207,13 +207,13 @@ Stage 1 (카드 학습) · Stage 2 (드래그&드롭) 컨텐츠와 이미지 서
 
 | Method | Path | 인증 | 설명 |
 | --- | --- | --- | --- |
-| GET | `/learning/stage1/cards` | — | Stage 1 카드 쌍 목록 |
-| POST | `/learning/stage1/submit-card-check` | 옵셔널 | Stage 1 답안 확인 |
-| GET | `/learning/stage2/problems` | — | Stage 2 문제 + 답안 풀 |
-| POST | `/learning/stage2/submit-answer` | 옵셔널 | Stage 2 답안 제출 |
-| GET | `/learning/images/{filename:path}` | — | 학습 이미지 서빙 |
+| GET | `/learning/stage1/cards` | 보호 | Stage 1 카드 쌍 목록 |
+| POST | `/learning/stage1/submit-card-check` | 보호 | Stage 1 답안 확인 |
+| GET | `/learning/stage2/problems` | 보호 | Stage 2 문제 + 답안 풀 |
+| POST | `/learning/stage2/submit-answer` | 보호 | Stage 2 답안 제출 |
+| GET | `/learning/images/{filename:path}` | 보호 | 학습 이미지 서빙 |
 
-> 옵셔널 인증: 토큰이 없으면 정답 판정만 돌려준다. 토큰이 있으면 `LearningRecord`에 저장되어 Agent의 약점 분석에 반영된다.
+> 모든 답안 제출 결과는 `LearningRecord`에 저장되어 Agent의 약점 분석에 반영된다.
 
 ### 4.1 `GET /learning/stage1/cards`
 **Response 200** (느슨한 dict 형태)
@@ -327,15 +327,15 @@ Stage 1 (카드 학습) · Stage 2 (드래그&드롭) 컨텐츠와 이미지 서
 ## 6. Stage 3 (`/learning/stage3`)
 
 Stage 3는 "순차 학습 → 틀린 문제만 순환 복습" 알고리즘으로 별도 진행도(`stage3_progress`)를 갖는다.
-인증은 옵셔널. 비로그인 사용자는 내부적으로 `user_id="anonymous"`로 집계된다.
+모든 엔드포인트가 로그인 필수이며, 진행도는 로그인한 사용자의 `user_id` 별로 저장된다.
 
-| Method | Path | 설명 |
-| --- | --- | --- |
-| GET | `/learning/stage3/problems` | 전체 문제 목록 (관리/디버그용) |
-| GET | `/learning/stage3/next-problem` | 다음 출제할 문제 1건 |
-| POST | `/learning/stage3/submit-answer` | 답안 제출 + 진행도 갱신 |
-| GET | `/learning/stage3/progress` | 진행도 조회 |
-| POST | `/learning/stage3/reset-progress` | 진행도 초기화 |
+| Method | Path | 인증 | 설명 |
+| --- | --- | --- | --- |
+| GET | `/learning/stage3/problems` | 보호 | 전체 문제 목록 (관리/디버그용) |
+| GET | `/learning/stage3/next-problem` | 보호 | 다음 출제할 문제 1건 |
+| POST | `/learning/stage3/submit-answer` | 보호 | 답안 제출 + 진행도 갱신 |
+| GET | `/learning/stage3/progress` | 보호 | 진행도 조회 |
+| POST | `/learning/stage3/reset-progress` | 보호 | 진행도 초기화 |
 
 ### 6.1 `GET /learning/stage3/problems`
 **Response 200** (`Stage3ProblemsResponse`)
@@ -423,12 +423,12 @@ Stage 3는 "순차 학습 → 틀린 문제만 순환 복습" 알고리즘으로
 
 ## 7. RAG 채팅 (`/chat`)
 
-> Agent와 별개로 존재하는 **단발 RAG 질의응답** API. 세션·약점 분석 없이 한 번의 질문에 대한 답만 돌려준다.
+> Agent와 별개로 존재하는 **단발 RAG 질의응답** API. 세션·약점 분석 없이 한 번의 질문에 대한 답만 돌려준다. 로그인 필수.
 
-| Method | Path | 설명 |
-| --- | --- | --- |
-| POST | `/chat/` | RAG 기반 GPT 응답 |
-| GET | `/chat/status` | RAG/Chat 시스템 상태 |
+| Method | Path | 인증 | 설명 |
+| --- | --- | --- | --- |
+| POST | `/chat/` | 보호 | RAG 기반 GPT 응답 |
+| GET | `/chat/status` | 보호 | RAG/Chat 시스템 상태 |
 
 ### 7.1 `POST /chat/`
 **Request** (`ChatRequest`)
@@ -507,8 +507,7 @@ Stage 3는 "순차 학습 → 틀린 문제만 순환 복습" 알고리즘으로
 | `재도전` | 복습 단계에서 다시 출제됨 |
 
 ### 9.4 user_id
-- 로그인 사용자: `auth/signup`에서 발급되는 `"u_..."` 형태.
-- Stage 3에서 비로그인 사용자는 `"anonymous"`로 집계 — 같은 디바이스/세션 구분 없음.
+- `auth/signup`에서 발급되는 `"u_..."` 형태. 모든 학습/채팅 엔드포인트가 로그인 필수이므로 항상 이 형태로만 들어온다.
 
 ---
 
