@@ -11,7 +11,6 @@ from app.domains.auth.dependencies import get_current_user
 from app.domains.auth.models import User
 from app.domains.learning.dependencies import get_learning_record_service
 from app.domains.stage3.service import get_stage3_service
-from app.infrastructure.external.openai_client import get_openai_client
 
 router = APIRouter(prefix="/learning/stage3", tags=["stage3"])
 logger = get_logger(__name__)
@@ -79,16 +78,7 @@ async def submit_stage3_answer(
 ) -> Stage3AnswerResponse:
     try:
         learning_svc = get_learning_record_service()
-        try:
-            openai_client = get_openai_client()
-        except Exception as e:
-            logger.warning(f"[stage3] OpenAI 클라이언트 초기화 실패, LLM fallback 비활성: {e}")
-            openai_client = None
-        service = get_stage3_service(
-            learning_record_service=learning_svc,
-            openai_client=openai_client,
-        )
-        return await service.submit_answer(
+        return get_stage3_service(learning_record_service=learning_svc).submit_answer(
             request.problem_id,
             request.user_answer,
             user_id=current_user.user_id,
