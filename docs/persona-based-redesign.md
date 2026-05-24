@@ -393,7 +393,7 @@ domains/learning/
 | `User.role` Literal 확장 및 `"admin"` → `"developer"` 정규화 | 백엔드 |
 | `whitelist.py`에 `TEACHER_WHITELIST_EMAILS`/`DEVELOPER_WHITELIST_EMAILS` 추가 | 백엔드 |
 | `shared/dependencies.py`에 `get_current_student|teacher|developer` 추가 | 백엔드 |
-| `domains/stage3`를 `domains/learning`에 흡수 | 백엔드 |
+| `domains/stage3`를 `domains/learning`에 흡수 (`stage3_router.py`, `stage3_service.py`, `stage3_schemas.py`) | 백엔드 |
 | 핵심 도메인부터 `repositories/base.py` + Mongo 구현 분리 (`learning`, `classroom`) | 백엔드 |
 | 학생/교사용 DTO 분리 (`schemas/student.py`, `schemas/teacher.py`) — 우선 progress/profile 응답부터 | 백엔드 |
 | `domains/admin` → `domains/system` 리네임 | 백엔드 |

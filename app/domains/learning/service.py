@@ -7,7 +7,7 @@ from app.domains.learning.models import (
     StudentWeaknessProfile,
     WeakConcept,
 )
-from app.domains.learning.repository import LearningRecordRepository
+from app.domains.learning.repositories.base import LearningRecordRepository
 
 
 CONCEPT_KEY_BY_ANSWER = {

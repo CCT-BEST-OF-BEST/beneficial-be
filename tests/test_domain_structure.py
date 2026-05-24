@@ -22,9 +22,14 @@ def test_domain_packages_are_importable():
         "app.domains.learning.content_router",
         "app.domains.learning.models",
         "app.domains.learning.repository",
+        "app.domains.learning.repositories.base",
+        "app.domains.learning.repositories.mongo",
         "app.domains.learning.router",
         "app.domains.learning.schemas",
         "app.domains.learning.service",
+        "app.domains.learning.stage3_router",
+        "app.domains.learning.stage3_schemas",
+        "app.domains.learning.stage3_service",
         "app.domains.agent",
         "app.domains.agent.router",
         "app.domains.agent.schemas",
@@ -32,10 +37,6 @@ def test_domain_packages_are_importable():
         "app.domains.rag.retriever",
         "app.domains.rag.schemas",
         "app.domains.rag.service",
-        "app.domains.stage3",
-        "app.domains.stage3.router",
-        "app.domains.stage3.schemas",
-        "app.domains.stage3.service",
     ]
 
     for module_name in modules:

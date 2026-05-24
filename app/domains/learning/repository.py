@@ -1,20 +1,9 @@
-from typing import Any, Dict, List
+"""Backward-compatible imports for learning repositories.
 
-from app.infrastructure.db.mongo.mongo_client import MongoClient
+New code should import from app.domains.learning.repositories.
+"""
 
+from app.domains.learning.repositories.base import LearningRecordRepository
+from app.domains.learning.repositories.mongo import MongoLearningRecordRepository
 
-class LearningRecordRepository:
-    collection_name = "learning_records"
-
-    def __init__(self, mongo_client: MongoClient):
-        self.mongo_client = mongo_client
-
-    def create_record(self, record: Dict[str, Any]) -> str:
-        return self.mongo_client.insert_one(self.collection_name, record)
-
-    def find_records_by_user(self, user_id: str) -> List[Dict[str, Any]]:
-        return self.mongo_client.find_many(
-            self.collection_name,
-            {"user_id": user_id},
-            sort=[("created_at", -1)],
-        )
+__all__ = ["LearningRecordRepository", "MongoLearningRecordRepository"]
