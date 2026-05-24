@@ -16,6 +16,7 @@ from app.domains.learning.schemas import (
     Stage2SubmitResponse,
 )
 from app.domains.learning.service import LearningRecordService
+from app.domains.auth.whitelist import is_answer_bypass_email
 from app.infrastructure.db.mongo.mongo_client import get_mongo_client
 
 router = APIRouter(prefix="/learning", tags=["learning"])
@@ -300,6 +301,8 @@ async def submit_stage2_answer(
             user_id=current_user.user_id,
         )
 
+        answer_bypass_enabled = is_answer_bypass_email(current_user.email)
+
         logger.info(
             f"[OK] 2단계 답안 제출: problem={request.problem_id} answer={request.user_answer} correct={is_correct}"
         )
@@ -310,7 +313,8 @@ async def submit_stage2_answer(
             correct_answer=correct_answer,
             full_sentence=problem["full_sentence"],
             concept_key=concept_key,
-            is_admin=current_user.role == "developer",
+            is_answer_bypass_enabled=answer_bypass_enabled,
+            is_admin=answer_bypass_enabled,
         )
 
     except HTTPException:

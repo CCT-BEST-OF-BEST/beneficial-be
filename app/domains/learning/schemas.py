@@ -62,4 +62,5 @@ class Stage2SubmitResponse(BaseModel):
     correct_answer: str
     full_sentence: str
     concept_key: str
+    is_answer_bypass_enabled: bool = False
     is_admin: bool = False

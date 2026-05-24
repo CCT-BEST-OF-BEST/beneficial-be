@@ -31,6 +31,7 @@
 
 - `User.role` Literal은 `"student" | "teacher" | "developer"`로 정리한다. 기존 `"admin"`은 재단장 과정에서 `"developer"`로 리네임한다.
 - 역할 부여는 [현행 화이트리스트 패턴](../app/domains/auth/whitelist.py)을 확장: `TEACHER_WHITELIST_EMAILS`, `DEVELOPER_WHITELIST_EMAILS`. DB 문서의 기존 `"admin"` 값은 마이그레이션 시 `"developer"`로 치환하거나, 인증 서비스에서 과도기적으로 `"admin"` → `"developer"`로 정규화한다.
+- 개발 편의용 답안 우회는 역할과 분리한다. `ANSWER_BYPASS_WHITELIST_EMAILS`는 Stage 2 정답 검증 우회에만 쓰고, 교사/개발자 권한 판단에는 사용하지 않는다.
 - 학생-교사 매핑은 Phase 1 MVP에서는 새 컬렉션 `classes`로 표현한다: `{class_id, name, teacher_id, student_ids[]}`.
 - 여러 반 소속, 전학/반 이동 이력, 기간별 담당 교사 같은 요구가 생기면 `class_memberships` 컬렉션으로 분리한다. 이 문서의 1차 구현 범위에는 포함하지 않는다.
 
@@ -273,7 +274,7 @@ class LearningRecord(BaseModel):
 |---|---|---|
 | `User.role` Literal을 `"student" | "teacher" | "developer"`로 정리 (`"admin"` → `"developer"` 마이그레이션) | 스키마 확장 | Phase 0 |
 | `Class` 컬렉션 신설 (`class_id, name, teacher_id, student_ids[], created_at, updated_at`) | 신규 컬렉션 | Phase 1 |
-| `whitelist.py`에 `TEACHER_WHITELIST_EMAILS`, `DEVELOPER_WHITELIST_EMAILS` 추가 | 상수 | Phase 0 |
+| `whitelist.py`에 `TEACHER_WHITELIST_EMAILS`, `DEVELOPER_WHITELIST_EMAILS`, `ANSWER_BYPASS_WHITELIST_EMAILS` 추가 | 상수 | Phase 0 |
 | `units` / `lessons` 컬렉션 신설 — 단원·차시 계층 명시화 (`unit_id`, `lesson_id` 도입) | 신규 컬렉션 | Phase 1 |
 | 기존 `stage1_cards`/`stage2_problems`/`stage3_problems`를 차시별 도큐먼트로 재구성 | 파괴적 변경 | Phase 1 |
 | `stage_progress`/`lesson_progress`를 `user_id + lesson_id` 기준으로 재설계 | 파괴적 변경 | Phase 1 |
@@ -391,7 +392,7 @@ domains/learning/
 | 작업 | 영역 |
 |---|---|
 | `User.role` Literal 확장 및 `"admin"` → `"developer"` 정규화 | 백엔드 |
-| `whitelist.py`에 `TEACHER_WHITELIST_EMAILS`/`DEVELOPER_WHITELIST_EMAILS` 추가 | 백엔드 |
+| `whitelist.py`에 `TEACHER_WHITELIST_EMAILS`/`DEVELOPER_WHITELIST_EMAILS`/`ANSWER_BYPASS_WHITELIST_EMAILS` 추가 | 백엔드 |
 | `shared/dependencies.py`에 `get_current_student|teacher|developer` 추가 | 백엔드 |
 | `domains/stage3`를 `domains/learning`에 흡수 (`stage3_router.py`, `stage3_service.py`, `stage3_schemas.py`) | 백엔드 |
 | 핵심 도메인부터 `repositories/base.py` + Mongo 구현 분리 (`learning`, `classroom`) | 백엔드 |
