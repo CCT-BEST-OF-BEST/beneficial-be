@@ -243,3 +243,41 @@ def test_stage1_and_stage2_share_same_concept_key():
     # Stage 1, Stage 2 오답이 같은 concept_key 아래 집계됨
     assert profile.weak_concepts[0].concept_key == "가르치다/가르키다"
     assert profile.weak_concepts[0].wrong_count == 2
+
+
+def test_student_progress_metrics_are_positive_only():
+    repository = FakeLearningRecordRepository()
+    service = LearningRecordService(repository)
+    now = datetime.now(timezone.utc)
+    repository.records.extend(
+        [
+            {
+                "user_id": "user_123",
+                "question_id": "stage2_problem_1",
+                "is_correct": True,
+                "created_at": now,
+            },
+            {
+                "user_id": "user_123",
+                "question_id": "stage2_problem_2",
+                "is_correct": True,
+                "created_at": now - timedelta(minutes=1),
+            },
+            {
+                "user_id": "user_123",
+                "question_id": "stage2_problem_3",
+                "is_correct": False,
+                "created_at": now - timedelta(minutes=2),
+            },
+        ]
+    )
+
+    metrics = service.get_student_progress_metrics("user_123")
+
+    assert metrics == {
+        "today_solved_count": 3,
+        "total_solved_count": 3,
+        "streak_correct_count": 2,
+        "completed_question_count": 2,
+    }
+    assert "wrong_count" not in metrics

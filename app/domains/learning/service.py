@@ -1,7 +1,8 @@
 from collections import defaultdict
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Any, Dict, Optional
 
+from app.common.security import utc_now
 from app.domains.learning.models import (
     LearningRecord,
     StudentWeaknessProfile,
@@ -132,6 +133,37 @@ class LearningRecordService:
             for record in self.repository.find_records_by_user(user_id)
         ]
 
+    def get_student_progress_metrics(self, user_id: str) -> Dict[str, int]:
+        records = sorted(
+            self.repository.find_records_by_user(user_id),
+            key=_record_created_at,
+            reverse=True,
+        )
+        today = utc_now().date()
+
+        today_solved_count = sum(
+            1 for record in records if _record_created_at(record).date() == today
+        )
+        streak_correct_count = 0
+        for record in records:
+            if record.get("is_correct"):
+                streak_correct_count += 1
+                continue
+            break
+
+        completed_question_ids = {
+            record.get("question_id")
+            for record in records
+            if record.get("is_correct") and record.get("question_id")
+        }
+
+        return {
+            "today_solved_count": today_solved_count,
+            "total_solved_count": len(records),
+            "streak_correct_count": streak_correct_count,
+            "completed_question_count": len(completed_question_ids),
+        }
+
     def record_stage1_card_check(
         self,
         pair_id: str,
@@ -195,3 +227,12 @@ def resolve_concept_key(correct_answer: str, user_answer: str | None = None) -> 
 
 def _calculate_priority(wrong_count: int) -> float:
     return min(1.0, round(0.5 + wrong_count * 0.15, 2))
+
+
+def _record_created_at(record: Dict[str, Any]) -> datetime:
+    created_at = record.get("created_at")
+    if not isinstance(created_at, datetime):
+        return datetime.min.replace(tzinfo=timezone.utc)
+    if created_at.tzinfo is None:
+        return created_at.replace(tzinfo=timezone.utc)
+    return created_at.astimezone(timezone.utc)

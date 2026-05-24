@@ -27,6 +27,7 @@ def test_domain_packages_are_importable():
         "app.domains.learning.router",
         "app.domains.learning.schemas",
         "app.domains.learning.service",
+        "app.domains.learning.student_schemas",
         "app.domains.learning.stage3_router",
         "app.domains.learning.stage3_schemas",
         "app.domains.learning.stage3_service",
@@ -37,6 +38,9 @@ def test_domain_packages_are_importable():
         "app.domains.rag.retriever",
         "app.domains.rag.schemas",
         "app.domains.rag.service",
+        "app.interfaces",
+        "app.interfaces.student",
+        "app.interfaces.student.progress_router",
     ]
 
     for module_name in modules:
