@@ -21,9 +21,11 @@ class Stage3Service:
         self,
         mongo_client: MongoClient,
         learning_record_service: LearningRecordService = None,
+        openai_client=None,
     ):
         self.mongo_client = mongo_client
         self.learning_record_service = learning_record_service
+        self.openai_client = openai_client
 
     # ------------------------------------------------------------------
     # Public API
@@ -85,7 +87,7 @@ class Stage3Service:
 
         return None
 
-    def submit_answer(
+    async def submit_answer(
         self,
         problem_id: int,
         user_answer: str,
@@ -109,16 +111,68 @@ class Stage3Service:
                 is_correct=is_correct,
             )
 
+        explanation = await self._resolve_explanation(problem, user_answer, is_correct)
+
         return Stage3AnswerResponse(
             success=True,
             problem_id=problem_id,
             is_correct=is_correct,
             user_answer=user_answer,
             correct_answer=problem["correct_answer"],
-            explanation=problem["explanation"],
+            explanation=explanation,
             full_sentence=problem["full_sentence"],
             status=status,
             badge=badge,
+        )
+
+    async def _resolve_explanation(
+        self,
+        problem: Dict[str, Any],
+        user_answer: str,
+        is_correct: bool,
+    ) -> str:
+        """정답이면 기본 해설, 오답이면 매핑 → 매핑 없으면 LLM fallback."""
+        if is_correct:
+            return problem["explanation"]
+
+        mapped = problem.get("wrong_explanations", {}).get(user_answer.strip())
+        if mapped:
+            return mapped
+
+        if self.openai_client is not None:
+            try:
+                return await self._llm_fallback_explanation(problem, user_answer)
+            except Exception as e:
+                logger.warning(
+                    f"[stage3] LLM fallback 실패, 정적 해설로 대체: {e}"
+                )
+
+        return problem["explanation"]
+
+    async def _llm_fallback_explanation(
+        self,
+        problem: Dict[str, Any],
+        user_answer: str,
+    ) -> str:
+        system_prompt = (
+            "너는 초등학생 돌봄 선생님이야. 한국어 맞춤법을 쉽고 친근하게 설명해. "
+            "1) 학생이 적은 답을 짚어주고, 2) 그게 왜 안 맞는지 짧게 알려주고, "
+            "3) 정답이 맞는 이유로 마무리해. 두세 문장으로 짧게, 반말로."
+        )
+        user_prompt = (
+            f"문장: {problem['full_sentence']}\n"
+            f"정답: {problem['correct_answer']}\n"
+            f"학생이 적은 답: {user_answer}\n"
+            f"참고 설명: {problem.get('explanation', '')}\n\n"
+            f"위 정보를 바탕으로 학생에게 맞춤형 피드백을 만들어줘."
+        )
+        return await self.openai_client.chat_completion(
+            messages=[
+                {"role": "system", "content": system_prompt},
+                {"role": "user", "content": user_prompt},
+            ],
+            max_tokens=200,
+            temperature=0.5,
         )
 
     def get_progress(self, user_id: str) -> Stage3ProgressResponse:
@@ -243,8 +297,12 @@ class Stage3Service:
         return data.get("total_problems", 0) if data else 0
 
 
-def get_stage3_service(learning_record_service: LearningRecordService = None) -> Stage3Service:
+def get_stage3_service(
+    learning_record_service: LearningRecordService = None,
+    openai_client=None,
+) -> Stage3Service:
     return Stage3Service(
         mongo_client=get_mongo_client(),
         learning_record_service=learning_record_service,
+        openai_client=openai_client,
     )

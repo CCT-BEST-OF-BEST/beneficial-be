@@ -22,7 +22,7 @@ class OpenAIClient:
             raise ImportError("openai 패키지가 설치되어 있지 않습니다.")
 
         self.client = AsyncOpenAI(api_key=self.api_key)
-        self.default_model = "gpt-4o-mini"
+        self.default_model = "gpt-4o"
         self.max_tokens = 500
         self.temperature = 0.7
 

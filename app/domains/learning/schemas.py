@@ -62,3 +62,4 @@ class Stage2SubmitResponse(BaseModel):
     correct_answer: str
     full_sentence: str
     concept_key: str
+    is_admin: bool = False

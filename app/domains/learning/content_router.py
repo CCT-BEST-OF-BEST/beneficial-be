@@ -310,6 +310,7 @@ async def submit_stage2_answer(
             correct_answer=correct_answer,
             full_sentence=problem["full_sentence"],
             concept_key=concept_key,
+            is_admin=current_user.role == "admin",
         )
 
     except HTTPException:

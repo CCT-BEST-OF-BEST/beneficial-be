@@ -13,6 +13,7 @@ from app.common.security import (
 )
 from app.domains.auth.models import User
 from app.domains.auth.repository import AuthRepository
+from app.domains.auth.whitelist import is_admin_email
 
 
 ACCESS_TOKEN_EXPIRE_SECONDS = 30 * 60
@@ -109,7 +110,15 @@ class AuthService:
 
     def get_user(self, user_id: str) -> Optional[User]:
         user_doc = self.repository.find_user_by_id(user_id)
-        return User(**user_doc) if user_doc else None
+        if not user_doc:
+            return None
+        return User(**self._apply_admin_whitelist(user_doc))
+
+    @staticmethod
+    def _apply_admin_whitelist(user_doc: Dict[str, Any]) -> Dict[str, Any]:
+        if is_admin_email(user_doc.get("email")) and user_doc.get("role") != "admin":
+            user_doc = {**user_doc, "role": "admin"}
+        return user_doc
 
     def _issue_token_pair(
         self,
@@ -117,6 +126,7 @@ class AuthService:
         user_agent: Optional[str],
         ip_address: Optional[str],
     ) -> Dict[str, Any]:
+        user_doc = self._apply_admin_whitelist(user_doc)
         access_token = create_access_token(
             subject=user_doc["user_id"],
             expires_delta=timedelta(seconds=ACCESS_TOKEN_EXPIRE_SECONDS),
