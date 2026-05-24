@@ -11,6 +11,8 @@ from app.domains.auth.router import router as auth_router
 from app.domains.agent.router import router as agent_router
 from app.domains.learning.router import router as learning_records_router
 from app.interfaces.student.progress_router import router as student_progress_router
+from app.interfaces.teacher.classroom_router import router as teacher_classroom_router
+from app.interfaces.teacher.student_view_router import router as teacher_student_view_router
 from app.common.init.initialization import get_initialization_service
 from app.common.logging.logging_config import get_logger
 
@@ -172,6 +174,8 @@ app.include_router(learning_router)
 app.include_router(learning_records_router)
 app.include_router(stage3_router)
 app.include_router(student_progress_router)
+app.include_router(teacher_classroom_router)
+app.include_router(teacher_student_view_router)
 app.include_router(system_router)
 
 

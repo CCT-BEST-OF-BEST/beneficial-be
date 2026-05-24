@@ -14,6 +14,11 @@ def test_domain_packages_are_importable():
         "app.domains.auth.router",
         "app.domains.auth.schemas",
         "app.domains.auth.service",
+        "app.domains.classroom.dependencies",
+        "app.domains.classroom.models",
+        "app.domains.classroom.repositories.base",
+        "app.domains.classroom.repositories.mongo",
+        "app.domains.classroom.service",
         "app.domains.chat",
         "app.domains.chat.router",
         "app.domains.chat.schemas",
@@ -41,6 +46,10 @@ def test_domain_packages_are_importable():
         "app.interfaces",
         "app.interfaces.student",
         "app.interfaces.student.progress_router",
+        "app.interfaces.teacher",
+        "app.interfaces.teacher.classroom_router",
+        "app.interfaces.teacher.schemas",
+        "app.interfaces.teacher.student_view_router",
     ]
 
     for module_name in modules:
