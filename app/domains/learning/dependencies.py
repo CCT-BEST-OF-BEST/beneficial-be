@@ -1,5 +1,5 @@
-from app.domains.learning.content_service import ContentCatalogService
-from app.domains.learning.repositories.content_mongo import MongoContentCatalogRepository
+from app.domains.learning.content.repositories.mongo import MongoContentCatalogRepository
+from app.domains.learning.content.service import ContentCatalogService
 from app.domains.learning.repositories.mongo import MongoLearningRecordRepository
 from app.domains.learning.service import LearningRecordService
 from app.infrastructure.db.mongo.mongo_client import get_mongo_client

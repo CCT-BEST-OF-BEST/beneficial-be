@@ -203,7 +203,8 @@ LangGraph 기반 학습 코치. 모든 엔드포인트가 `get_current_user`로 
 
 ## 4. 학습 컨텐츠 (`/learning`)
 
-Stage 1 (카드 학습) · Stage 2 (드래그&드롭) 컨텐츠와 이미지 서빙.
+Stage 1 (카드 학습) · Stage 2 (드래그&드롭) 컨텐츠.
+이미지 파일 경로는 내려주지 않고, 프론트가 아이콘/컴포넌트로 매핑할 시각 힌트만 제공한다.
 
 | Method | Path | 인증 | 설명 |
 | --- | --- | --- | --- |
@@ -211,12 +212,11 @@ Stage 1 (카드 학습) · Stage 2 (드래그&드롭) 컨텐츠와 이미지 서
 | POST | `/learning/stage1/submit-card-check` | 보호 | Stage 1 답안 확인 |
 | GET | `/learning/stage2/problems` | 보호 | Stage 2 문제 + 답안 풀 |
 | POST | `/learning/stage2/submit-answer` | 보호 | Stage 2 답안 제출 |
-| GET | `/learning/images/{filename:path}` | 보호 | 학습 이미지 서빙 |
 
 > 모든 답안 제출 결과는 `LearningRecord`에 저장되어 Agent의 약점 분석에 반영된다.
 
 ### 4.1 `GET /learning/stage1/cards`
-**Response 200** (느슨한 dict 형태)
+**Response 200** (`Stage1CardsResponse`)
 ```json
 {
   "success": true,
@@ -226,8 +226,22 @@ Stage 1 (카드 학습) · Stage 2 (드래그&드롭) 컨텐츠와 이미지 서
       "pair_id": "pair_1",
       "word1": "가르치다",
       "word2": "가르키다",
-      "card1": { "card_id": "card_1", "front_image": "/images/cards/card1_front.png", "back_image": "/images/cards/card1_back.png" },
-      "card2": { "card_id": "card_2", "front_image": "/images/cards/card2_front.png", "back_image": "/images/cards/card2_back.png" },
+      "card1": {
+        "card_id": "card_1",
+        "word": "가르치다",
+        "meaning": "지식이나 기술을 알려주다",
+        "example_sentence": "선생님이 수학을 가르치다.",
+        "visual_hint": "book-open",
+        "color_theme": "primary"
+      },
+      "card2": {
+        "card_id": "card_2",
+        "word": "가르키다",
+        "meaning": "손가락 등으로 방향을 가리키다",
+        "example_sentence": "그가 건물을 가르키다.",
+        "visual_hint": "hand-point-up",
+        "color_theme": "warning"
+      },
       "order": 1
     }
   ]
@@ -287,14 +301,6 @@ Stage 1 (카드 학습) · Stage 2 (드래그&드롭) 컨텐츠와 이미지 서
 ```
 **Errors**: `404` lesson 데이터 / problem_id 없음.
 
-### 4.5 `GET /learning/images/{filename:path}`
-- `filename`에 `/`가 포함되면 `static/images/<filename>` 전체 경로로 처리.
-- 단순 파일명이면 `static/images/cards/<filename>` → 없으면 `static/images/stage3/<filename>` 순으로 탐색.
-- Content-Type은 확장자 기반(`.png`, `.jpg`, `.jpeg`, `.svg`).
-- **Errors**: `404` 파일 없음.
-
----
-
 ## 5. 학습 기록 (`/learning/records`)
 
 | Method | Path | 인증 | 설명 |
@@ -347,7 +353,14 @@ Stage 3는 "순차 학습 → 틀린 문제만 순환 복습" 알고리즘으로
   "instruction": "...",
   "total_problems": 5,
   "problems": [
-    { "problem_id": 1, "sentence_part1": "...", "sentence_part2": "...", "image": "problem_1.png", "badge": null }
+    {
+      "problem_id": 1,
+      "sentence_part1": "...",
+      "sentence_part2": "...",
+      "visual_hint": "book-open",
+      "accent_color": "primary",
+      "badge": null
+    }
   ]
 }
 ```
@@ -362,7 +375,8 @@ Stage 3는 "순차 학습 → 틀린 문제만 순환 복습" 알고리즘으로
       "problem_id": 2,
       "sentence_part1": "...",
       "sentence_part2": "...",
-      "image": "problem_2.png",
+      "visual_hint": "book-open",
+      "accent_color": "primary",
       "badge": "재도전 | 첫학습 | null"
     },
     "is_completed": false

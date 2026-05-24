@@ -2,13 +2,13 @@ from fastapi import APIRouter, Depends, HTTPException
 
 from app.domains.auth.dependencies import get_current_user
 from app.domains.auth.models import User
-from app.domains.learning.content_schemas import (
+from app.domains.learning.content.schemas import (
     ContentUnitsResponse,
     LessonDetailResponse,
     LessonSummaryResponse,
     UnitSummaryResponse,
 )
-from app.domains.learning.content_service import ContentCatalogService
+from app.domains.learning.content.service import ContentCatalogService
 from app.domains.learning.dependencies import get_content_catalog_service
 
 router = APIRouter(prefix="/content", tags=["content"])

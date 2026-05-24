@@ -1,4 +1,4 @@
-from app.domains.learning.content_service import ContentCatalogService
+from app.domains.learning.content.service import ContentCatalogService
 
 
 class FakeContentCatalogRepository:

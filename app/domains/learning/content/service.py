@@ -1,5 +1,5 @@
-from app.domains.learning.content_models import Lesson, Unit
-from app.domains.learning.repositories.content_base import ContentCatalogRepository
+from app.domains.learning.content.models import Lesson, Unit
+from app.domains.learning.content.repositories.base import ContentCatalogRepository
 
 
 class ContentCatalogService:

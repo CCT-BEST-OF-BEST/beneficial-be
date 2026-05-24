@@ -11,7 +11,8 @@ class Stage3Problem(BaseModel):
     sentence_part2: str = Field(..., description="문장 뒷부분")
     full_sentence: str = Field(..., description="완성된 문장")
     explanation: str = Field(..., description="해설")
-    image: str = Field(..., description="이미지 파일명")
+    visual_hint: str | None = Field(None, description="프론트 아이콘/일러스트 키")
+    accent_color: str | None = Field(None, description="프론트 디자인 토큰 키")
 
 
 class Stage3ProblemResponse(BaseModel):
@@ -19,7 +20,8 @@ class Stage3ProblemResponse(BaseModel):
     problem_id: int = Field(..., description="문제 ID")
     sentence_part1: str = Field(..., description="문장 첫 부분")
     sentence_part2: str = Field(..., description="문장 뒷부분")
-    image: str = Field(..., description="이미지 파일명")
+    visual_hint: str | None = Field(None, description="프론트 아이콘/일러스트 키")
+    accent_color: str | None = Field(None, description="프론트 디자인 토큰 키")
     badge: Optional[str] = Field(None, description="뱃지 (첫학습/훌륭해요 등)")
 
 

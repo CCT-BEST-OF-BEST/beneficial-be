@@ -36,7 +36,8 @@ class Stage3Service:
                 problem_id=p["problem_id"],
                 sentence_part1=p["sentence_part1"],
                 sentence_part2=p["sentence_part2"],
-                image=p["image"],
+                visual_hint=p.get("visual_hint") or _stage3_visual_hint(p["problem_id"]),
+                accent_color=p.get("accent_color") or _stage3_accent_color(p["problem_id"]),
                 badge="첫학습",
             )
             for p in stage3_data["problems"]
@@ -226,7 +227,11 @@ class Stage3Service:
             return None
         for p in data.get("problems", []):
             if p["problem_id"] == problem_id:
-                return dict(p)
+                problem = dict(p)
+                problem["visual_hint"] = problem.get("visual_hint") or _stage3_visual_hint(problem_id)
+                problem["accent_color"] = problem.get("accent_color") or _stage3_accent_color(problem_id)
+                problem.pop("image", None)
+                return problem
         return None
 
     def _load_problems_data(self) -> Dict[str, Any]:
@@ -249,3 +254,20 @@ def get_stage3_service(learning_record_service: LearningRecordService = None) ->
         mongo_client=get_mongo_client(),
         learning_record_service=learning_record_service,
     )
+
+
+def _stage3_visual_hint(problem_id: int) -> str:
+    lesson_hints = {
+        1: "book-open",
+        2: "backpack",
+        3: "send",
+        4: "check-circle",
+        5: "clock",
+    }
+    lesson_no = ((problem_id - 1) // 5) + 1
+    return lesson_hints.get(lesson_no, "pencil")
+
+
+def _stage3_accent_color(problem_id: int) -> str:
+    colors = ["primary", "success", "warning", "info", "secondary"]
+    return colors[((problem_id - 1) // 5) % len(colors)]

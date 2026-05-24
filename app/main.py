@@ -1,12 +1,11 @@
 import os
 
 from fastapi import FastAPI
-from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
 from app.domains.chat.router import router as chat_router
 from app.domains.system.router import router as system_router
 from app.domains.learning.content_router import router as learning_router
-from app.domains.learning.content_tree_router import router as content_tree_router
+from app.domains.learning.content.router import router as content_tree_router
 from app.domains.learning.stage3_router import router as stage3_router
 from app.domains.auth.router import router as auth_router
 from app.domains.agent.router import router as agent_router
@@ -128,10 +127,6 @@ app.add_middleware(
     allow_methods=["*"],  # 모든 HTTP 메서드 허용
     allow_headers=["*"],  # 모든 헤더 허용
 )
-
-# Static 파일 마운트 (이미지 파일 서빙을 위해)
-app.mount("/images", StaticFiles(directory="app/static/images"), name="images")
-
 
 @app.on_event("startup")
 async def startup_event():
