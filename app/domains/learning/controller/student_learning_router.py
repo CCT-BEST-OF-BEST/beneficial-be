@@ -106,12 +106,13 @@ async def get_stage1_cards(
     response_model=Stage2ProblemsResponse,
 )
 async def get_stage2_problems(
+    lesson_id: str = DEFAULT_STAGE2_LESSON_ID,
     current_user: User = Depends(get_current_user),
 ) -> Stage2ProblemsResponse:
     """2단계 예제풀이 문제 조회. 정답(`correct_answer`, `full_sentence`)은 응답에서 제외된다."""
     try:
         mongo_client = get_mongo_client()
-        stage2_data = _find_stage2_lesson_data(mongo_client)
+        stage2_data = _find_stage2_lesson_data(mongo_client, lesson_id)
 
         if not stage2_data:
             raise HTTPException(status_code=404, detail="2단계 문제 데이터를 찾을 수 없습니다")
@@ -235,11 +236,16 @@ async def submit_stage1_card_check(
 )
 async def submit_stage2_answer(
     request: Stage2SubmitRequest,
+    lesson_id: str = DEFAULT_STAGE2_LESSON_ID,
     current_user: User = Depends(get_current_user),
     learning_record_service: LearningRecordService = Depends(get_learning_record_service),
 ) -> Stage2SubmitResponse:
     try:
-        stage2_data = _find_stage2_lesson_data(get_mongo_client())
+        stage2_data = _find_stage2_problem_data(
+            get_mongo_client(),
+            problem_id=request.problem_id,
+            lesson_id=lesson_id,
+        )
         if not stage2_data:
             raise HTTPException(status_code=404, detail="2단계 문제 데이터를 찾을 수 없습니다")
 
@@ -294,6 +300,30 @@ def _find_stage2_lesson_data(mongo_client, lesson_id: str = DEFAULT_STAGE2_LESSO
             {"lesson_id": LEGACY_STAGE2_LESSON_ID},
         )
     return None
+
+
+def _find_stage2_problem_data(
+    mongo_client,
+    problem_id: int,
+    lesson_id: str = DEFAULT_STAGE2_LESSON_ID,
+) -> dict | None:
+    stage2_data = _find_stage2_lesson_data(mongo_client, lesson_id)
+    if _contains_problem(stage2_data, problem_id):
+        return stage2_data
+
+    for data in mongo_client.find_many("stage2_problems", {}):
+        if _contains_problem(data, problem_id):
+            return data
+    return None
+
+
+def _contains_problem(stage2_data: dict | None, problem_id: int) -> bool:
+    if not stage2_data:
+        return False
+    return any(
+        problem.get("problem_id") == problem_id
+        for problem in stage2_data.get("problems", [])
+    )
 
 
 def _stage1_pair_response(pair: dict) -> Stage1CardPairResponse:

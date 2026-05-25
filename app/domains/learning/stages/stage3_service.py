@@ -32,8 +32,7 @@ class Stage3Service:
     # ------------------------------------------------------------------
 
     def get_problems(self, lesson_id: str = DEFAULT_STAGE3_LESSON_ID) -> Stage3ProblemsResponse:
-        stage3_data = self._load_problems_data()
-        lesson_problem_ids = set(self._get_problem_ids_for_lesson(lesson_id))
+        stage3_data = self._load_lesson_data(lesson_id)
         problems = [
             Stage3ProblemResponse(
                 problem_id=p["problem_id"],
@@ -44,7 +43,6 @@ class Stage3Service:
                 badge="첫학습",
             )
             for p in stage3_data["problems"]
-            if p["problem_id"] in lesson_problem_ids
         ]
         return Stage3ProblemsResponse(
             success=True,
@@ -65,7 +63,11 @@ class Stage3Service:
         total = len(lesson_problem_ids)
 
         if not progress:
-            problem = self._get_problem_by_id(lesson_problem_ids[0]) if lesson_problem_ids else None
+            problem = (
+                self._get_problem_by_id(lesson_problem_ids[0], lesson_id)
+                if lesson_problem_ids
+                else None
+            )
             if problem:
                 problem["badge"] = "첫학습"
             return problem
@@ -81,7 +83,7 @@ class Stage3Service:
             next_index += 1
 
         if next_index <= total:
-            problem = self._get_problem_by_id(lesson_problem_ids[next_index - 1])
+            problem = self._get_problem_by_id(lesson_problem_ids[next_index - 1], lesson_id)
             if problem:
                 problem["badge"] = "첫학습"
             return problem
@@ -94,7 +96,7 @@ class Stage3Service:
                 review_index = 0
                 self._patch_progress(user_id, lesson_id, {"review_problem_index": 0})
 
-            problem = self._get_problem_by_id(review_problems[review_index])
+            problem = self._get_problem_by_id(review_problems[review_index], lesson_id)
             if problem:
                 problem["badge"] = "재도전"
             return problem
@@ -109,7 +111,7 @@ class Stage3Service:
         lesson_id: str | None = None,
     ) -> Stage3AnswerResponse:
         lesson_id = lesson_id or infer_lesson_id(3, problem_id) or DEFAULT_STAGE3_LESSON_ID
-        problem = self._get_problem_by_id(problem_id)
+        problem = self._get_problem_by_id(problem_id, lesson_id)
         if not problem:
             raise ValueError(f"문제 ID {problem_id}를 찾을 수 없습니다")
 
@@ -311,8 +313,12 @@ class Stage3Service:
             return "review", "재도전"
         return "review", "잠시후복습"
 
-    def _get_problem_by_id(self, problem_id: int) -> Optional[Dict[str, Any]]:
-        data = self._load_problems_data()
+    def _get_problem_by_id(
+        self,
+        problem_id: int,
+        lesson_id: str | None = None,
+    ) -> Optional[Dict[str, Any]]:
+        data = self._load_lesson_data(lesson_id) if lesson_id else self._load_problems_data()
         if not data:
             return None
         for p in data.get("problems", []):
@@ -332,6 +338,30 @@ class Stage3Service:
             raise RuntimeError("3단계 문제 데이터를 찾을 수 없습니다")
         return data
 
+    def _load_lesson_data(self, lesson_id: str) -> Dict[str, Any]:
+        data = self.mongo_client.find_one(
+            self.problems_collection,
+            {"lesson_id": lesson_id},
+        )
+        if data:
+            return data
+
+        legacy_data = self._load_problems_data()
+        lesson_problem_ids = set(_legacy_problem_ids_for_lesson(lesson_id, legacy_data))
+        problems = [
+            problem
+            for problem in legacy_data.get("problems", [])
+            if problem.get("problem_id") in lesson_problem_ids
+        ]
+        return {
+            "_id": f"stage3_{lesson_id}",
+            "lesson_id": lesson_id,
+            "title": legacy_data.get("title"),
+            "instruction": legacy_data["instruction"],
+            "problems": problems,
+            "total_problems": len(problems),
+        }
+
     def _get_total_problems(self) -> int:
         data = self.mongo_client.find_one(
             self.problems_collection, {"_id": "stage3_problems"}
@@ -339,11 +369,8 @@ class Stage3Service:
         return data.get("total_problems", 0) if data else 0
 
     def _get_problem_ids_for_lesson(self, lesson_id: str) -> List[int]:
-        lesson_no = _lesson_number(lesson_id)
-        data = self._load_problems_data()
-        problem_ids = sorted(p["problem_id"] for p in data.get("problems", []))
-        start = (lesson_no - 1) * 5
-        return problem_ids[start : start + 5]
+        data = self._load_lesson_data(lesson_id)
+        return sorted(p["problem_id"] for p in data.get("problems", []))
 
 
 def get_stage3_service(learning_record_service: LearningRecordService = None) -> Stage3Service:
@@ -375,3 +402,10 @@ def _lesson_number(lesson_id: str) -> int:
         return max(1, int(str(lesson_id).split("_")[-1]))
     except (TypeError, ValueError):
         return 1
+
+
+def _legacy_problem_ids_for_lesson(lesson_id: str, legacy_data: Dict[str, Any]) -> List[int]:
+    lesson_no = _lesson_number(lesson_id)
+    problem_ids = sorted(p["problem_id"] for p in legacy_data.get("problems", []))
+    start = (lesson_no - 1) * 5
+    return problem_ids[start : start + 5]

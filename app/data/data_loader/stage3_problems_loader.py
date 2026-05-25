@@ -269,6 +269,18 @@ STAGE3_DATA = {
     "total_problems": 25,
 }
 
+STAGE3_LESSON_DATA = [
+    {
+        "_id": f"stage3_lesson_{lesson_no}",
+        "lesson_id": f"lesson_{lesson_no}",
+        "title": f"3단계 문제풀이 - 차시 {lesson_no}",
+        "instruction": STAGE3_DATA["instruction"],
+        "problems": STAGE3_DATA["problems"][(lesson_no - 1) * 5 : lesson_no * 5],
+        "total_problems": len(STAGE3_DATA["problems"][(lesson_no - 1) * 5 : lesson_no * 5]),
+    }
+    for lesson_no in range(1, 6)
+]
+
 
 def load_stage3_problems():
     """3단계 문제풀이 데이터를 MongoDB에 저장"""
@@ -277,8 +289,8 @@ def load_stage3_problems():
         collection_name = "stage3_problems"
 
         mongo_client.db[collection_name].drop()
-        result = mongo_client.insert_one(collection_name, STAGE3_DATA)
-        logger.info(f"[OK] 3단계 문제풀이 데이터 삽입 완료: {result}")
+        result = mongo_client.insert_many(collection_name, STAGE3_LESSON_DATA)
+        logger.info(f"[OK] 3단계 문제풀이 데이터 삽입 완료: {len(result.inserted_ids)}개 차시")
         return True
 
     except Exception as e:

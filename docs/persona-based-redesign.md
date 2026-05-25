@@ -550,7 +550,7 @@ tests/
   - `69 passed, 3 skipped`
   - 직전 기록의 `langgraph` 미설치/async 플러그인 이슈는 시스템 Python으로 실행했을 때의 환경 문제였고, `venv`에는 `langgraph`, `pytest-asyncio`가 설치되어 있다.
 - 2026-05-25 이어서 작업 후 확인: `venv/bin/pytest -q`
-  - `80 passed, 3 skipped`
+  - `83 passed, 3 skipped`
 
 ### 12.5 다음에 이어서 할 작업
 
@@ -570,7 +570,9 @@ tests/
 
 3. **콘텐츠 데이터 구조 Phase 1 마무리**
    - Stage 1/2/3 데이터를 실제 `lesson_id` 기준 도큐먼트로 재구성
-     - 남음: Stage 3 데이터 도큐먼트 자체는 아직 전역 `stage3_problems` 묶음이며, 서비스 계층에서 `lesson_id`별 5문제 범위를 계산한다. 다음 단계에서 `stage3_lesson_1` 같은 차시별 도큐먼트로 쪼갤 수 있다.
+     - 완료(2026-05-25): Stage 2 로더는 `stage2_lesson_1`~`stage2_lesson_5` 도큐먼트를 삽입한다.
+     - 완료(2026-05-25): Stage 3 로더는 `stage3_lesson_1`~`stage3_lesson_5` 도큐먼트를 삽입한다.
+     - 완료(2026-05-25): Stage 3 서비스는 차시별 도큐먼트를 우선 조회하고, 기존 전역 `stage3_problems` 도큐먼트만 남은 환경에서는 lesson 범위로 잘라 fallback한다.
    - `lesson_1` 등 신규 lesson id와 기존 `lesson1` 호환 정리
      - 완료(2026-05-25): Stage 2 로더/API는 `lesson_1` 기준으로 전환했고, 기존 MongoDB에 `lesson1` 데이터가 남아 있어도 fallback 조회한다.
      - 완료(2026-05-25): RAG용 `korean_word_problems` 로더의 생성 ID도 `lesson_1_q1` 형태로 정규화했다.

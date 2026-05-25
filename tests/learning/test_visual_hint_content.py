@@ -1,6 +1,7 @@
 from app.domains.learning.stages.stage3_service import Stage3Service
 from app.domains.learning.controller.student_learning_router import (
     _find_stage2_lesson_data,
+    _find_stage2_problem_data,
     _stage1_pair_response,
 )
 
@@ -81,6 +82,11 @@ class FakeStage2MongoClient:
             None,
         )
 
+    def find_many(self, collection_name, filter_dict=None):
+        if collection_name != "stage2_problems":
+            return []
+        return list(self.documents)
+
 
 def test_stage2_lookup_prefers_new_lesson_id():
     current = {"lesson_id": "lesson_1", "title": "current"}
@@ -97,3 +103,21 @@ def test_stage2_lookup_falls_back_to_legacy_lesson_id():
     data = _find_stage2_lesson_data(FakeStage2MongoClient([legacy]))
 
     assert data == legacy
+
+
+def test_stage2_problem_lookup_finds_problem_in_other_lesson_doc():
+    lesson_1 = {
+        "lesson_id": "lesson_1",
+        "problems": [{"problem_id": 1}],
+    }
+    lesson_4 = {
+        "lesson_id": "lesson_4",
+        "problems": [{"problem_id": 13}],
+    }
+
+    data = _find_stage2_problem_data(
+        FakeStage2MongoClient([lesson_1, lesson_4]),
+        problem_id=13,
+    )
+
+    assert data == lesson_4
