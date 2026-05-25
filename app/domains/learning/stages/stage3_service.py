@@ -7,10 +7,12 @@ from app.domains.learning.stages.stage3_schemas import (
     Stage3ProblemResponse,
     Stage3ProgressResponse,
 )
-from app.domains.learning.service import LearningRecordService
+from app.domains.learning.service import LearningRecordService, infer_lesson_id
 from app.infrastructure.db.mongo.mongo_client import MongoClient, get_mongo_client
 
 logger = logging.getLogger(__name__)
+
+DEFAULT_STAGE3_LESSON_ID = "lesson_1"
 
 
 class Stage3Service:
@@ -29,8 +31,9 @@ class Stage3Service:
     # Public API
     # ------------------------------------------------------------------
 
-    def get_problems(self) -> Stage3ProblemsResponse:
+    def get_problems(self, lesson_id: str = DEFAULT_STAGE3_LESSON_ID) -> Stage3ProblemsResponse:
         stage3_data = self._load_problems_data()
+        lesson_problem_ids = set(self._get_problem_ids_for_lesson(lesson_id))
         problems = [
             Stage3ProblemResponse(
                 problem_id=p["problem_id"],
@@ -41,19 +44,28 @@ class Stage3Service:
                 badge="첫학습",
             )
             for p in stage3_data["problems"]
+            if p["problem_id"] in lesson_problem_ids
         ]
         return Stage3ProblemsResponse(
             success=True,
+            lesson_id=lesson_id,
+            title=stage3_data.get("title"),
             instruction=stage3_data["instruction"],
-            total_problems=stage3_data["total_problems"],
+            total_problems=len(problems),
             problems=problems,
         )
 
-    def get_next_problem(self, user_id: str) -> Optional[Dict[str, Any]]:
-        progress = self._load_progress(user_id)
+    def get_next_problem(
+        self,
+        user_id: str,
+        lesson_id: str = DEFAULT_STAGE3_LESSON_ID,
+    ) -> Optional[Dict[str, Any]]:
+        progress = self._load_progress(user_id, lesson_id)
+        lesson_problem_ids = self._get_problem_ids_for_lesson(lesson_id)
+        total = len(lesson_problem_ids)
 
         if not progress:
-            problem = self._get_problem_by_id(1)
+            problem = self._get_problem_by_id(lesson_problem_ids[0]) if lesson_problem_ids else None
             if problem:
                 problem["badge"] = "첫학습"
             return problem
@@ -61,23 +73,26 @@ class Stage3Service:
         next_index = progress.get("next_problem_index", 1)
         completed = set(progress.get("completed_problems", []))
 
-        # 순차 진행 (1→5), 완료된 문제 건너뜀
-        while next_index <= 5 and next_index in completed:
+        # 순차 진행 (차시 내 1→N), 완료된 문제 건너뜀
+        while (
+            next_index <= total
+            and lesson_problem_ids[next_index - 1] in completed
+        ):
             next_index += 1
 
-        if next_index <= 5:
-            problem = self._get_problem_by_id(next_index)
+        if next_index <= total:
+            problem = self._get_problem_by_id(lesson_problem_ids[next_index - 1])
             if problem:
                 problem["badge"] = "첫학습"
             return problem
 
         # 모든 문제를 시도한 뒤 복습 출제
         review_problems = progress.get("review_problems", [])
-        if review_problems and progress.get("next_problem_index", 1) > 5:
+        if review_problems and progress.get("next_problem_index", 1) > total:
             review_index = progress.get("review_problem_index", 0)
             if review_index >= len(review_problems):
                 review_index = 0
-                self._patch_progress(user_id, {"review_problem_index": 0})
+                self._patch_progress(user_id, lesson_id, {"review_problem_index": 0})
 
             problem = self._get_problem_by_id(review_problems[review_index])
             if problem:
@@ -91,20 +106,23 @@ class Stage3Service:
         problem_id: int,
         user_answer: str,
         user_id: str,
+        lesson_id: str | None = None,
     ) -> Stage3AnswerResponse:
+        lesson_id = lesson_id or infer_lesson_id(3, problem_id) or DEFAULT_STAGE3_LESSON_ID
         problem = self._get_problem_by_id(problem_id)
         if not problem:
             raise ValueError(f"문제 ID {problem_id}를 찾을 수 없습니다")
 
         is_correct = user_answer.strip() == problem["correct_answer"].strip()
-        status, badge = self._determine_status(problem_id, is_correct, user_id)
-        self._update_progress(problem_id, is_correct, user_id)
+        status, badge = self._determine_status(problem_id, is_correct, user_id, lesson_id)
+        self._update_progress(problem_id, is_correct, user_id, lesson_id)
 
         if self.learning_record_service:
             self.learning_record_service.record_answer(
                 user_id=user_id,
                 stage=3,
                 question_id=f"stage3_problem_{problem_id}",
+                lesson_id=lesson_id,
                 problem_id=problem_id,
                 user_answer=user_answer,
                 correct_answer=problem["correct_answer"],
@@ -123,11 +141,15 @@ class Stage3Service:
             badge=badge,
         )
 
-    def get_progress(self, user_id: str) -> Stage3ProgressResponse:
-        progress = self._load_progress(user_id)
+    def get_progress(
+        self,
+        user_id: str,
+        lesson_id: str = DEFAULT_STAGE3_LESSON_ID,
+    ) -> Stage3ProgressResponse:
+        progress = self._load_progress(user_id, lesson_id)
         if not progress:
-            total = self._get_total_problems()
-            progress = self._create_initial_progress(user_id, total)
+            total = len(self._get_problem_ids_for_lesson(lesson_id))
+            progress = self._create_initial_progress(user_id, lesson_id, total)
             self.mongo_client.insert_one(self.progress_collection, progress)
 
         is_completed = len(progress.get("completed_problems", [])) >= progress.get(
@@ -137,32 +159,83 @@ class Stage3Service:
             success=True, progress=progress, is_completed=is_completed
         )
 
-    def reset_progress(self, user_id: str) -> None:
+    def reset_progress(
+        self,
+        user_id: str,
+        lesson_id: str = DEFAULT_STAGE3_LESSON_ID,
+    ) -> None:
         self.mongo_client.delete_one(
-            self.progress_collection, {"user_id": user_id}
+            self.progress_collection, {"user_id": user_id, "lesson_id": lesson_id}
         )
-        total = self._get_total_problems()
+        total = len(self._get_problem_ids_for_lesson(lesson_id))
         self.mongo_client.insert_one(
-            self.progress_collection, self._create_initial_progress(user_id, total)
+            self.progress_collection, self._create_initial_progress(user_id, lesson_id, total)
         )
 
     # ------------------------------------------------------------------
     # Internal helpers
     # ------------------------------------------------------------------
 
-    def _load_progress(self, user_id: str) -> Optional[Dict[str, Any]]:
-        return self.mongo_client.find_one(
-            self.progress_collection, {"user_id": user_id}
+    def _load_progress(self, user_id: str, lesson_id: str) -> Optional[Dict[str, Any]]:
+        progress = self.mongo_client.find_one(
+            self.progress_collection, {"user_id": user_id, "lesson_id": lesson_id}
         )
+        if progress:
+            return progress
 
-    def _patch_progress(self, user_id: str, fields: Dict[str, Any]) -> None:
+        if lesson_id == DEFAULT_STAGE3_LESSON_ID:
+            legacy = self.mongo_client.find_one(
+                self.progress_collection,
+                {"user_id": user_id, "lesson_id": {"$exists": False}},
+            )
+            if legacy:
+                lesson_problem_ids = set(self._get_problem_ids_for_lesson(lesson_id))
+                normalized = {
+                    **legacy,
+                    "lesson_id": lesson_id,
+                    "total_problems": len(lesson_problem_ids),
+                    "completed_problems": [
+                        pid
+                        for pid in legacy.get("completed_problems", [])
+                        if pid in lesson_problem_ids
+                    ],
+                    "review_problems": [
+                        pid
+                        for pid in legacy.get("review_problems", [])
+                        if pid in lesson_problem_ids
+                    ],
+                    "current_problem_id": (
+                        legacy.get("current_problem_id")
+                        if legacy.get("current_problem_id") in lesson_problem_ids
+                        else None
+                    ),
+                }
+                self.mongo_client.update_one(
+                    self.progress_collection,
+                    {"user_id": user_id, "lesson_id": {"$exists": False}},
+                    {
+                        key: value
+                        for key, value in normalized.items()
+                        if key not in ("_id", "user_id")
+                    },
+                )
+                return normalized
+        return None
+
+    def _patch_progress(self, user_id: str, lesson_id: str, fields: Dict[str, Any]) -> None:
         self.mongo_client.update_one(
-            self.progress_collection, {"user_id": user_id}, fields
+            self.progress_collection, {"user_id": user_id, "lesson_id": lesson_id}, fields
         )
 
-    def _create_initial_progress(self, user_id: str, total: int) -> Dict[str, Any]:
+    def _create_initial_progress(
+        self,
+        user_id: str,
+        lesson_id: str,
+        total: int,
+    ) -> Dict[str, Any]:
         return {
             "user_id": user_id,
+            "lesson_id": lesson_id,
             "total_problems": total,
             "correct_count": 0,
             "wrong_count": 0,
@@ -173,14 +246,20 @@ class Stage3Service:
             "review_problem_index": 0,
         }
 
-    def _update_progress(self, problem_id: int, is_correct: bool, user_id: str) -> None:
-        progress = self._load_progress(user_id)
+    def _update_progress(
+        self,
+        problem_id: int,
+        is_correct: bool,
+        user_id: str,
+        lesson_id: str,
+    ) -> None:
+        progress = self._load_progress(user_id, lesson_id)
         if not progress:
-            total = self._get_total_problems()
-            progress = self._create_initial_progress(user_id, total)
+            total = len(self._get_problem_ids_for_lesson(lesson_id))
+            progress = self._create_initial_progress(user_id, lesson_id, total)
             self.mongo_client.insert_one(self.progress_collection, progress)
             # reload to get the inserted doc
-            progress = self._load_progress(user_id)
+            progress = self._load_progress(user_id, lesson_id)
 
         if is_correct:
             progress["correct_count"] = progress.get("correct_count", 0) + 1
@@ -197,26 +276,37 @@ class Stage3Service:
                 progress["review_problems"] = progress.get("review_problems", []) + [problem_id]
 
         progress["current_problem_id"] = problem_id
+        lesson_problem_ids = self._get_problem_ids_for_lesson(lesson_id)
+        try:
+            local_problem_index = lesson_problem_ids.index(problem_id) + 1
+        except ValueError:
+            local_problem_index = progress.get("next_problem_index", 1)
         next_index = progress.get("next_problem_index", 1)
 
-        if problem_id == next_index and next_index <= 5:
+        if local_problem_index == next_index and next_index <= len(lesson_problem_ids):
             progress["next_problem_index"] = next_index + 1
         elif problem_id in progress.get("review_problems", []) and not is_correct:
             progress["review_problem_index"] = progress.get("review_problem_index", 0) + 1
 
         # _id 는 filter 에서만 사용하므로 update dict 에서 제거
-        update_fields = {k: v for k, v in progress.items() if k not in ("_id", "user_id")}
+        update_fields = {
+            k: v for k, v in progress.items() if k not in ("_id", "user_id", "lesson_id")
+        }
         self.mongo_client.update_one(
-            self.progress_collection, {"user_id": user_id}, update_fields
+            self.progress_collection, {"user_id": user_id, "lesson_id": lesson_id}, update_fields
         )
 
     def _determine_status(
-        self, problem_id: int, is_correct: bool, user_id: str
+        self,
+        problem_id: int,
+        is_correct: bool,
+        user_id: str,
+        lesson_id: str,
     ) -> tuple:
         if is_correct:
             return "correct", "훌륭해요!"
 
-        progress = self._load_progress(user_id)
+        progress = self._load_progress(user_id, lesson_id)
         if progress and problem_id in progress.get("review_problems", []):
             return "review", "재도전"
         return "review", "잠시후복습"
@@ -248,6 +338,13 @@ class Stage3Service:
         )
         return data.get("total_problems", 0) if data else 0
 
+    def _get_problem_ids_for_lesson(self, lesson_id: str) -> List[int]:
+        lesson_no = _lesson_number(lesson_id)
+        data = self._load_problems_data()
+        problem_ids = sorted(p["problem_id"] for p in data.get("problems", []))
+        start = (lesson_no - 1) * 5
+        return problem_ids[start : start + 5]
+
 
 def get_stage3_service(learning_record_service: LearningRecordService = None) -> Stage3Service:
     return Stage3Service(
@@ -271,3 +368,10 @@ def _stage3_visual_hint(problem_id: int) -> str:
 def _stage3_accent_color(problem_id: int) -> str:
     colors = ["primary", "success", "warning", "info", "secondary"]
     return colors[((problem_id - 1) // 5) % len(colors)]
+
+
+def _lesson_number(lesson_id: str) -> int:
+    try:
+        return max(1, int(str(lesson_id).split("_")[-1]))
+    except (TypeError, ValueError):
+        return 1

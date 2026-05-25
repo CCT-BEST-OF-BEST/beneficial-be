@@ -22,6 +22,9 @@ from app.infrastructure.db.mongo.mongo_client import get_mongo_client
 router = APIRouter(prefix="/student/learning", tags=["student-learning"])
 logger = get_logger(__name__)
 
+DEFAULT_STAGE2_LESSON_ID = "lesson_1"
+LEGACY_STAGE2_LESSON_ID = "lesson1"
+
 
 @router.get(
     "/stage1/cards",
@@ -81,7 +84,7 @@ async def get_stage1_cards(
 ```json
 {
   "success": true,
-  "lesson_id": "lesson1",
+  "lesson_id": "lesson_1",
   "title": "2단계 예제풀이",
   "instruction": "맞춤법에 맞는 낱말 카드를 선택하세요",
   "total_problems": 8,
@@ -108,7 +111,7 @@ async def get_stage2_problems(
     """2단계 예제풀이 문제 조회. 정답(`correct_answer`, `full_sentence`)은 응답에서 제외된다."""
     try:
         mongo_client = get_mongo_client()
-        stage2_data = mongo_client.find_one("stage2_problems", {"lesson_id": "lesson1"})
+        stage2_data = _find_stage2_lesson_data(mongo_client)
 
         if not stage2_data:
             raise HTTPException(status_code=404, detail="2단계 문제 데이터를 찾을 수 없습니다")
@@ -236,7 +239,7 @@ async def submit_stage2_answer(
     learning_record_service: LearningRecordService = Depends(get_learning_record_service),
 ) -> Stage2SubmitResponse:
     try:
-        stage2_data = get_mongo_client().find_one("stage2_problems", {"lesson_id": "lesson1"})
+        stage2_data = _find_stage2_lesson_data(get_mongo_client())
         if not stage2_data:
             raise HTTPException(status_code=404, detail="2단계 문제 데이터를 찾을 수 없습니다")
 
@@ -278,6 +281,19 @@ async def submit_stage2_answer(
     except Exception as e:
         logger.error(f"[ERROR] 2단계 답안 제출 실패: {e}")
         raise HTTPException(status_code=500, detail="2단계 답안 제출에 실패했습니다")
+
+
+def _find_stage2_lesson_data(mongo_client, lesson_id: str = DEFAULT_STAGE2_LESSON_ID) -> dict | None:
+    stage2_data = mongo_client.find_one("stage2_problems", {"lesson_id": lesson_id})
+    if stage2_data:
+        return stage2_data
+
+    if lesson_id == DEFAULT_STAGE2_LESSON_ID:
+        return mongo_client.find_one(
+            "stage2_problems",
+            {"lesson_id": LEGACY_STAGE2_LESSON_ID},
+        )
+    return None
 
 
 def _stage1_pair_response(pair: dict) -> Stage1CardPairResponse:

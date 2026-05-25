@@ -6,8 +6,8 @@ from app.common.logging.logging_config import get_logger
 logger = get_logger(__name__)
 
 STAGE2_DATA = {
-    "_id": "stage2_lesson1",
-    "lesson_id": "lesson1",
+    "_id": "stage2_lesson_1",
+    "lesson_id": "lesson_1",
     "title": "2단계 예제풀이",
     "instruction": "맞춤법에 맞는 낱말 카드를 선택하세요",
     "answer_options": [

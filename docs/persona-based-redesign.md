@@ -546,14 +546,17 @@ tests/
 
 - 도메인/라우터/서비스 중심 targeted suite: `52 passed`
 - 라우트 prefix 확인: `/student/learning/*` 등록, 기존 `/learning/stage*` 미등록 확인
-- 전체 `pytest -q`: `62 passed, 7 failed, 3 skipped`
-- 전체 실패 7건은 현재 작업과 별개로 남아 있는 환경/테스트 이슈:
-  - `langgraph` 미설치
-  - async 테스트 플러그인 인식 문제
+- 2026-05-25 재개 직후 확인: 프로젝트 venv 기준 `venv/bin/pytest -q` 전체 통과
+  - `69 passed, 3 skipped`
+  - 직전 기록의 `langgraph` 미설치/async 플러그인 이슈는 시스템 Python으로 실행했을 때의 환경 문제였고, `venv`에는 `langgraph`, `pytest-asyncio`가 설치되어 있다.
+- 2026-05-25 이어서 작업 후 확인: `venv/bin/pytest -q`
+  - `78 passed, 3 skipped`
 
 ### 12.5 다음에 이어서 할 작업
 
 1. **현재 변경분을 의미 단위로 커밋**
+   - 2026-05-25 재개 직후 기준 워킹트리가 clean이었으므로, 2026-05-24 작업분 커밋 항목은 완료된 것으로 본다.
+   - 2026-05-25 이어서 작업한 `lesson_id`/Stage 3 progress/classes seed 변경분은 별도 커밋 대상으로 남아 있다.
    - 권장 커밋:
      - `refactor: 도메인 내부 controller 구조로 라우터 재배치`
      - `test: 테스트 파일을 도메인별 디렉토리로 재구성`
@@ -567,19 +570,27 @@ tests/
 
 3. **콘텐츠 데이터 구조 Phase 1 마무리**
    - Stage 1/2/3 데이터를 실제 `lesson_id` 기준 도큐먼트로 재구성
+     - 남음: Stage 3 데이터 도큐먼트 자체는 아직 전역 `stage3_problems` 묶음이며, 서비스 계층에서 `lesson_id`별 5문제 범위를 계산한다. 다음 단계에서 `stage3_lesson_1` 같은 차시별 도큐먼트로 쪼갤 수 있다.
    - `lesson_1` 등 신규 lesson id와 기존 `lesson1` 호환 정리
+     - 완료(2026-05-25): Stage 2 로더/API는 `lesson_1` 기준으로 전환했고, 기존 MongoDB에 `lesson1` 데이터가 남아 있어도 fallback 조회한다.
+     - 완료(2026-05-25): RAG용 `korean_word_problems` 로더의 생성 ID도 `lesson_1_q1` 형태로 정규화했다.
    - `stage3_progress`를 `user_id + lesson_id` 기준으로 재설계
+     - 완료(2026-05-25): `stage3_progress` 문서에 `lesson_id`를 저장하고, 조회/초기화/다음 문제/답안 제출을 `{user_id, lesson_id}` 기준으로 처리한다.
+     - 완료(2026-05-25): 기존 `lesson_id` 없는 progress 문서는 기본 `lesson_1`으로 읽을 수 있도록 migration fallback을 두고, 전역 25문제 기준 데이터가 진도율을 왜곡하지 않도록 lesson 범위 문제만 남겨 정규화한다.
    - `lesson_progress` 또는 `stage_progress` 컬렉션 설계 확정
+     - 결정(2026-05-25): 이번 단계에서는 새 컬렉션을 만들지 않고 기존 `stage3_progress`를 유지한다. 단, 스키마 키를 `{user_id, lesson_id}`로 확장해 향후 `lesson_progress` 통합이 필요할 때 migration 가능하게 둔다.
 
 4. **교사/학생 데이터 연결 보강**
    - `classes` 시드 로더 추가
+     - 완료(2026-05-25): `app/data/data_loader/classroom_loader.py` 추가. 기존 `classes` 데이터가 없을 때만 기본 반 매핑을 삽입하도록 비파괴적으로 동작한다.
+     - 완료(2026-05-25): `InitializationService.seed_mongo_collections()`에서 `classes` 시드도 함께 수행한다.
    - 테스트용 교사 1명, 반 1개, 학생 몇 명을 초기 데이터로 넣을지 결정
+     - 부분 완료(2026-05-25): 반 매핑은 `teacher_demo_1`, `student_demo_1..3` 기준으로 넣었다. 실제 `users` 계정 시드는 인증/비밀번호 정책과 연결되므로 아직 생성하지 않는다.
    - `learning_records.class_id`를 기록 시점에 실제 class에서 denormalize할지 구현
 
 5. **Agent 테스트 환경 이슈 해결**
-   - `langgraph` 의존성 설치 또는 테스트 stub 전략 결정
-   - async 테스트 플러그인 설정 정리
-   - 전체 `pytest -q`를 green으로 만드는 별도 작업 필요
+   - 완료(2026-05-25): 프로젝트 venv 기준 `langgraph`, `pytest-asyncio`가 설치되어 있고 전체 테스트가 green이다.
+   - 주의: 시스템 Python의 `pytest`가 아니라 `venv/bin/pytest`로 실행해야 한다.
 
 6. **Phase 2 준비**
    - `instruction` 도메인 신설

@@ -1,5 +1,8 @@
 from app.domains.learning.stages.stage3_service import Stage3Service
-from app.domains.learning.controller.student_learning_router import _stage1_pair_response
+from app.domains.learning.controller.student_learning_router import (
+    _find_stage2_lesson_data,
+    _stage1_pair_response,
+)
 
 
 def test_stage1_card_response_removes_image_paths():
@@ -60,3 +63,37 @@ def test_stage3_problem_response_uses_visual_hint_not_image_path():
     assert "image" not in problem
     assert problem["visual_hint"] == "book-open"
     assert problem["accent_color"] == "primary"
+
+
+class FakeStage2MongoClient:
+    def __init__(self, documents):
+        self.documents = documents
+
+    def find_one(self, collection_name, filter_dict):
+        if collection_name != "stage2_problems":
+            return None
+        return next(
+            (
+                document
+                for document in self.documents
+                if document.get("lesson_id") == filter_dict.get("lesson_id")
+            ),
+            None,
+        )
+
+
+def test_stage2_lookup_prefers_new_lesson_id():
+    current = {"lesson_id": "lesson_1", "title": "current"}
+    legacy = {"lesson_id": "lesson1", "title": "legacy"}
+
+    data = _find_stage2_lesson_data(FakeStage2MongoClient([legacy, current]))
+
+    assert data == current
+
+
+def test_stage2_lookup_falls_back_to_legacy_lesson_id():
+    legacy = {"lesson_id": "lesson1", "title": "legacy"}
+
+    data = _find_stage2_lesson_data(FakeStage2MongoClient([legacy]))
+
+    assert data == legacy

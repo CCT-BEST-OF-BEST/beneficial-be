@@ -56,6 +56,7 @@ class Stage3AnswerResponse(BaseModel):
 
 class Stage3Progress(BaseModel):
     """3단계 진행도"""
+    lesson_id: str = Field(default="lesson_1", description="차시 ID")
     total_problems: int = Field(..., description="전체 문제 수")
     correct_count: int = Field(default=0, description="정답 개수")
     wrong_count: int = Field(default=0, description="오답 개수")

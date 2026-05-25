@@ -24,14 +24,14 @@ def get_korean_word_problems():
 
         # 각 차시별 데이터 처리
         for doc in docs:
-            lesson_id = doc.get("lessonId", "0")
+            lesson_id = _normalize_lesson_id(doc.get("lesson_id") or doc.get("lessonId", "0"))
             option_cards = doc.get("option_cards", [])
             questions = doc.get("questions", [])
             
             # 문제 데이터 처리
             for idx, q in enumerate(questions, 1):
-                # 차시별로 고유한 ID 생성 (예: lesson1_q1, lesson2_q1, ...)
-                question_id = f"lesson{lesson_id}_q{idx}"
+                # 차시별로 고유한 ID 생성 (예: lesson_1_q1, lesson_2_q1, ...)
+                question_id = f"{lesson_id}_q{idx}"
                 all_questions.append({
                     "id": question_id,  # 고유 ID 추가
                     "number": idx,
@@ -51,6 +51,16 @@ def get_korean_word_problems():
     except Exception as e:
         logger.error(f"[ERROR] 한국어 단어 문제 데이터 로드 실패: {e}")
         return {}
+
+
+def _normalize_lesson_id(raw_lesson_id) -> str:
+    value = str(raw_lesson_id)
+    if value.startswith("lesson_"):
+        return value
+    if value.startswith("lesson"):
+        suffix = value.replace("lesson", "", 1)
+        return f"lesson_{suffix}"
+    return f"lesson_{value}"
 
 
 # 간단 테스트
