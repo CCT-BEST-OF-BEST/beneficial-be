@@ -1,8 +1,8 @@
 # Beneficial Backend API 명세서
 
-> 최종 업데이트: 2026-05-24
+> 최종 업데이트: 2026-05-25
 > 대상: 프론트엔드 / 프론트 에이전트의 리팩토링 작업
-> 관련 문서: [프로젝트 현황](./project-status.md) · [Agent 설계](./ai-agent-design.md)
+> 관련 문서: [페르소나 기반 재설계 기획안](./persona-based-redesign.md) · [페르소나 기반 UI 플로우](./persona-ui-flow.md)
 
 이 문서는 백엔드가 노출하는 모든 HTTP 엔드포인트의 **요청/응답 스키마**, **인증 요구사항**, **에러 케이스**를 정리한다. 코드 상의 권위 있는 HTTP 정의는 각 도메인의 `controller/` 라우터이고, 도메인 스키마는 `app/domains/**/schemas.py`에 있다.
 
@@ -21,7 +21,7 @@
 | Refresh token | `refresh_token` 쿠키 (`HttpOnly`, path=`/auth`) **또는** request body | 14일 만료, rotation 적용 |
 
 - 보호 엔드포인트 (`Depends(get_current_user)`): access token 없거나 만료 시 `401`.
-- `/admin/*` 와 헬스 체크(`GET /`)를 제외한 **모든 서비스 엔드포인트는 로그인 필수**다. (해커톤 학습 목적 — Agent 개인화를 일관되게 적용하기 위한 결정)
+- 헬스 체크(`GET /`)를 제외한 **모든 서비스 엔드포인트는 로그인 필수**다. `/admin/*`는 developer 권한이 필요하다.
 
 ### 1.3 공통 응답 규약
 - 성공 응답은 각 엔드포인트가 명시한 Pydantic 모델 형태 (대부분 JSON).
@@ -40,8 +40,13 @@
 | `/student/learning` | Stage 1·2 컨텐츠 + 시각 힌트 | 전부 보호 |
 | `/student/learning/records` | 학습 기록 조회 | 보호 |
 | `/student/learning/stage3` | Stage 3 문제풀이 | 전부 보호 |
+| `/student/me` | 학생용 긍정 진척도 | student 보호 |
+| `/content` | 단원·차시 콘텐츠 트리 | 전부 보호 |
+| `/teacher/classes` | 교사 담당 반/학생 조회 | teacher/developer 보호 |
+| `/teacher/students` | 교사용 학생 약점/기록 조회 | teacher/developer 보호 |
+| `/teacher/instruction` | 교사용 문제 초안/배정 관리 | teacher/developer 보호 |
 | `/chat` | 단발 RAG 채팅 (Agent와 별개) | 전부 보호 |
-| `/admin` | 시스템 관리, 시드/인덱싱 | **현재 미인증** (운영 적용 예정) |
+| `/admin` | 시스템 관리, 시드/인덱싱 | developer 보호 |
 
 ### 1.5 시스템 메타
 **`GET /`** — 인증 불필요. 헬스 체크/버전 확인용.
@@ -183,6 +188,8 @@ LangGraph 기반 학습 코치. 모든 엔드포인트가 `get_current_user`로 
 **Errors**: `404` 세션 없음 또는 다른 사용자 소유.
 
 ### 3.4 `GET /agent/profile/me`
+학생은 이 엔드포인트를 호출할 수 없다. 학생 화면에는 정량 약점 대신 `GET /student/me/progress`의 긍정 지표만 노출한다. 교사는 `/teacher/students/{user_id}/profile`에서 담당 학생의 약점 프로파일을 조회한다.
+
 **Response 200** (`AgentProfileResponse`)
 ```json
 {
@@ -205,6 +212,38 @@ LangGraph 기반 학습 코치. 모든 엔드포인트가 `get_current_user`로 
 
 Stage 1 (카드 학습) · Stage 2 (드래그&드롭) 컨텐츠.
 이미지 파일 경로는 내려주지 않고, 프론트가 아이콘/컴포넌트로 매핑할 시각 힌트만 제공한다.
+
+### 4.0 콘텐츠 계층 (`/content`)
+
+| Method | Path | 인증 | 설명 |
+| --- | --- | --- | --- |
+| GET | `/content/units` | 보호 | 단원과 하위 차시 목록 |
+| GET | `/content/lessons/{lesson_id}` | 보호 | 단일 차시 상세 |
+
+`GET /content/units` 응답 예시:
+
+```json
+{
+  "units": [
+    {
+      "unit_id": "unit_1",
+      "name": "1단원 헷갈리는 낱말",
+      "order": 1,
+      "lessons": [
+        {
+          "lesson_id": "lesson_1",
+          "unit_id": "unit_1",
+          "name": "가르치다/가르키다, 맞추다/맞히다",
+          "order": 1,
+          "concept_keys": ["가르치다/가르키다", "맞추다/맞히다"],
+          "stage_ids": [1, 2, 3]
+        }
+      ]
+    }
+  ],
+  "total_count": 1
+}
+```
 
 | Method | Path | 인증 | 설명 |
 | --- | --- | --- | --- |
@@ -271,17 +310,17 @@ Stage 1 (카드 학습) · Stage 2 (드래그&드롭) 컨텐츠.
 ```json
 {
   "success": true,
-  "lesson_id": "lesson1",
+  "lesson_id": "lesson_1",
   "title": "2단계 예제풀이",
   "instruction": "맞춤법에 맞는 낱말 카드를 선택하세요",
-  "total_problems": 20,
+  "total_problems": 4,
   "answer_options": ["가르쳐", "가르켜", "맞혀", "맞춰", "..."],
   "problems": [
     { "problem_id": 1, "sentence_part1": "선생님이 수학 공식을", "sentence_part2": "주셨다." }
   ]
 }
 ```
-- `correct_answer`와 `full_sentence`는 응답에 포함되지 않는다 (정답 노출 방지). 채점은 [`POST /student/learning/stage2/submit-answer`](#44-post-learningstage2submit-answer)가 담당하며 제출 시점에 둘 다 함께 돌려준다.
+- `correct_answer`와 `full_sentence`는 응답에 포함되지 않는다 (정답 노출 방지). 채점은 `POST /student/learning/stage2/submit-answer`가 담당하며 제출 시점에 둘 다 함께 돌려준다.
 
 ### 4.4 `POST /student/learning/stage2/submit-answer`
 **Request** (`Stage2SubmitRequest`)
@@ -301,13 +340,34 @@ Stage 1 (카드 학습) · Stage 2 (드래그&드롭) 컨텐츠.
 ```
 **Errors**: `404` lesson 데이터 / problem_id 없음.
 
-## 5. 학습 기록 (`/student/learning/records`)
+## 5. 학생 진척도 (`/student/me`)
+
+| Method | Path | 인증 | 설명 |
+| --- | --- | --- | --- |
+| GET | `/student/me/progress` | student 보호 | 본인 긍정 진척도 |
+
+### 5.1 `GET /student/me/progress`
+
+학생에게는 오답 횟수나 약점 우선순위를 직접 노출하지 않는다.
+
+**Response 200** (`StudentProgressResponse`)
+```json
+{
+  "today_solved_count": 3,
+  "total_solved_count": 20,
+  "streak_correct_count": 4,
+  "progress_rate": 60,
+  "badges": ["첫 학습 시작", "연속 정답"]
+}
+```
+
+## 6. 학습 기록 (`/student/learning/records`)
 
 | Method | Path | 인증 | 설명 |
 | --- | --- | --- | --- |
 | GET | `/student/learning/records/me` | 보호 | 본인 학습 기록 전체 |
 
-### 5.1 `GET /student/learning/records/me`
+### 6.1 `GET /student/learning/records/me`
 **Response 200** (`LearningRecordsResponse`)
 ```json
 {
@@ -316,7 +376,15 @@ Stage 1 (카드 학습) · Stage 2 (드래그&드롭) 컨텐츠.
       "user_id": "u_xxx",
       "temp_user_id": null,
       "stage": 2,
-      "question_id": "stage2_problem_1",
+      "question_id": "stage2:lesson_1:1",
+      "unit_id": "unit_1",
+      "lesson_id": "lesson_1",
+      "problem_key": "stage2:lesson_1:1",
+      "problem_id": 1,
+      "attempt_no": 1,
+      "source": "base",
+      "assignment_id": null,
+      "class_id": "class_demo_1",
       "concept_key": "가르치다/가르키다",
       "user_answer": "가르켰",
       "correct_answer": "가르쳐",
@@ -330,7 +398,7 @@ Stage 1 (카드 학습) · Stage 2 (드래그&드롭) 컨텐츠.
 
 ---
 
-## 6. Stage 3 (`/student/learning/stage3`)
+## 7. Stage 3 (`/student/learning/stage3`)
 
 Stage 3는 "순차 학습 → 틀린 문제만 순환 복습" 알고리즘으로 별도 진행도(`stage3_progress`)를 갖는다.
 모든 엔드포인트가 로그인 필수이며, 진행도는 로그인한 사용자의 `user_id` 별로 저장된다.
@@ -343,12 +411,12 @@ Stage 3는 "순차 학습 → 틀린 문제만 순환 복습" 알고리즘으로
 | GET | `/student/learning/stage3/progress` | 보호 | 진행도 조회 |
 | POST | `/student/learning/stage3/reset-progress` | 보호 | 진행도 초기화 |
 
-### 6.1 `GET /student/learning/stage3/problems`
+### 7.1 `GET /student/learning/stage3/problems`
 **Response 200** (`Stage3ProblemsResponse`)
 ```json
 {
   "success": true,
-  "lesson_id": null,
+  "lesson_id": "lesson_1",
   "title": null,
   "instruction": "...",
   "total_problems": 5,
@@ -365,7 +433,7 @@ Stage 3는 "순차 학습 → 틀린 문제만 순환 복습" 알고리즘으로
 }
 ```
 
-### 6.2 `GET /student/learning/stage3/next-problem`
+### 7.2 `GET /student/learning/stage3/next-problem`
 **Response 200** (dict, 두 케이스)
 - 진행 중:
   ```json
@@ -391,7 +459,7 @@ Stage 3는 "순차 학습 → 틀린 문제만 순환 복습" 알고리즘으로
   2. **복습 학습**: 모든 문제 시도 후 틀린 문제만 순환 출제
   3. **완료**: 복습 문제까지 모두 정답 시 `is_completed: true`
 
-### 6.3 `POST /student/learning/stage3/submit-answer`
+### 7.3 `POST /student/learning/stage3/submit-answer`
 **Request** (`Stage3AnswerRequest`)
 ```json
 { "problem_id": 1, "user_answer": "돼" }
@@ -411,7 +479,7 @@ Stage 3는 "순차 학습 → 틀린 문제만 순환 복습" 알고리즘으로
 }
 ```
 
-### 6.4 `GET /student/learning/stage3/progress`
+### 7.4 `GET /student/learning/stage3/progress`
 **Response 200** (`Stage3ProgressResponse`)
 ```json
 {
@@ -430,12 +498,120 @@ Stage 3는 "순차 학습 → 틀린 문제만 순환 복습" 알고리즘으로
 }
 ```
 
-### 6.5 `POST /student/learning/stage3/reset-progress`
+### 7.5 `POST /student/learning/stage3/reset-progress`
 **Response 200**: `{ "success": true, "message": "진행도가 초기화되었습니다." }`
 
 ---
 
-## 7. RAG 채팅 (`/chat`)
+## 8. 교사 API (`/teacher`)
+
+교사 API는 `teacher` 또는 `developer` 권한이 필요하다. 교사는 본인이 담당한 반/학생 데이터만 조회하거나 배정할 수 있고, developer는 운영 목적으로 우회 가능하다.
+
+### 8.1 반/학생 조회
+
+| Method | Path | 인증 | 설명 |
+| --- | --- | --- | --- |
+| GET | `/teacher/classes` | teacher/developer | 담당 반 목록 |
+| GET | `/teacher/classes/{class_id}/students` | teacher/developer | 반 학생 목록 + 약점 요약 |
+| GET | `/teacher/students/{user_id}/profile` | teacher/developer | 학생 약점 프로파일 |
+| GET | `/teacher/students/{user_id}/records` | teacher/developer | 학생 학습 기록 |
+
+`GET /teacher/classes` 응답 예시:
+
+```json
+{
+  "classes": [
+    {
+      "class_id": "class_demo_1",
+      "name": "돌봄 한국어 1반",
+      "teacher_id": "teacher_demo_1",
+      "student_count": 3
+    }
+  ],
+  "total_count": 1
+}
+```
+
+`GET /teacher/classes/{class_id}/students` 응답 예시:
+
+```json
+{
+  "class_id": "class_demo_1",
+  "students": [
+    {
+      "user_id": "student_demo_1",
+      "email": "student1@example.com",
+      "display_name": "민준",
+      "weak_concepts": ["되/돼", "안/않다"],
+      "recent_activity_at": "ISO-8601"
+    }
+  ],
+  "total_count": 1
+}
+```
+
+`GET /teacher/students/{user_id}/records` query:
+
+| Query | 타입 | 설명 |
+| --- | --- | --- |
+| `stage` | `int | null` | 특정 Stage만 필터 |
+| `limit` | `int` | 기본 50, 최대 200 |
+
+### 8.2 문제 초안/배정 관리 (`/teacher/instruction`)
+
+| Method | Path | 인증 | 설명 |
+| --- | --- | --- | --- |
+| POST | `/teacher/instruction/assignments/draft` | teacher/developer | 문제 초안 assignment 생성 |
+| GET | `/teacher/instruction/assignments` | teacher/developer | assignment 목록 |
+| PATCH | `/teacher/instruction/assignments/{assignment_id}/assign` | teacher/developer | draft를 assigned로 전환 |
+| PATCH | `/teacher/instruction/assignments/{assignment_id}/cancel` | teacher/developer | draft/assigned 취소 |
+| PATCH | `/teacher/instruction/assignments/{assignment_id}/complete` | teacher/developer | assigned를 completed로 전환 |
+
+상태 흐름:
+
+```text
+draft -> assigned -> completed
+draft -> cancelled
+assigned -> cancelled
+```
+
+`POST /teacher/instruction/assignments/draft` 요청 예시:
+
+```json
+{
+  "target_type": "student",
+  "class_id": "class_demo_1",
+  "student_id": "student_demo_1",
+  "unit_id": "unit_1",
+  "lesson_id": "lesson_4",
+  "stage": 3,
+  "concept_key": "되/돼",
+  "problems": [
+    {
+      "type": "fill_blank",
+      "sentence_part1": "숙제가 다",
+      "correct_answer": "됐어",
+      "sentence_part2": "?",
+      "full_sentence": "숙제가 다 됐어?",
+      "explanation": "'됐어'는 '되었어'의 줄임말이에요.",
+      "visual_hint": "pencil",
+      "accent_color": "primary",
+      "validation_status": "pending"
+    }
+  ],
+  "generation_context": {
+    "reason": "최근 되/돼 오답 반복"
+  }
+}
+```
+
+응답은 `AssignmentResponse`이며 `assignment_id`, `status`, `problems[].problem_key`, `created_at` 등을 포함한다.
+
+현재 구현 범위는 생성된 문제를 draft로 저장하고 배정 상태를 관리하는 것이다. OpenAI를 호출해 문제 초안을 직접 만드는 `POST /teacher/instruction/generate-problems`는 다음 작업으로 남아 있다.
+
+---
+
+## 9. RAG 채팅 (`/chat`)
 
 > Agent와 별개로 존재하는 **단발 RAG 질의응답** API. 세션·약점 분석 없이 한 번의 질문에 대한 답만 돌려준다. 로그인 필수.
 
@@ -444,7 +620,7 @@ Stage 3는 "순차 학습 → 틀린 문제만 순환 복습" 알고리즘으로
 | POST | `/chat/` | 보호 | RAG 기반 GPT 응답 |
 | GET | `/chat/status` | 보호 | RAG/Chat 시스템 상태 |
 
-### 7.1 `POST /chat/`
+### 9.1 `POST /chat/`
 **Request** (`ChatRequest`)
 ```json
 { "prompt": "맞춤법이 헷갈려요" }
@@ -461,7 +637,7 @@ Stage 3는 "순차 학습 → 틀린 문제만 순환 복습" 알고리즘으로
 ```
 - 내부 기본값으로 `top_k=5`, 모든 컬렉션 검색.
 
-### 7.2 `GET /chat/status`
+### 9.2 `GET /chat/status`
 **Response 200** (`ChatStatusResponse`)
 ```json
 {
@@ -478,9 +654,9 @@ Stage 3는 "순차 학습 → 틀린 문제만 순환 복습" 알고리즘으로
 
 ---
 
-## 8. 관리자 / 인덱싱 (`/admin`)
+## 10. 관리자 / 인덱싱 (`/admin`)
 
-> **현재 인증 없음** — 운영 환경 진입 전 관리자 인증 필요.
+> developer 권한 필요.
 > 평상시 startup은 lightweight 모드라 시드/인덱싱은 이 엔드포인트들로 트리거한다.
 
 | Method | Path | 설명 |
@@ -498,9 +674,9 @@ Stage 3는 "순차 학습 → 틀린 문제만 순환 복습" 알고리즘으로
 
 ---
 
-## 9. 공통 데이터 타입
+## 11. 공통 데이터 타입
 
-### 9.1 Agent action
+### 11.1 Agent action
 | 값 | 의미 |
 | --- | --- |
 | `answer_with_rag` | 질문에 대한 직접 답변 + RAG 호출 |
@@ -509,10 +685,10 @@ Stage 3는 "순차 학습 → 틀린 문제만 순환 복습" 알고리즘으로
 | `small_talk` | 가벼운 잡담 |
 | `ask_followup` | 추가 질문으로 맥락 보강 |
 
-### 9.2 concept_key
+### 11.2 concept_key
 "`가르치다/가르키다`", "`되/돼`"처럼 슬래시로 두 단어를 묶은 문자열. Stage 1·2·3 답안이 같은 concept_key로 묶여서 Agent의 약점 분석에 쓰인다.
 
-### 9.3 Stage3 badge
+### 11.3 Stage3 badge
 | 값 | 의미 |
 | --- | --- |
 | `첫학습` | 한 문제를 처음 푼 직후 |
@@ -520,12 +696,12 @@ Stage 3는 "순차 학습 → 틀린 문제만 순환 복습" 알고리즘으로
 | `잠시후복습` | 오답으로 복습 큐에 들어감 |
 | `재도전` | 복습 단계에서 다시 출제됨 |
 
-### 9.4 user_id
+### 11.4 user_id
 - `auth/signup`에서 발급되는 `"u_..."` 형태. 모든 학습/채팅 엔드포인트가 로그인 필수이므로 항상 이 형태로만 들어온다.
 
 ---
 
-## 10. 에러 처리 가이드
+## 12. 에러 처리 가이드
 
 1. **401 처리**: access token 만료 시 자동으로 `/auth/refresh` → 원래 요청 재시도 패턴을 권장. refresh도 401이면 로그인 페이지로.
 2. **404**: 자원 없음 또는 다른 사용자 소유. 사용자에게 "찾을 수 없음" 표시.
@@ -534,17 +710,19 @@ Stage 3는 "순차 학습 → 틀린 문제만 순환 복습" 알고리즘으로
 
 ---
 
-## 11. 빠른 확인 명령
+## 13. 빠른 확인 명령
 
 ```bash
 # 서버 기동 (기본 lightweight)
 uvicorn app.main:app --reload
 
 # 최초 1회: 시드/인덱싱 모두 수행
-curl -X POST http://localhost:8000/admin/initialize-all
+curl -X POST http://localhost:8000/admin/initialize-all \
+  -H "Authorization: Bearer <developer_access_token>"
 
 # 시스템 상태
-curl http://localhost:8000/admin/system-status
+curl http://localhost:8000/admin/system-status \
+  -H "Authorization: Bearer <developer_access_token>"
 
 # Swagger UI (자동 생성된 OpenAPI 문서)
 open http://localhost:8000/docs

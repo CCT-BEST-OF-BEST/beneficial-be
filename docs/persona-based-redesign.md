@@ -1,8 +1,8 @@
 # 페르소나 기반 재설계 기획안
 
-> 최종 업데이트: 2026-05-24
+> 최종 업데이트: 2026-05-25
 > 대상: 백엔드/프론트엔드 리팩토링 및 신규 기능 설계의 출발점
-> 관련 문서: [API 명세](./api-spec.md) · [Agent 설계](./ai-agent-design.md) · [프로젝트 현황](./project-status.md)
+> 관련 문서: [API 명세](./api-spec.md) · [페르소나 기반 UI 플로우](./persona-ui-flow.md)
 
 이 문서는 현재 `student | admin` 두 역할 + 단일 학습 플로우로 묶여 있는 시스템을 **세 명의 실제 사용자(페르소나)** 관점으로 다시 나누는 기획안이다. 코드 변경은 이 문서 합의 후 별도 PR로 진행한다.
 
@@ -123,11 +123,11 @@
 - DB 시드 적재 (`POST /admin/seed-data`)
 - 벡터 인덱싱 재구축 (`POST /admin/rebuild-vector-index`)
 - BM25 재구축 (`POST /admin/rebuild-bm25`)
-- 가상 질문 생성 (`POST /admin/generate-hypothetical-questions`)
+- 가상 질문 생성 (`POST /admin/build-hypothetical-questions`)
 - **신규 추가 후보**: 트레이스 로그 조회, 사용량 통계, 에이전트 호출 모니터링 (Phase 3)
 
 ### 6.3 권한 가드
-운영 환경에서는 미인증 상태인 `/admin/*`에 [api-spec.md §1.4 비고](./api-spec.md)대로 인증을 적용. role이 `developer`인 경우만 통과한다.
+`/admin/*`는 developer 권한으로 보호한다. role이 `developer`인 경우만 통과한다.
 
 ---
 
@@ -166,7 +166,7 @@
 ### 7.3 시각 자산(이미지) 의존 제거
 
 #### 7.3.1 현재 문제
-- **Stage 1 카드**: `static/images/cards/card1_front.png` 같은 정적 PNG에 의존 ([stage1_cards_loader.py](../app/data/data_loader/stage1_cards_loader.py), [content_router.py:323-377](../app/domains/learning/content_router.py#L323) 참조). 카드 쌍마다 앞/뒤 이미지 2장씩.
+- **Stage 1 카드**: 기존에는 `static/images/cards/card1_front.png` 같은 정적 PNG에 의존했다. 현재는 [stage1_cards_loader.py](../app/data/data_loader/stage1_cards_loader.py)와 [student_learning_router.py](../app/domains/learning/controller/student_learning_router.py)가 이미지 경로 대신 `visual_hint`, `color_theme`를 다룬다.
 - **Stage 3 문제**: 각 문제마다 `image: "stage3/problem_X.png"` 1장씩, 총 25장. `_load_problems_data` → 응답에 그대로 포함.
 - 콘텐츠 1개 추가 = 디자인 작업 + 이미지 파일 업로드 + 경로 수정 + 로더 재실행. **차시·단원이 늘어날수록 비선형적으로 비용 증가**.
 - 텍스트만 수정해도 이미지 재생성 필요 → 운영 부담.
@@ -474,21 +474,22 @@ domains/learning/
 
 ---
 
-## 12. 2026-05-24 작업 기록 및 다음 작업
+## 12. 현재 작업 현황 및 남은 작업
 
-### 12.1 오늘 정리한 방향
+### 12.1 확정된 방향
 
-- 최상위 `interfaces/` 분리 방식은 중단하고, Java/Spring식에 가까운 **도메인 내부 패키징**으로 방향을 확정했다.
-- HTTP 라우터는 각 도메인의 `controller/` 아래에 둔다.
-- 도메인은 비즈니스 개념 기준으로 유지한다: `auth`, `learning`, `classroom`, `agent`, `rag`, `system`.
-- 페르소나는 도메인을 나누는 기준이 아니라 controller prefix와 DTO 노출 정책으로 표현한다.
+- 도메인은 페르소나가 아니라 비즈니스 개념 기준으로 둔다: `auth`, `learning`, `classroom`, `instruction`, `agent`, `rag`, `system`.
+- 페르소나는 controller prefix와 DTO 노출 정책으로 표현한다.
+- 학생은 학습과 긍정 지표 중심, 선생님은 약점 분석과 AI 문제 배정 중심, 개발자는 운영 관리 중심으로 나눈다.
+- 최상위 `interfaces/` 분리 방식은 사용하지 않고, 각 도메인 내부에 `controller / service / repository / model / schema`를 모으는 방향으로 간다.
 
-### 12.2 오늘 완료한 백엔드 작업
+### 12.2 완료된 백엔드 작업
 
 - 역할 모델을 `student | teacher | developer`로 정리하고, 기존 `admin`은 `developer`로 정규화했다.
 - whitelist를 권한용(`TEACHER`, `DEVELOPER`)과 Stage 2 답안 우회용(`ANSWER_BYPASS`)으로 분리했다.
 - `domains/admin`을 `domains/system`으로 정리하고 `/admin/*`는 developer 권한으로 보호했다.
-- Stage 3를 `learning` 도메인으로 흡수하고, 현재는 `domains/learning/stages/` 아래에 배치했다.
+- Stage 3를 `learning` 도메인으로 흡수하고 `domains/learning/stages/` 아래에 배치했다.
+- 학생 학습 API prefix를 `/student/learning/*`로 전환했다.
 - 학생용 `GET /student/me/progress`를 추가하고, 학생의 `/agent/profile/me` 접근은 차단했다.
 - `classroom` 도메인을 추가해 `classes` 컬렉션 기반 교사-학생 매핑을 표현했다.
 - 교사용 읽기 API를 추가했다:
@@ -496,138 +497,139 @@ domains/learning/
   - `GET /teacher/classes/{class_id}/students`
   - `GET /teacher/students/{user_id}/profile`
   - `GET /teacher/students/{user_id}/records`
-- `units` / `lessons` 콘텐츠 계층과 조회 API를 추가했다.
-- `learning_records` 신규 기록에 `unit_id`, `lesson_id`, `problem_key`, `problem_id`, `attempt_no`, `source`, `assignment_id`, `class_id`를 저장하도록 확장했다.
+- `units` / `lessons` 콘텐츠 계층과 조회 API를 추가했다:
+  - `GET /content/units`
+  - `GET /content/lessons/{lesson_id}`
 - Stage 1/3의 이미지 파일 의존을 제거하고 `visual_hint`, `color_theme`, `accent_color` 기반 응답으로 바꿨다.
 - `/images` static mount와 `/learning/images/{filename}` 이미지 서빙 엔드포인트를 제거했다.
-- 학생 학습 API prefix를 `/student/learning/*`로 전환했다.
-- 테스트 파일을 도메인별 디렉토리로 재구성했다:
-  - `tests/auth`
-  - `tests/learning`
-  - `tests/classroom`
-  - `tests/agent`
-  - `tests/rag`
-  - `tests/system`
-  - `tests/structure`
-  - `tests/integration`
+- 테스트 파일을 도메인별 디렉토리로 재구성했다.
 
-### 12.3 현재 주요 디렉토리 기준
+### 12.3 콘텐츠/진척도 정리 완료
+
+- Stage 2 로더는 `stage2_lesson_1`~`stage2_lesson_5` 도큐먼트를 삽입한다.
+- Stage 3 로더는 `stage3_lesson_1`~`stage3_lesson_5` 도큐먼트를 삽입한다.
+- Stage 3 서비스는 차시별 도큐먼트를 우선 조회하고, 기존 전역 `stage3_problems` 도큐먼트만 남은 환경에서는 lesson 범위로 잘라 fallback한다.
+- Stage 2 로더/API는 `lesson_1` 기준으로 전환했고, 기존 MongoDB에 `lesson1` 데이터가 남아 있어도 fallback 조회한다.
+- RAG용 `korean_word_problems` 로더의 생성 ID도 `lesson_1_q1` 형태로 정규화했다.
+- `stage3_progress` 문서에 `lesson_id`를 저장하고, 조회/초기화/다음 문제/답안 제출을 `{user_id, lesson_id}` 기준으로 처리한다.
+- 기존 `lesson_id` 없는 progress 문서는 기본 `lesson_1`으로 읽을 수 있도록 migration fallback을 두고, 전역 25문제 기준 데이터가 진도율을 왜곡하지 않도록 lesson 범위 문제만 남겨 정규화한다.
+- 이번 단계에서는 새 `lesson_progress` 컬렉션을 만들지 않고 기존 `stage3_progress`를 유지한다.
+
+### 12.4 교사/학생 연결 완료
+
+- `app/data/data_loader/classroom_loader.py`를 추가했다.
+- 기존 `classes` 데이터가 없을 때만 기본 반 매핑을 삽입하도록 비파괴적으로 동작한다.
+- `InitializationService.seed_mongo_collections()`에서 `classes` 시드도 함께 수행한다.
+- 반 매핑은 `teacher_demo_1`, `student_demo_1..3` 기준으로 넣었다.
+- 실제 `users` 계정 시드는 인증/비밀번호 정책과 연결되므로 아직 생성하지 않는다.
+- `LearningRecordService`가 classroom repository를 선택 의존성으로 받아, 명시적 `class_id`가 없으면 학생이 속한 class를 찾아 `learning_records.class_id`에 저장한다.
+- 명시적으로 전달된 `class_id`는 classroom lookup보다 우선한다.
+
+### 12.5 교사 AI 배정 기반 완료
+
+- `app/domains/instruction` 도메인을 추가하고, 교사용 `/teacher/instruction/*` 라우터를 등록했다.
+- `teacher_assignments` 컬렉션용 모델, repository, service를 추가했다.
+- draft assignment 생성/목록/배정/취소/완료 API를 추가했다:
+  - `POST /teacher/instruction/assignments/draft`
+  - `GET /teacher/instruction/assignments`
+  - `PATCH /teacher/instruction/assignments/{assignment_id}/assign`
+  - `PATCH /teacher/instruction/assignments/{assignment_id}/cancel`
+  - `PATCH /teacher/instruction/assignments/{assignment_id}/complete`
+- 상태 전환은 `draft -> assigned -> completed`, `draft -> cancelled`, `assigned -> cancelled`를 지원한다.
+- 교사는 담당 학생/반에만 assignment를 만들 수 있고, developer는 접근 검증을 우회할 수 있다.
+
+### 12.6 현재 주요 컬렉션
 
 ```text
-app/domains/learning/
-  controller/
-  content/
-  stages/
-  repositories/
-  models.py
-  schemas.py
-  service.py
-
-app/domains/classroom/
-  controller/
-    dto/
-  repositories/
-  models.py
-  service.py
-
-tests/
-  agent/
-  auth/
-  chat/
-  classroom/
-  integration/
-  learning/
-  rag/
-  structure/
-  system/
+users
+classes
+units
+lessons
+stage1_cards
+stage2_problems
+stage3_problems
+learning_records
+stage3_progress
+teacher_assignments
 ```
 
-### 12.4 검증 상태
+`learning_records`는 append-only 풀이 이벤트 로그이고, `teacher_assignments`는 AI 생성 문제 초안과 배정 상태를 담는다. 기본 Stage 1/2/3 콘텐츠는 AI 생성 문제를 대체하는 것이 아니라, 학생 약점 데이터를 만들기 위한 기준선이다.
 
-- 도메인/라우터/서비스 중심 targeted suite: `52 passed`
-- 라우트 prefix 확인: `/student/learning/*` 등록, 기존 `/learning/stage*` 미등록 확인
-- 2026-05-25 재개 직후 확인: 프로젝트 venv 기준 `venv/bin/pytest -q` 전체 통과
-  - `69 passed, 3 skipped`
-  - 직전 기록의 `langgraph` 미설치/async 플러그인 이슈는 시스템 Python으로 실행했을 때의 환경 문제였고, `venv`에는 `langgraph`, `pytest-asyncio`가 설치되어 있다.
-- 2026-05-25 이어서 작업 후 확인: `venv/bin/pytest -q`
-  - `91 passed, 3 skipped`
+### 12.7 검증 상태
 
-### 12.5 다음에 이어서 할 작업
+마지막 확인 기준:
 
-1. **현재 변경분을 의미 단위로 커밋**
-   - 2026-05-25 재개 직후 기준 워킹트리가 clean이었으므로, 2026-05-24 작업분 커밋 항목은 완료된 것으로 본다.
-   - 2026-05-25 이어서 작업한 `lesson_id`/Stage 3 progress/classes seed 변경분은 별도 커밋 대상으로 남아 있다.
-   - 권장 커밋:
-     - `refactor: 도메인 내부 controller 구조로 라우터 재배치`
-     - `test: 테스트 파일을 도메인별 디렉토리로 재구성`
-     - `refactor(learning): 이미지 파일 의존 제거 및 콘텐츠 구조 정리`
+```text
+venv/bin/pytest -q
+91 passed, 3 skipped
+```
 
-2. **남은 루트 파일 정리**
+주의: 시스템 Python의 `pytest`가 아니라 프로젝트 `venv/bin/pytest`로 실행해야 한다.
+
+### 12.8 남은 백엔드 작업
+
+1. **OpenAI 문제 생성 API**
+   - `POST /teacher/instruction/generate-problems`
+   - 입력: 대상 학생/반, `concept_key`, 문제 수, 난이도, `unit_id`, `lesson_id`, `stage`
+   - 출력: 생성된 문제 초안과 검증 결과
+   - 저장: 검증을 통과한 문제를 `teacher_assignments.status = draft`로 저장
+
+2. **AI 생성 문제 검증**
+   - `concept_key` 허용 목록 확인
+   - 빈칸/정답/완성 문장 일치 확인
+   - 기존 기본 문제와 중복 여부 확인
+   - 학생용 설명 길이와 난이도 확인
+   - JSON schema 유효성 확인
+
+3. **학생 출제 큐에 assignment 우선 반영**
+   - `GET /student/learning/stage3/next-problem`이 assigned 상태의 `teacher_assignments` 문제를 먼저 조회
+   - 배정 문제가 없으면 기본 `stage3_problems`로 fallback
+   - 학생용 assignment 조회 API도 별도로 추가 필요
+
+4. **assignment 문제 제출 처리**
+   - AI 생성 문제 풀이 결과도 `learning_records`에 저장
+   - `source = "assignment"`, `assignment_id` 저장
+   - 문제를 모두 풀면 assignment 상태를 `completed`로 전환
+
+5. **패키지 구조 후속 정리**
    - `domains/learning/service.py`를 `domains/learning/service/record_service.py`로 이동할지 결정
    - `domains/learning/schemas.py`, `student_schemas.py`를 controller DTO와 domain schema로 분리
    - `domains/learning/models.py`를 `domain/models.py`로 옮길지 결정
-   - `classroom/models.py`, `classroom/service.py`도 Java식 구조에 맞춰 `domain/`, `service/` 하위로 정리할지 결정
+   - `classroom/models.py`, `classroom/service.py`도 `domain/`, `service/` 하위로 정리할지 결정
+   - `app/data/data_loader`를 `common` 하위로 옮길지는 별도 논의 후 결정
 
-3. **콘텐츠 데이터 구조 Phase 1 마무리**
-   - Stage 1/2/3 데이터를 실제 `lesson_id` 기준 도큐먼트로 재구성
-     - 완료(2026-05-25): Stage 2 로더는 `stage2_lesson_1`~`stage2_lesson_5` 도큐먼트를 삽입한다.
-     - 완료(2026-05-25): Stage 3 로더는 `stage3_lesson_1`~`stage3_lesson_5` 도큐먼트를 삽입한다.
-     - 완료(2026-05-25): Stage 3 서비스는 차시별 도큐먼트를 우선 조회하고, 기존 전역 `stage3_problems` 도큐먼트만 남은 환경에서는 lesson 범위로 잘라 fallback한다.
-   - `lesson_1` 등 신규 lesson id와 기존 `lesson1` 호환 정리
-     - 완료(2026-05-25): Stage 2 로더/API는 `lesson_1` 기준으로 전환했고, 기존 MongoDB에 `lesson1` 데이터가 남아 있어도 fallback 조회한다.
-     - 완료(2026-05-25): RAG용 `korean_word_problems` 로더의 생성 ID도 `lesson_1_q1` 형태로 정규화했다.
-   - `stage3_progress`를 `user_id + lesson_id` 기준으로 재설계
-     - 완료(2026-05-25): `stage3_progress` 문서에 `lesson_id`를 저장하고, 조회/초기화/다음 문제/답안 제출을 `{user_id, lesson_id}` 기준으로 처리한다.
-     - 완료(2026-05-25): 기존 `lesson_id` 없는 progress 문서는 기본 `lesson_1`으로 읽을 수 있도록 migration fallback을 두고, 전역 25문제 기준 데이터가 진도율을 왜곡하지 않도록 lesson 범위 문제만 남겨 정규화한다.
-   - `lesson_progress` 또는 `stage_progress` 컬렉션 설계 확정
-     - 결정(2026-05-25): 이번 단계에서는 새 컬렉션을 만들지 않고 기존 `stage3_progress`를 유지한다. 단, 스키마 키를 `{user_id, lesson_id}`로 확장해 향후 `lesson_progress` 통합이 필요할 때 migration 가능하게 둔다.
-
-4. **교사/학생 데이터 연결 보강**
-   - `classes` 시드 로더 추가
-     - 완료(2026-05-25): `app/data/data_loader/classroom_loader.py` 추가. 기존 `classes` 데이터가 없을 때만 기본 반 매핑을 삽입하도록 비파괴적으로 동작한다.
-     - 완료(2026-05-25): `InitializationService.seed_mongo_collections()`에서 `classes` 시드도 함께 수행한다.
-   - 테스트용 교사 1명, 반 1개, 학생 몇 명을 초기 데이터로 넣을지 결정
-     - 부분 완료(2026-05-25): 반 매핑은 `teacher_demo_1`, `student_demo_1..3` 기준으로 넣었다. 실제 `users` 계정 시드는 인증/비밀번호 정책과 연결되므로 아직 생성하지 않는다.
-   - `learning_records.class_id`를 기록 시점에 실제 class에서 denormalize할지 구현
-     - 완료(2026-05-25): `LearningRecordService`가 classroom repository를 선택 의존성으로 받아, 명시적 `class_id`가 없으면 학생이 속한 class를 찾아 `learning_records.class_id`에 저장한다.
-     - 완료(2026-05-25): 명시적으로 전달된 `class_id`는 classroom lookup보다 우선한다.
-
-5. **Agent 테스트 환경 이슈 해결**
-   - 완료(2026-05-25): 프로젝트 venv 기준 `langgraph`, `pytest-asyncio`가 설치되어 있고 전체 테스트가 green이다.
-   - 주의: 시스템 Python의 `pytest`가 아니라 `venv/bin/pytest`로 실행해야 한다.
-
-6. **Phase 2 준비**
-   - `instruction` 도메인 신설
-     - 완료(2026-05-25): `app/domains/instruction` 도메인을 추가하고, 교사용 `/teacher/instruction/*` 라우터를 등록했다.
-   - `teacher_assignments` 모델/repository/service 설계
-     - 완료(2026-05-25): `teacher_assignments` 컬렉션용 모델, repository, service를 추가했다.
-     - 완료(2026-05-25): `draft -> assigned -> completed/cancelled` 상태 전환을 구현했다.
-     - 완료(2026-05-25): 교사는 담당 학생/반에만 assignment를 만들 수 있고, developer는 우회 가능하게 했다.
-   - LLM 문제 생성 API는 `draft -> assigned -> completed/cancelled` 흐름으로 구현
-     - 부분 완료(2026-05-25): AI 생성 결과를 담는 draft assignment 생성/목록/배정/취소/완료 API를 추가했다.
-     - 남음: OpenAI 호출로 실제 문제 초안을 생성하는 endpoint와 생성 결과 검증 로직은 아직 붙이지 않았다.
+6. **운영 보안/인프라 정리**
+   - CORS `*` 제거
+   - 운영 환경에서 `AUTH_SECRET_KEY` 미설정 시 fail-fast
+   - OpenAI client DI/싱글톤 정리
+   - Mongo index 추가:
+     - `learning_records`: `{user_id, created_at}`, `{user_id, concept_key, is_correct}`, `{user_id, problem_key}`
+     - `stage3_progress`: `{user_id, lesson_id}` unique
+     - `teacher_assignments`: `{student_id, status}`, `{class_id, status}`, `{teacher_id, created_at}`
 
 ---
 
-## 13. 합의가 필요한 것
+## 13. 추가 합의가 필요한 것
 
-이 문서를 코드 작업으로 옮기기 전에 결정할 항목:
+이미 구현 방향이 확정된 역할명, `/student/learning/*` prefix, `/admin/*` developer 보호, 학생용 긍정 진척도, 차시별 Stage 데이터, assignment 상태 흐름은 완료 항목으로 본다. 남은 합의는 다음 구현 단위에 영향을 주는 것들이다.
 
-### 13.1 명명·경로
-1. **`role` 이름**: `"admin"`을 `"developer"`로 리네임한다.
-2. **`domains/admin` 폴더명**: `system`으로 리네임한다.
-3. **인터페이스 prefix**: Phase 0.5에서 `/student/learning/*` 식으로 페르소나 prefix를 강제한다.
+1. **OpenAI 생성 API의 상세 계약**
+   - endpoint를 `POST /teacher/instruction/generate-problems`로 둘지, 학생/반 일괄 생성을 별도 endpoint로 나눌지 결정한다.
+   - 생성 요청에 `difficulty`, `count`, `problem_type`을 어느 정도까지 노출할지 정한다.
 
-### 13.2 도메인 분리 깊이
-4. **Repository 인터페이스 분리**: 우선 `learning`, `classroom`, `instruction` 핵심 도메인에 적용한다. 단순 system 작업은 과도하게 분리하지 않는다.
-5. **controller 배치 방식**: 최상위 `interfaces/`는 두지 않고, 각 도메인 내부 `controller/`에 라우터를 둔다.
-6. **Use Case 서비스 도입 여부**: `/teacher/students/{id}/profile`처럼 다중 도메인 조합 엔드포인트에는 use case 레이어를 둔다. 단순 단일 도메인 호출은 라우터에서 직접 서비스를 호출한다.
+2. **학생용 assignment API 경로**
+   - 후보: `GET /student/learning/assignments`, `GET /student/assignments`
+   - Stage 3 `next-problem`에 assignment 우선 출제를 통합할지, 별도 복습 화면에서만 풀게 할지 결정한다.
 
-### 13.3 페르소나·콘텐츠
-7. **학생용 진척도 응답 분리**: 새 엔드포인트 `GET /student/me/progress`를 추가한다. 기존 `/agent/profile/me`는 학생에게 제공하지 않는다.
-8. **콘텐츠 구조**: stage 데이터는 차시별 도큐먼트로 쪼갠다. 전역 식별이 필요하면 `problem_key`를 사용한다.
-9. **AI 생성 문제**: `draft` → 교사 승인 → `assigned` 흐름으로 간다.
-10. **교사 계정 부트스트랩**: 화이트리스트 + 수동 반 시드만으로 시작 vs 교사 회원가입·반 생성 UI까지 Phase 1에 포함.
-11. **신규 단원 콘텐츠**: 추가할 단원 수·주제 (별도 콘텐츠 기획 필요, 코드 작업과 병렬 진행 가능).
+3. **패키지 구조 정리 깊이**
+   - `learning/service.py`, `learning/models.py`, `classroom/service.py`를 Java식 하위 패키지로 더 쪼갤지 결정한다.
+   - 다중 도메인 조합 엔드포인트에 use case 레이어를 둘지 결정한다.
 
-각 항목에 대해 결정되면 이 문서를 갱신하고 구현 PR로 진입한다.
+4. **data loader 위치**
+   - 현재 `app/data/data_loader`를 유지할지, 공통 seed/fixture 성격으로 `common` 하위로 옮길지 결정한다.
+
+5. **교사 계정 부트스트랩**
+   - 화이트리스트 + 수동 반 시드만으로 시작할지, 교사 회원가입·반 생성 UI를 별도 Phase에 포함할지 결정한다.
+
+6. **신규 단원 콘텐츠**
+   - 추가할 단원 수와 주제를 정한다. 콘텐츠 기획은 코드 작업과 병렬로 진행 가능하다.
