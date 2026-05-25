@@ -550,7 +550,7 @@ tests/
   - `69 passed, 3 skipped`
   - 직전 기록의 `langgraph` 미설치/async 플러그인 이슈는 시스템 Python으로 실행했을 때의 환경 문제였고, `venv`에는 `langgraph`, `pytest-asyncio`가 설치되어 있다.
 - 2026-05-25 이어서 작업 후 확인: `venv/bin/pytest -q`
-  - `83 passed, 3 skipped`
+  - `91 passed, 3 skipped`
 
 ### 12.5 다음에 이어서 할 작업
 
@@ -598,8 +598,14 @@ tests/
 
 6. **Phase 2 준비**
    - `instruction` 도메인 신설
+     - 완료(2026-05-25): `app/domains/instruction` 도메인을 추가하고, 교사용 `/teacher/instruction/*` 라우터를 등록했다.
    - `teacher_assignments` 모델/repository/service 설계
+     - 완료(2026-05-25): `teacher_assignments` 컬렉션용 모델, repository, service를 추가했다.
+     - 완료(2026-05-25): `draft -> assigned -> completed/cancelled` 상태 전환을 구현했다.
+     - 완료(2026-05-25): 교사는 담당 학생/반에만 assignment를 만들 수 있고, developer는 우회 가능하게 했다.
    - LLM 문제 생성 API는 `draft -> assigned -> completed/cancelled` 흐름으로 구현
+     - 부분 완료(2026-05-25): AI 생성 결과를 담는 draft assignment 생성/목록/배정/취소/완료 API를 추가했다.
+     - 남음: OpenAI 호출로 실제 문제 초안을 생성하는 endpoint와 생성 결과 검증 로직은 아직 붙이지 않았다.
 
 ---
 
