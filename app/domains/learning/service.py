@@ -1,6 +1,6 @@
 from collections import defaultdict
 from datetime import datetime, timezone
-from typing import Any, Dict, Optional
+from typing import Any, Dict, Optional, Protocol
 
 from app.common.security import utc_now
 from app.domains.learning.models import (
@@ -57,8 +57,13 @@ CONCEPT_KEY_BY_ANSWER = {
 
 
 class LearningRecordService:
-    def __init__(self, repository: LearningRecordRepository):
+    def __init__(
+        self,
+        repository: LearningRecordRepository,
+        classroom_repository: "LearningClassroomRepository | None" = None,
+    ):
         self.repository = repository
+        self.classroom_repository = classroom_repository
 
     def record_answer(
         self,
@@ -85,10 +90,11 @@ class LearningRecordService:
             lesson_id=lesson_id,
             problem_id=problem_id or question_id,
         )
+        resolved_class_id = class_id or self._resolve_class_id(user_id)
         record = LearningRecord(
             user_id=user_id,
             temp_user_id=temp_user_id,
-            class_id=class_id,
+            class_id=resolved_class_id,
             unit_id=unit_id,
             lesson_id=lesson_id,
             stage=stage,
@@ -250,6 +256,20 @@ class LearningRecordService:
             if record.get("problem_key") == problem_key
         )
         return previous_attempts + 1
+
+    def _resolve_class_id(self, user_id: str) -> str | None:
+        if self.classroom_repository is None:
+            return None
+
+        classrooms = self.classroom_repository.find_classes_by_student(user_id)
+        if not classrooms:
+            return None
+        return classrooms[0].get("class_id")
+
+
+class LearningClassroomRepository(Protocol):
+    def find_classes_by_student(self, student_id: str) -> list[dict[str, Any]]:
+        ...
 
 
 def resolve_concept_key(correct_answer: str, user_answer: str | None = None) -> str:

@@ -20,6 +20,18 @@ class FakeLearningRecordRepository:
         return [record for record in self.records if record["user_id"] == user_id]
 
 
+class FakeClassroomRepository:
+    def __init__(self, classrooms):
+        self.classrooms = classrooms
+
+    def find_classes_by_student(self, student_id):
+        return [
+            classroom
+            for classroom in self.classrooms
+            if student_id in classroom.get("student_ids", [])
+        ]
+
+
 def test_record_answer_stores_agent_readable_fields():
     repository = FakeLearningRecordRepository()
     service = LearningRecordService(repository)
@@ -43,6 +55,61 @@ def test_record_answer_stores_agent_readable_fields():
     assert repository.records[0]["problem_key"] == "stage3:lesson_4:stage3_problem_16"
     assert repository.records[0]["attempt_no"] == 1
     assert repository.records[0]["source"] == "base"
+
+
+def test_record_answer_denormalizes_class_id_from_classroom():
+    repository = FakeLearningRecordRepository()
+    service = LearningRecordService(
+        repository,
+        classroom_repository=FakeClassroomRepository(
+            [
+                {
+                    "class_id": "class_1",
+                    "student_ids": ["user_123"],
+                }
+            ]
+        ),
+    )
+
+    service.record_answer(
+        user_id="user_123",
+        stage=2,
+        question_id="stage2_problem_1",
+        problem_id=1,
+        user_answer="가르쳐",
+        correct_answer="가르쳐",
+        is_correct=True,
+    )
+
+    assert repository.records[0]["class_id"] == "class_1"
+
+
+def test_record_answer_keeps_explicit_class_id_over_classroom_lookup():
+    repository = FakeLearningRecordRepository()
+    service = LearningRecordService(
+        repository,
+        classroom_repository=FakeClassroomRepository(
+            [
+                {
+                    "class_id": "class_lookup",
+                    "student_ids": ["user_123"],
+                }
+            ]
+        ),
+    )
+
+    service.record_answer(
+        user_id="user_123",
+        class_id="class_explicit",
+        stage=2,
+        question_id="stage2_problem_1",
+        problem_id=1,
+        user_answer="가르쳐",
+        correct_answer="가르쳐",
+        is_correct=True,
+    )
+
+    assert repository.records[0]["class_id"] == "class_explicit"
 
 
 def test_weakness_profile_groups_wrong_answers_by_concept():

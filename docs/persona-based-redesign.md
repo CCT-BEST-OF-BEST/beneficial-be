@@ -550,7 +550,7 @@ tests/
   - `69 passed, 3 skipped`
   - 직전 기록의 `langgraph` 미설치/async 플러그인 이슈는 시스템 Python으로 실행했을 때의 환경 문제였고, `venv`에는 `langgraph`, `pytest-asyncio`가 설치되어 있다.
 - 2026-05-25 이어서 작업 후 확인: `venv/bin/pytest -q`
-  - `78 passed, 3 skipped`
+  - `80 passed, 3 skipped`
 
 ### 12.5 다음에 이어서 할 작업
 
@@ -587,6 +587,8 @@ tests/
    - 테스트용 교사 1명, 반 1개, 학생 몇 명을 초기 데이터로 넣을지 결정
      - 부분 완료(2026-05-25): 반 매핑은 `teacher_demo_1`, `student_demo_1..3` 기준으로 넣었다. 실제 `users` 계정 시드는 인증/비밀번호 정책과 연결되므로 아직 생성하지 않는다.
    - `learning_records.class_id`를 기록 시점에 실제 class에서 denormalize할지 구현
+     - 완료(2026-05-25): `LearningRecordService`가 classroom repository를 선택 의존성으로 받아, 명시적 `class_id`가 없으면 학생이 속한 class를 찾아 `learning_records.class_id`에 저장한다.
+     - 완료(2026-05-25): 명시적으로 전달된 `class_id`는 classroom lookup보다 우선한다.
 
 5. **Agent 테스트 환경 이슈 해결**
    - 완료(2026-05-25): 프로젝트 venv 기준 `langgraph`, `pytest-asyncio`가 설치되어 있고 전체 테스트가 green이다.
