@@ -1,4 +1,6 @@
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, Depends, HTTPException
+from app.domains.auth.dependencies import get_current_user
+from app.domains.auth.models import User
 from app.domains.chat.service import get_chat_service
 from app.domains.chat.schemas import ChatRequest, ChatResponse, ChatStatusResponse
 from app.common.logging.logging_config import get_logger
@@ -45,7 +47,10 @@ RAG(Retrieval-Augmented Generation) 시스템을 사용하여 한국어 문법�
 - 맞춤법 확인 및 학습 도움
     """
 )
-async def chat_with_rag(request: ChatRequest):
+async def chat_with_rag(
+    request: ChatRequest,
+    current_user: User = Depends(get_current_user),
+):
     """
     RAG 시스템을 사용하여 GPT와 대화합니다. (초등학생 돌봄반용)
 
@@ -125,7 +130,7 @@ async def chat_with_rag(request: ChatRequest):
 - **빈도 제한**: 과도한 호출 시 성능 영향 가능
     """
 )
-async def get_chat_status():
+async def get_chat_status(current_user: User = Depends(get_current_user)):
     """채팅 시스템 상태를 확인합니다. (시스템 모니터링용)"""
     try:
         chat_service = get_chat_service()

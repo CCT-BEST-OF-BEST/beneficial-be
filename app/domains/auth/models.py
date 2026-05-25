@@ -3,13 +3,15 @@ from typing import Literal, Optional
 
 from pydantic import BaseModel, Field
 
+UserRole = Literal["student", "teacher", "developer"]
+
 
 class User(BaseModel):
     user_id: str = Field(..., description="Stable user identifier")
     email: str = Field(..., description="Unique login email")
     password_hash: str = Field(..., description="PBKDF2 password hash")
     display_name: str = Field(..., description="Name shown in the learning UI")
-    role: Literal["student", "admin"] = Field(default="student")
+    role: UserRole = Field(default="student")
     created_at: datetime
     updated_at: datetime
 

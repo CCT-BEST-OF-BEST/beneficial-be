@@ -1,0 +1,123 @@
+from app.domains.learning.stages.stage3_service import Stage3Service
+from app.domains.learning.controller.student_learning_router import (
+    _find_stage2_lesson_data,
+    _find_stage2_problem_data,
+    _stage1_pair_response,
+)
+
+
+def test_stage1_card_response_removes_image_paths():
+    pair = {
+        "pair_id": "pair_1",
+        "word1": "가르치다",
+        "word2": "가르키다",
+        "card1": {
+            "card_id": "card_1",
+            "front_image": "/images/cards/card1_front.png",
+            "back_image": "/images/cards/card1_back.png",
+        },
+        "card2": {
+            "card_id": "card_2",
+            "front_image": "/images/cards/card2_front.png",
+            "back_image": "/images/cards/card2_back.png",
+        },
+        "order": 1,
+    }
+
+    response = _stage1_pair_response(pair)
+    data = response.model_dump()
+
+    assert "front_image" not in data["card1"]
+    assert "back_image" not in data["card1"]
+    assert data["card1"]["visual_hint"] == "book-open"
+    assert data["card2"]["visual_hint"] == "hand-point-up"
+
+
+class FakeMongoClient:
+    def find_one(self, collection_name, filter_dict):
+        if collection_name != "stage3_problems":
+            return None
+        return {
+            "_id": "stage3_problems",
+            "instruction": "빈칸에 알맞은 맞춤법을 작성하세요",
+            "total_problems": 1,
+            "problems": [
+                {
+                    "problem_id": 1,
+                    "sentence_part1": "선생님이 수학 공식을",
+                    "correct_answer": "가르쳐",
+                    "sentence_part2": "주셨다.",
+                    "full_sentence": "선생님이 수학 공식을 가르쳐 주셨다.",
+                    "explanation": "설명",
+                    "image": "stage3/problem_1.png",
+                }
+            ],
+        }
+
+
+def test_stage3_problem_response_uses_visual_hint_not_image_path():
+    service = Stage3Service(FakeMongoClient())
+
+    response = service.get_problems()
+    problem = response.problems[0].model_dump()
+
+    assert "image" not in problem
+    assert problem["visual_hint"] == "book-open"
+    assert problem["accent_color"] == "primary"
+
+
+class FakeStage2MongoClient:
+    def __init__(self, documents):
+        self.documents = documents
+
+    def find_one(self, collection_name, filter_dict):
+        if collection_name != "stage2_problems":
+            return None
+        return next(
+            (
+                document
+                for document in self.documents
+                if document.get("lesson_id") == filter_dict.get("lesson_id")
+            ),
+            None,
+        )
+
+    def find_many(self, collection_name, filter_dict=None):
+        if collection_name != "stage2_problems":
+            return []
+        return list(self.documents)
+
+
+def test_stage2_lookup_prefers_new_lesson_id():
+    current = {"lesson_id": "lesson_1", "title": "current"}
+    legacy = {"lesson_id": "lesson1", "title": "legacy"}
+
+    data = _find_stage2_lesson_data(FakeStage2MongoClient([legacy, current]))
+
+    assert data == current
+
+
+def test_stage2_lookup_falls_back_to_legacy_lesson_id():
+    legacy = {"lesson_id": "lesson1", "title": "legacy"}
+
+    data = _find_stage2_lesson_data(FakeStage2MongoClient([legacy]))
+
+    assert data == legacy
+
+
+def test_stage2_problem_lookup_finds_problem_in_other_lesson_doc():
+    lesson_1 = {
+        "lesson_id": "lesson_1",
+        "problems": [{"problem_id": 1}],
+    }
+    lesson_4 = {
+        "lesson_id": "lesson_4",
+        "problems": [{"problem_id": 13}],
+    }
+
+    data = _find_stage2_problem_data(
+        FakeStage2MongoClient([lesson_1, lesson_4]),
+        problem_id=13,
+    )
+
+    assert data == lesson_4

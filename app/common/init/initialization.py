@@ -13,12 +13,14 @@ import chromadb
 
 from app.common.dependency.dependencies import initialize_dependencies
 from app.common.logging.logging_config import get_logger
+from app.data.data_loader.classroom_loader import load_classrooms
+from app.data.data_loader.content_hierarchy_loader import load_content_hierarchy
 from app.data.data_loader.hypothetical_questions_loader import build_hypothetical_questions
 from app.data.data_loader.seed_mongo_loader import seed_mongo_data
 from app.data.data_loader.stage1_cards_loader import load_stage1_cards
 from app.data.data_loader.stage2_problems_loader import load_stage2_problems
 from app.data.data_loader.stage3_problems_loader import load_stage3_problems
-from app.domains.admin.indexing_service import get_indexing_service
+from app.domains.system.indexing_service import get_indexing_service
 from app.infrastructure.db.vector.vector_db import initialize_vector_db
 from app.infrastructure.embedding.embedding_model import get_embedding_model
 from app.infrastructure.search.bm25_retriever import get_bm25_retriever
@@ -69,15 +71,19 @@ class InitializationService:
         """MongoDB에 카드/문제 시드 데이터를 적재한다. (admin)"""
         try:
             seed_mongo_data()
+            content_ok = load_content_hierarchy()
             load_stage1_cards()
             load_stage2_problems()
             stage3_ok = load_stage3_problems()
+            classes_ok = load_classrooms()
             logger.info("[OK] MongoDB 시드 적재 완료")
             return {
                 "status": "success",
+                "content_hierarchy": "loaded" if content_ok else "failed",
                 "stage1": "loaded",
                 "stage2": "loaded",
                 "stage3": "loaded" if stage3_ok else "failed",
+                "classes": "loaded" if classes_ok else "failed",
             }
         except Exception as e:
             logger.error(f"[ERROR] MongoDB 시드 적재 실패: {e}")

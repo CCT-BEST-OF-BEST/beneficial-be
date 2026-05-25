@@ -86,6 +86,12 @@ def get_my_agent_profile(
     current_user: User = Depends(get_current_user),
     learning_record_service: LearningRecordService = Depends(get_learning_record_service),
 ):
+    if current_user.role == "student":
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="학생에게는 약점 프로파일을 직접 제공하지 않습니다.",
+        )
+
     profile = learning_record_service.get_weakness_profile(current_user.user_id)
     return AgentProfileResponse(
         user_id=profile.user_id,

@@ -49,7 +49,7 @@ async def _generate_questions(
     """GPT로 문서에 대한 예상 질문 n개 생성"""
     try:
         response = await openai_client.chat.completions.create(
-            model="gpt-4o-mini",
+            model="gpt-4o",
             messages=[
                 {
                     "role": "system",

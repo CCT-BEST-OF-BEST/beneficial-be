@@ -1,15 +1,19 @@
 import os
 
 from fastapi import FastAPI
-from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
 from app.domains.chat.router import router as chat_router
-from app.domains.admin.router import router as indexing_router
-from app.domains.learning.content_router import router as learning_router
-from app.domains.stage3.router import router as stage3_router
+from app.domains.classroom.controller.teacher_classroom_router import router as teacher_classroom_router
+from app.domains.classroom.controller.teacher_student_view_router import router as teacher_student_view_router
+from app.domains.instruction.controller.teacher_instruction_router import router as teacher_instruction_router
+from app.domains.learning.controller.content_catalog_router import router as content_catalog_router
+from app.domains.learning.controller.student_learning_router import router as student_learning_router
+from app.domains.learning.controller.student_progress_router import router as student_progress_router
+from app.domains.learning.controller.student_records_router import router as student_records_router
+from app.domains.learning.controller.student_stage3_router import router as student_stage3_router
+from app.domains.system.router import router as system_router
 from app.domains.auth.router import router as auth_router
 from app.domains.agent.router import router as agent_router
-from app.domains.learning.router import router as learning_records_router
 from app.common.init.initialization import get_initialization_service
 from app.common.logging.logging_config import get_logger
 
@@ -31,8 +35,8 @@ app = FastAPI(
 - **적응형 복습**: 틀린 문제 자동 복습 및 뱃지 시스템
 
 ## 빠른 시작
-1. **학습 시작**: `/learning/stage1/cards` - 카드 학습
-2. **문제 풀이**: `/learning/stage3/next-problem` - 3단계 문제
+1. **학습 시작**: `/student/learning/stage1/cards` - 카드 학습
+2. **문제 풀이**: `/student/learning/stage3/next-problem` - 3단계 문제
 3. **AI 도움**: `/chat/` - 맞춤법 질문하기
     """,
     openapi_tags=[
@@ -53,14 +57,14 @@ app = FastAPI(
             """
         },
         {
-            "name": "learning",
+            "name": "student-learning",
             "description": """
 ## 단계별 학습 API
 
 ### 주요 기능
 - **1단계 카드 학습**: 어휘 카드 플립 학습
 - **2단계 드래그&드롭**: 인터랙티브 문제 풀이
-- **이미지 서빙**: 학습용 이미지 파일 제공
+- **시각 힌트**: 프론트 아이콘/컴포넌트 매핑용 메타데이터 제공
 
 ### 사용 시나리오
 - 단계별 순차 학습 진행
@@ -125,10 +129,6 @@ app.add_middleware(
     allow_headers=["*"],  # 모든 헤더 허용
 )
 
-# Static 파일 마운트 (이미지 파일 서빙을 위해)
-app.mount("/images", StaticFiles(directory="app/static/images"), name="images")
-
-
 @app.on_event("startup")
 async def startup_event():
     """
@@ -167,10 +167,15 @@ async def shutdown_event():
 app.include_router(auth_router)
 app.include_router(agent_router)
 app.include_router(chat_router)
-app.include_router(learning_router)
-app.include_router(learning_records_router)
-app.include_router(stage3_router)
-app.include_router(indexing_router)
+app.include_router(student_learning_router)
+app.include_router(content_catalog_router)
+app.include_router(student_records_router)
+app.include_router(student_stage3_router)
+app.include_router(student_progress_router)
+app.include_router(teacher_classroom_router)
+app.include_router(teacher_student_view_router)
+app.include_router(teacher_instruction_router)
+app.include_router(system_router)
 
 
 @app.get(
