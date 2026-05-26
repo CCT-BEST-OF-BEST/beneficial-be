@@ -608,6 +608,7 @@ Stage 3는 "순차 학습 → 틀린 문제만 순환 복습" 알고리즘으로
 | --- | --- | --- | --- |
 | POST | `/teacher/instruction/assignments/draft` | teacher/developer | 문제 초안 assignment 생성 |
 | GET | `/teacher/instruction/assignments` | teacher/developer | assignment 목록 |
+| POST | `/teacher/instruction/generate-problems` | teacher/developer | OpenAI로 문제 생성 후 검증 통과분을 draft 저장 |
 | PATCH | `/teacher/instruction/assignments/{assignment_id}/assign` | teacher/developer | draft를 assigned로 전환 |
 | PATCH | `/teacher/instruction/assignments/{assignment_id}/cancel` | teacher/developer | draft/assigned 취소 |
 | PATCH | `/teacher/instruction/assignments/{assignment_id}/complete` | teacher/developer | assigned를 completed로 전환 |
@@ -652,7 +653,93 @@ assigned -> cancelled
 
 응답은 `AssignmentResponse`이며 `assignment_id`, `status`, `problems[].problem_key`, `created_at` 등을 포함한다.
 
-현재 구현 범위는 생성된 문제를 draft로 저장하고 배정 상태를 관리하는 것이다. OpenAI를 호출해 문제 초안을 직접 만드는 `POST /teacher/instruction/generate-problems`는 다음 작업으로 남아 있다.
+`POST /teacher/instruction/generate-problems` 요청 예시:
+
+```json
+{
+  "target_type": "student",
+  "class_id": null,
+  "student_id": "student_demo_1",
+  "unit_id": "unit_1",
+  "lesson_id": "lesson_4",
+  "stage": 3,
+  "concept_key": "되/돼",
+  "count": 3,
+  "difficulty": "normal",
+  "generation_context": {
+    "reason": "최근 되/돼 오답 반복"
+  }
+}
+```
+
+응답 예시:
+
+```json
+{
+  "assignment": {
+    "assignment_id": "assign_xxx",
+    "teacher_id": "teacher_demo_1",
+    "student_id": "student_demo_1",
+    "target_type": "student",
+    "unit_id": "unit_1",
+    "lesson_id": "lesson_4",
+    "stage": 3,
+    "concept_key": "되/돼",
+    "status": "draft",
+    "source": "ai_generated",
+    "problems": [
+      {
+        "problem_id": "gen_xxx",
+        "problem_key": "assignment:assign_xxx:gen_xxx",
+        "type": "fill_blank",
+        "sentence_part1": "숙제가 다",
+        "correct_answer": "돼",
+        "sentence_part2": ".",
+        "full_sentence": "숙제가 다 돼.",
+        "explanation": "'돼'는 '되어'로 바꿀 수 있을 때 써요.",
+        "visual_hint": "pencil",
+        "accent_color": "primary",
+        "validation_status": "valid"
+      }
+    ],
+    "student_progress": {},
+    "generation_context": {
+      "reason": "최근 되/돼 오답 반복",
+      "difficulty": "normal",
+      "requested_count": 3,
+      "generated_count": 3,
+      "valid_count": 2
+    },
+    "created_at": "ISO-8601",
+    "assigned_at": null,
+    "completed_at": null,
+    "cancelled_at": null
+  },
+  "validation_results": [
+    {
+      "problem": {
+        "problem_id": "gen_xxx",
+        "problem_key": null,
+        "type": "fill_blank",
+        "sentence_part1": "숙제가 다",
+        "correct_answer": "돼",
+        "sentence_part2": ".",
+        "full_sentence": "숙제가 다 돼.",
+        "explanation": "'돼'는 '되어'로 바꿀 수 있을 때 써요.",
+        "visual_hint": "pencil",
+        "accent_color": "primary",
+        "validation_status": "valid"
+      },
+      "is_valid": true,
+      "reasons": []
+    }
+  ],
+  "total_generated": 3,
+  "total_valid": 2
+}
+```
+
+검증은 `concept_key` 허용 목록, 정답 후보, 빈칸 조합과 완성 문장 일치, 기본 Stage 3 문제와의 중복, 생성 결과 내부 중복, 해설 길이를 확인한다. 검증을 통과한 문제만 draft assignment에 저장된다.
 
 ---
 

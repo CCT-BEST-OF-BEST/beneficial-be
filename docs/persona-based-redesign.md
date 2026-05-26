@@ -541,6 +541,10 @@ domains/learning/
 - `GET /student/learning/stage3/next-problem`은 assigned 상태의 `teacher_assignments` 문제를 기본 Stage 3 문제보다 먼저 반환한다.
 - assignment 문제 제출은 기존 `POST /student/learning/stage3/submit-answer`에서 `assignment_id`를 함께 받아 처리한다.
 - assignment 풀이 결과는 `learning_records.source = "assignment"`, `assignment_id`로 저장하고, 학생 대상 assignment는 모든 문제를 맞히면 `completed`로 전환한다.
+- `POST /teacher/instruction/generate-problems`를 추가했다.
+  - OpenAI 구조화 출력으로 Stage 3 빈칸 문제 후보를 생성한다.
+  - `concept_key`, 정답 후보, 완성 문장 조합, 기존 기본 문제 중복, 생성 결과 내부 중복, 해설 길이를 검증한다.
+  - 검증 통과 문제만 `teacher_assignments.status = draft`로 저장하고, 검증 결과는 응답에 함께 반환한다.
 
 ### 12.6 현재 주요 컬렉션
 
@@ -572,27 +576,14 @@ venv/bin/pytest -q
 
 ### 12.8 남은 백엔드 작업
 
-1. **OpenAI 문제 생성 API**
-   - `POST /teacher/instruction/generate-problems`
-   - 입력: 대상 학생/반, `concept_key`, 문제 수, 난이도, `unit_id`, `lesson_id`, `stage`
-   - 출력: 생성된 문제 초안과 검증 결과
-   - 저장: 검증을 통과한 문제를 `teacher_assignments.status = draft`로 저장
-
-2. **AI 생성 문제 검증**
-   - `concept_key` 허용 목록 확인
-   - 빈칸/정답/완성 문장 일치 확인
-   - 기존 기본 문제와 중복 여부 확인
-   - 학생용 설명 길이와 난이도 확인
-   - JSON schema 유효성 확인
-
-3. **패키지 구조 후속 정리**
+1. **패키지 구조 후속 정리**
    - `domains/learning/service.py`를 `domains/learning/service/record_service.py`로 이동할지 결정
    - `domains/learning/schemas.py`, `student_schemas.py`를 controller DTO와 domain schema로 분리
    - `domains/learning/models.py`를 `domain/models.py`로 옮길지 결정
    - `classroom/models.py`, `classroom/service.py`도 `domain/`, `service/` 하위로 정리할지 결정
    - `app/data/data_loader`를 `common` 하위로 옮길지는 별도 논의 후 결정
 
-4. **운영 보안/인프라 정리**
+2. **운영 보안/인프라 정리**
    - CORS `*` 제거
    - 운영 환경에서 `AUTH_SECRET_KEY` 미설정 시 fail-fast
    - OpenAI client DI/싱글톤 정리

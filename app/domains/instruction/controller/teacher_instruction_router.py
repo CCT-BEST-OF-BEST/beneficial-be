@@ -2,12 +2,16 @@ from fastapi import APIRouter, Depends, HTTPException, Query, status
 
 from app.domains.auth.dependencies import get_current_teacher
 from app.domains.auth.models import User
-from app.domains.instruction.dependencies import get_instruction_service
+from app.domains.instruction.dependencies import get_instruction_service, get_problem_generator
+from app.domains.instruction.generation import OpenAIProblemGenerator
 from app.domains.instruction.models import GeneratedProblem
 from app.domains.instruction.schemas import (
     AssignmentListResponse,
     AssignmentResponse,
     CreateAssignmentDraftRequest,
+    GenerateProblemsRequest,
+    GenerateProblemsResponse,
+    ProblemValidationResponse,
 )
 from app.domains.instruction.service import (
     AssignmentAccessError,
@@ -68,6 +72,47 @@ def list_assignments(
         for assignment in assignments
     ]
     return AssignmentListResponse(assignments=items, total_count=len(items))
+
+
+@router.post("/generate-problems", response_model=GenerateProblemsResponse, status_code=status.HTTP_201_CREATED)
+async def generate_problems(
+    body: GenerateProblemsRequest,
+    current_user: User = Depends(get_current_teacher),
+    instruction_service: InstructionService = Depends(get_instruction_service),
+    problem_generator: OpenAIProblemGenerator = Depends(get_problem_generator),
+) -> GenerateProblemsResponse:
+    try:
+        assignment, validation_results = await instruction_service.generate_problem_assignment(
+            teacher=current_user,
+            target_type=body.target_type,
+            class_id=body.class_id,
+            student_id=body.student_id,
+            unit_id=body.unit_id,
+            lesson_id=body.lesson_id,
+            stage=body.stage,
+            concept_key=body.concept_key,
+            count=body.count,
+            difficulty=body.difficulty,
+            generation_context=body.generation_context,
+            problem_generator=problem_generator,
+        )
+        return GenerateProblemsResponse(
+            assignment=AssignmentResponse(**assignment.model_dump()),
+            validation_results=[
+                ProblemValidationResponse(
+                    problem=result.problem.model_dump(),
+                    is_valid=result.is_valid,
+                    reasons=result.reasons,
+                )
+                for result in validation_results
+            ],
+            total_generated=len(validation_results),
+            total_valid=sum(1 for result in validation_results if result.is_valid),
+        )
+    except AssignmentAccessError as exc:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=str(exc))
+    except InstructionError as exc:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc))
 
 
 @router.patch("/assignments/{assignment_id}/assign", response_model=AssignmentResponse)

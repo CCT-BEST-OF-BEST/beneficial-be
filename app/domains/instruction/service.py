@@ -1,3 +1,7 @@
+from typing import Protocol
+
+from pydantic import BaseModel, Field
+
 from app.common.security import utc_now
 from app.domains.auth.models import User
 from app.domains.classroom.service import ClassroomService
@@ -6,6 +10,7 @@ from app.domains.instruction.models import (
     GeneratedProblem,
     TeacherAssignment,
 )
+from app.domains.learning.service import CONCEPT_KEY_BY_ANSWER
 from app.domains.instruction.repositories.base import TeacherAssignmentRepository
 
 
@@ -25,14 +30,38 @@ class InvalidAssignmentTransitionError(InstructionError):
     pass
 
 
+class ProblemValidationResult(BaseModel):
+    problem: GeneratedProblem
+    is_valid: bool
+    reasons: list[str] = Field(default_factory=list)
+
+
+class ProblemGenerator(Protocol):
+    async def generate(
+        self,
+        concept_key: str,
+        count: int,
+        lesson_id: str,
+        difficulty: str | None = None,
+    ) -> list[GeneratedProblem]:
+        ...
+
+
+class StageProblemLookup(Protocol):
+    def find_stage3_full_sentences(self, lesson_id: str) -> set[str]:
+        ...
+
+
 class InstructionService:
     def __init__(
         self,
         repository: TeacherAssignmentRepository,
         classroom_service: ClassroomService,
+        stage_problem_lookup: StageProblemLookup | None = None,
     ):
         self.repository = repository
         self.classroom_service = classroom_service
+        self.stage_problem_lookup = stage_problem_lookup
 
     def create_draft_assignment(
         self,
@@ -82,6 +111,71 @@ class InstructionService:
             student_id=student_id,
         )
         return [TeacherAssignment(**doc) for doc in docs]
+
+    async def generate_problem_assignment(
+        self,
+        teacher: User,
+        target_type: str,
+        lesson_id: str,
+        concept_key: str,
+        count: int,
+        problem_generator: ProblemGenerator,
+        class_id: str | None = None,
+        student_id: str | None = None,
+        unit_id: str | None = None,
+        stage: int = 3,
+        difficulty: str | None = None,
+        generation_context: dict | None = None,
+    ) -> tuple[TeacherAssignment, list[ProblemValidationResult]]:
+        if stage != 3:
+            raise InstructionError("현재 AI 문제 생성은 Stage 3만 지원합니다.")
+        if concept_key not in _allowed_concept_keys():
+            raise InstructionError("지원하지 않는 concept_key입니다.")
+
+        self._validate_target_access(
+            teacher=teacher,
+            target_type=target_type,
+            class_id=class_id,
+            student_id=student_id,
+        )
+        candidates = await problem_generator.generate(
+            concept_key=concept_key,
+            count=count,
+            lesson_id=lesson_id,
+            difficulty=difficulty,
+        )
+        validation_results = self._validate_generated_problems(
+            problems=candidates,
+            concept_key=concept_key,
+            lesson_id=lesson_id,
+        )
+        valid_problems = [
+            result.problem
+            for result in validation_results
+            if result.is_valid
+        ]
+        if not valid_problems:
+            raise InstructionError("검증을 통과한 생성 문제가 없습니다.")
+
+        assignment = self.create_draft_assignment(
+            teacher=teacher,
+            target_type=target_type,
+            class_id=class_id,
+            student_id=student_id,
+            unit_id=unit_id,
+            lesson_id=lesson_id,
+            stage=stage,
+            concept_key=concept_key,
+            problems=valid_problems,
+            generation_context={
+                **(generation_context or {}),
+                "difficulty": difficulty or "normal",
+                "requested_count": count,
+                "generated_count": len(candidates),
+                "valid_count": len(valid_problems),
+            },
+        )
+        return assignment, validation_results
 
     def list_student_assignments(
         self,
@@ -296,3 +390,105 @@ class InstructionService:
 
         self.repository.update_assignment(assignment.assignment_id, update_fields)
         return student_completed_all
+
+    def _validate_generated_problems(
+        self,
+        problems: list[GeneratedProblem],
+        concept_key: str,
+        lesson_id: str,
+    ) -> list[ProblemValidationResult]:
+        existing_full_sentences = (
+            self.stage_problem_lookup.find_stage3_full_sentences(lesson_id)
+            if self.stage_problem_lookup
+            else set()
+        )
+        seen_full_sentences: set[str] = set()
+        results = []
+        for problem in problems:
+            reasons = _validate_generated_problem(
+                problem=problem,
+                concept_key=concept_key,
+                existing_full_sentences=existing_full_sentences,
+                seen_full_sentences=seen_full_sentences,
+            )
+            problem.validation_status = "invalid" if reasons else "valid"
+            if not reasons:
+                seen_full_sentences.add(_normalize_sentence(problem.full_sentence))
+            results.append(
+                ProblemValidationResult(
+                    problem=problem,
+                    is_valid=not reasons,
+                    reasons=reasons,
+                )
+            )
+        return results
+
+
+def _validate_generated_problem(
+    problem: GeneratedProblem,
+    concept_key: str,
+    existing_full_sentences: set[str],
+    seen_full_sentences: set[str],
+) -> list[str]:
+    reasons = []
+    if not problem.sentence_part1.strip() and not problem.sentence_part2.strip():
+        reasons.append("빈칸 앞/뒤 문장 중 하나는 필요합니다.")
+    if not problem.correct_answer.strip():
+        reasons.append("정답이 비어 있습니다.")
+    if not problem.full_sentence.strip():
+        reasons.append("완성 문장이 비어 있습니다.")
+    if len(problem.explanation.strip()) > 120:
+        reasons.append("해설은 120자 이하여야 합니다.")
+
+    allowed_answers = _answers_for_concept(concept_key)
+    if problem.correct_answer.strip() not in allowed_answers:
+        reasons.append("정답이 concept_key의 허용 답안 목록에 없습니다.")
+
+    expected_full_sentence = _compose_full_sentence(
+        problem.sentence_part1,
+        problem.correct_answer,
+        problem.sentence_part2,
+    )
+    if _normalize_sentence(problem.full_sentence) != _normalize_sentence(expected_full_sentence):
+        reasons.append("완성 문장이 빈칸 앞/정답/뒤 문장 조합과 일치하지 않습니다.")
+
+    normalized_full_sentence = _normalize_sentence(problem.full_sentence)
+    normalized_existing = {_normalize_sentence(sentence) for sentence in existing_full_sentences}
+    if normalized_full_sentence in normalized_existing:
+        reasons.append("기존 기본 문제와 중복됩니다.")
+    if normalized_full_sentence in seen_full_sentences:
+        reasons.append("같은 생성 요청 안에서 중복된 문제입니다.")
+    return reasons
+
+
+def _allowed_concept_keys() -> set[str]:
+    return set(CONCEPT_KEY_BY_ANSWER.values())
+
+
+def _answers_for_concept(concept_key: str) -> set[str]:
+    return {
+        answer
+        for answer, mapped_concept_key in CONCEPT_KEY_BY_ANSWER.items()
+        if mapped_concept_key == concept_key
+    }
+
+
+def _compose_full_sentence(part1: str, answer: str, part2: str) -> str:
+    left = part1.strip()
+    middle = answer.strip()
+    right = part2.strip()
+
+    if left:
+        sentence = f"{left} {middle}"
+    else:
+        sentence = middle
+
+    if not right:
+        return sentence
+    if right[0] in ".,?!)]}":
+        return f"{sentence}{right}"
+    return f"{sentence} {right}"
+
+
+def _normalize_sentence(sentence: str) -> str:
+    return " ".join(sentence.strip().split())

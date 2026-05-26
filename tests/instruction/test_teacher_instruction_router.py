@@ -7,12 +7,19 @@ from app.domains.auth.models import User
 from app.domains.instruction.controller.teacher_instruction_router import (
     assign_assignment,
     create_assignment_draft,
+    generate_problems,
 )
-from app.domains.instruction.schemas import CreateAssignmentDraftRequest, GeneratedProblemRequest
+from app.domains.instruction.models import GeneratedProblem
+from app.domains.instruction.schemas import (
+    CreateAssignmentDraftRequest,
+    GeneratedProblemRequest,
+    GenerateProblemsRequest,
+)
 from app.domains.instruction.service import InstructionService
 from tests.instruction.test_instruction_service import (
     FakeAssignmentRepository,
     FakeClassroomService,
+    FakeProblemGenerator,
 )
 
 
@@ -95,3 +102,35 @@ def test_assign_assignment_endpoint_transitions_status():
 
     assert response.status == "assigned"
     assert response.assigned_at is not None
+
+
+@pytest.mark.asyncio
+async def test_generate_problems_endpoint_creates_draft_assignment():
+    response = await generate_problems(
+        body=GenerateProblemsRequest(
+            target_type="student",
+            student_id="student_1",
+            lesson_id="lesson_4",
+            concept_key="되/돼",
+            count=1,
+        ),
+        current_user=_teacher(),
+        instruction_service=_service(),
+        problem_generator=FakeProblemGenerator(
+            [
+                GeneratedProblem(
+                    problem_id="gen_1",
+                    sentence_part1="숙제가 다",
+                    correct_answer="돼",
+                    sentence_part2=".",
+                    full_sentence="숙제가 다 돼.",
+                    explanation="'돼'는 '되어'로 바꿀 수 있을 때 써요.",
+                )
+            ]
+        ),
+    )
+
+    assert response.assignment is not None
+    assert response.assignment.status == "draft"
+    assert response.total_generated == 1
+    assert response.total_valid == 1

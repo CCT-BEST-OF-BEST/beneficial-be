@@ -43,6 +43,19 @@ class CreateAssignmentDraftRequest(BaseModel):
     generation_context: dict = Field(default_factory=dict)
 
 
+class GenerateProblemsRequest(BaseModel):
+    target_type: Literal["student", "class"]
+    class_id: str | None = None
+    student_id: str | None = None
+    unit_id: str | None = None
+    lesson_id: str
+    stage: int = 3
+    concept_key: str
+    count: int = Field(default=3, ge=1, le=10)
+    difficulty: Literal["easy", "normal", "hard"] | None = "normal"
+    generation_context: dict = Field(default_factory=dict)
+
+
 class AssignmentResponse(BaseModel):
     assignment_id: str
     teacher_id: str
@@ -67,6 +80,19 @@ class AssignmentResponse(BaseModel):
 class AssignmentListResponse(BaseModel):
     assignments: list[AssignmentResponse] = Field(default_factory=list)
     total_count: int
+
+
+class ProblemValidationResponse(BaseModel):
+    problem: GeneratedProblemResponse
+    is_valid: bool
+    reasons: list[str] = Field(default_factory=list)
+
+
+class GenerateProblemsResponse(BaseModel):
+    assignment: AssignmentResponse | None = None
+    validation_results: list[ProblemValidationResponse] = Field(default_factory=list)
+    total_generated: int
+    total_valid: int
 
 
 class StudentAssignmentProblemResponse(BaseModel):

@@ -142,6 +142,22 @@ def _service(repository=None, classroom_service=None):
     )
 
 
+class FakeProblemGenerator:
+    def __init__(self, problems):
+        self.problems = problems
+
+    async def generate(self, concept_key, count, lesson_id, difficulty=None):
+        return self.problems[:count]
+
+
+class FakeStageProblemLookup:
+    def __init__(self, existing_full_sentences=None):
+        self.existing_full_sentences = set(existing_full_sentences or [])
+
+    def find_stage3_full_sentences(self, lesson_id):
+        return self.existing_full_sentences
+
+
 def test_create_student_draft_assignment_sets_problem_keys():
     repository = FakeAssignmentRepository()
     service = _service(repository=repository)
@@ -301,3 +317,53 @@ def test_submit_student_assignment_answer_records_source_and_completes_assignmen
     assert record_service.records[0]["source"] == "assignment"
     assert record_service.records[0]["assignment_id"] == assignment.assignment_id
     assert record_service.records[0]["problem_key"] == assignment.problems[0].problem_key
+
+
+@pytest.mark.asyncio
+async def test_generate_problem_assignment_stores_valid_generated_problems_only():
+    repository = FakeAssignmentRepository()
+    service = InstructionService(
+        repository,
+        FakeClassroomService(allowed_students=["student_1"]),
+        stage_problem_lookup=FakeStageProblemLookup(
+            existing_full_sentences={"그렇게 하면 안 돼."}
+        ),
+    )
+
+    assignment, validation_results = await service.generate_problem_assignment(
+        teacher=_user(),
+        target_type="student",
+        student_id="student_1",
+        lesson_id="lesson_4",
+        concept_key="되/돼",
+        count=2,
+        difficulty="normal",
+        problem_generator=FakeProblemGenerator(
+            [
+                GeneratedProblem(
+                    problem_id="gen_valid",
+                    sentence_part1="숙제가 다",
+                    correct_answer="돼",
+                    sentence_part2=".",
+                    full_sentence="숙제가 다 돼.",
+                    explanation="'돼'는 '되어'로 바꿀 수 있을 때 써요.",
+                ),
+                GeneratedProblem(
+                    problem_id="gen_duplicate",
+                    sentence_part1="그렇게 하면 안",
+                    correct_answer="돼",
+                    sentence_part2=".",
+                    full_sentence="그렇게 하면 안 돼.",
+                    explanation="중복 문제",
+                ),
+            ]
+        ),
+    )
+
+    assert assignment.status == "draft"
+    assert assignment.problems[0].problem_id == "gen_valid"
+    assert repository.assignments[0]["problems"][0]["validation_status"] == "valid"
+    assert len(validation_results) == 2
+    assert validation_results[0].is_valid is True
+    assert validation_results[1].is_valid is False
+    assert "기존 기본 문제와 중복됩니다." in validation_results[1].reasons

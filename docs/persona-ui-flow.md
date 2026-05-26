@@ -357,13 +357,13 @@ AI 분석
 [AI 문제 생성]
 ```
 
-향후 사용 API:
+사용 API:
 
 ```text
 POST /teacher/instruction/generate-problems
 ```
 
-현재는 OpenAI 호출 endpoint가 아직 없으므로, 프론트는 이 화면을 구현하기 전에 생성 API 추가가 필요하다.
+응답에는 draft assignment와 문제별 검증 결과가 함께 온다. 프론트는 `validation_results`에서 실패 사유가 있는 문제를 교사에게 보여주고, `assignment.problems`의 검증 통과 문제를 초안 검토 화면에 렌더링한다.
 
 ### 4.6 초안 검토/수정
 

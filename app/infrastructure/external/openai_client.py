@@ -55,6 +55,33 @@ class OpenAIClient:
         except Exception as e:
             raise Exception(f"OpenAI API 호출 실패: {str(e)}")
 
+    async def parse_chat_completion(
+        self,
+        messages: List[Dict[str, str]],
+        response_format,
+        model: str = None,
+        max_tokens: int = None,
+        temperature: float = None,
+    ):
+        """Pydantic response_format 기반 구조화 출력을 생성한다."""
+        try:
+            response = await self.client.chat.completions.parse(
+                model=model or self.default_model,
+                messages=messages,
+                response_format=response_format,
+                max_tokens=max_tokens or self.max_tokens,
+                temperature=self.temperature if temperature is None else temperature,
+            )
+            message = response.choices[0].message
+            if getattr(message, "refusal", None):
+                raise ValueError(message.refusal)
+            if getattr(message, "parsed", None) is None:
+                raise ValueError("OpenAI 응답을 구조화된 모델로 파싱하지 못했습니다.")
+            return message.parsed
+
+        except Exception as e:
+            raise Exception(f"OpenAI 구조화 출력 호출 실패: {str(e)}")
+
     async def generate_response_with_context(self, prompt: str, context: str = None,
                                              system_prompt: str = None) -> str:
         """
