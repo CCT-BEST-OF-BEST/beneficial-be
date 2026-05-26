@@ -1,6 +1,6 @@
 # Beneficial Backend API 명세서
 
-> 최종 업데이트: 2026-05-25
+> 최종 업데이트: 2026-05-26
 > 대상: 프론트엔드 / 프론트 에이전트의 리팩토링 작업
 > 관련 문서: [페르소나 기반 재설계 기획안](./persona-based-redesign.md) · [페르소나 기반 UI 플로우](./persona-ui-flow.md)
 
@@ -36,13 +36,15 @@
 | --- | --- | --- |
 | `/` | 시스템 메타 정보 (`GET /`만) | — |
 | `/auth` | 회원가입 / 로그인 / 세션 | 일부 보호 (`/me`) |
+| `/admin/auth` | 관리자 하드코딩 로그인 (.env 기반) | — |
 | `/agent` | 학습 코치 Agent (LangGraph) | 전부 보호 |
 | `/student/learning` | Stage 1·2 컨텐츠 + 시각 힌트 | 전부 보호 |
 | `/student/learning/records` | 학습 기록 조회 | 보호 |
 | `/student/learning/stage3` | Stage 3 문제풀이 | 전부 보호 |
 | `/student/me` | 학생용 긍정 진척도 | student 보호 |
+| `/student/my-class` | 학생 소속 반 조회 | 보호 |
 | `/content` | 단원·차시 콘텐츠 트리 | 전부 보호 |
-| `/teacher/classes` | 교사 담당 반/학생 조회 | teacher/developer 보호 |
+| `/teacher/classes` | 교사 담당 반 생성/조회/학생 관리 | teacher/developer 보호 |
 | `/teacher/students` | 교사용 학생 약점/기록 조회 | teacher/developer 보호 |
 | `/teacher/instruction` | 교사용 문제 초안/배정 관리 | teacher/developer 보호 |
 | `/chat` | 단발 RAG 채팅 (Agent와 별개) | 전부 보호 |
@@ -78,7 +80,9 @@
 {
   "email": "string (5~255자)",
   "password": "string (8~128자)",
-  "display_name": "string (1~50자)"
+  "display_name": "string (1~50자)",
+  "role": "student | teacher (기본값: student)",
+  "school_name": "string | null (최대 100자, teacher일 때 사용)"
 }
 ```
 **Response 201** (`UserResponse`)
@@ -379,11 +383,12 @@ Stage 1 (카드 학습) · Stage 2 (드래그&드롭) 컨텐츠.
 }
 ```
 
-## 5. 학생 진척도 (`/student/me`)
+## 5. 학생 진척도 · 반 정보 (`/student/me`, `/student/my-class`)
 
 | Method | Path | 인증 | 설명 |
 | --- | --- | --- | --- |
 | GET | `/student/me/progress` | student 보호 | 본인 긍정 진척도 |
+| GET | `/student/my-class` | 보호 | 본인 소속 반 정보 |
 
 ### 5.1 `GET /student/me/progress`
 
@@ -397,6 +402,22 @@ Stage 1 (카드 학습) · Stage 2 (드래그&드롭) 컨텐츠.
   "streak_correct_count": 4,
   "progress_rate": 60,
   "badges": ["첫 학습 시작", "연속 정답"]
+}
+```
+
+- `progress_rate`: **Stage 2를 통과한(정답 제출 있는) 차시 수 / 전체 차시 수 × 100**. 기존 Stage 3 완료율 기준에서 변경됨.
+
+### 5.2 `GET /student/my-class`
+
+학생이 소속된 반과 담당 선생님 정보를 반환한다. 반에 소속되지 않은 경우 `null`을 반환한다.
+
+**Response 200** (`StudentMyClassResponse | null`)
+```json
+{
+  "class_id": "class_xxx",
+  "class_name": "돌봄 한국어 1반",
+  "teacher_display_name": "김선생님",
+  "teacher_school_name": "OO초등학교"
 }
 ```
 
@@ -552,14 +573,33 @@ Stage 3는 "순차 학습 → 틀린 문제만 순환 복습" 알고리즘으로
 
 교사 API는 `teacher` 또는 `developer` 권한이 필요하다. 교사는 본인이 담당한 반/학생 데이터만 조회하거나 배정할 수 있고, developer는 운영 목적으로 우회 가능하다.
 
-### 8.1 반/학생 조회
+### 8.1 반 생성·조회 및 학생 관리
 
 | Method | Path | 인증 | 설명 |
 | --- | --- | --- | --- |
+| POST | `/teacher/classes` | teacher/developer | 새 반 생성 |
 | GET | `/teacher/classes` | teacher/developer | 담당 반 목록 |
+| GET | `/teacher/classes/search-students` | teacher/developer | 이름·이메일로 학생 검색 |
 | GET | `/teacher/classes/{class_id}/students` | teacher/developer | 반 학생 목록 + 약점 요약 |
+| POST | `/teacher/classes/{class_id}/students` | teacher/developer | 학생 반 등록 |
+| DELETE | `/teacher/classes/{class_id}/students/{student_id}` | teacher/developer | 학생 반 제거 |
 | GET | `/teacher/students/{user_id}/profile` | teacher/developer | 학생 약점 프로파일 |
 | GET | `/teacher/students/{user_id}/records` | teacher/developer | 학생 학습 기록 |
+
+`POST /teacher/classes` 요청/응답:
+
+```json
+// Request
+{ "name": "돌봄 한국어 1반" }
+
+// Response 201 (TeacherClassResponse)
+{
+  "class_id": "class_xxx",
+  "name": "돌봄 한국어 1반",
+  "teacher_id": "teacher_xxx",
+  "student_count": 0
+}
+```
 
 `GET /teacher/classes` 응답 예시:
 
@@ -576,6 +616,18 @@ Stage 3는 "순차 학습 → 틀린 문제만 순환 복습" 알고리즘으로
   "total_count": 1
 }
 ```
+
+`GET /teacher/classes/search-students?q=민준` 응답 예시:
+
+```json
+{
+  "users": [
+    { "user_id": "u_xxx", "display_name": "민준", "email": "minjun@example.com" }
+  ]
+}
+```
+
+- `q`: 이름 또는 이메일 일부 (최소 1자). role이 student인 사용자만 반환.
 
 `GET /teacher/classes/{class_id}/students` 응답 예시:
 
@@ -594,6 +646,16 @@ Stage 3는 "순차 학습 → 틀린 문제만 순환 복습" 알고리즘으로
   "total_count": 1
 }
 ```
+
+`POST /teacher/classes/{class_id}/students` 요청:
+
+```json
+{ "student_id": "u_xxx" }
+```
+
+**Response**: `204 No Content`. 반을 찾을 수 없으면 `404`.
+
+`DELETE /teacher/classes/{class_id}/students/{student_id}` — **Response**: `204 No Content`.
 
 `GET /teacher/students/{user_id}/records` query:
 
@@ -790,6 +852,17 @@ assigned -> cancelled
 
 > developer 권한 필요.
 > 평상시 startup은 lightweight 모드라 시드/인덱싱은 이 엔드포인트들로 트리거한다.
+
+### 10.0 `POST /admin/auth/login` — 하드코딩 관리자 로그인
+
+DB를 거치지 않고 `.env`의 `ADMIN_EMAIL` / `ADMIN_PASSWORD`와 비교해 인증한다. 성공 시 `role=developer`, `user_id=admin_hardcoded`로 서명된 JWT를 발급한다. `ADMIN_EMAIL` 또는 `ADMIN_PASSWORD`가 설정되지 않으면 `503`을 반환한다.
+
+**Request body**
+```json
+{ "email": "...", "password": "..." }
+```
+**Response 200** (`AuthTokenResponse`) — 일반 로그인과 동일한 구조.  
+**Errors**: `401` 자격 증명 불일치, `503` 관리자 계정 미설정.
 
 | Method | Path | 설명 |
 | --- | --- | --- |

@@ -1,6 +1,6 @@
 # 페르소나 기반 UI 플로우
 
-> 최종 업데이트: 2026-05-25  
+> 최종 업데이트: 2026-05-26  
 > 관련 문서: [페르소나 기반 재설계 기획안](./persona-based-redesign.md), [API 명세](./api-spec.md)
 
 이 문서는 페르소나 기반 재설계 이후 프론트엔드가 가져야 할 화면 구조와 사용자 흐름만 정리한다. 핵심 전제는 **학생은 학습 경험 중심**, **선생님은 AI 수업 준비/배정 중심**, **개발자는 운영 관리 중심**이다.
@@ -78,11 +78,16 @@
 
 오늘의 학습
  ├─ 이어 풀 차시
- ├─ 진행률
+ ├─ 진행률 (Stage 2 통과 차시 기준)
  ├─ 오늘 푼 문제 수
  ├─ 연속 정답
  ├─ 획득 뱃지
  └─ [학습 시작]
+
+내 반 정보
+ ├─ 소속 반 이름
+ ├─ 담당 선생님 이름·학교
+ └─ 없으면 숨김
 
 선생님이 준비한 복습
  ├─ 배정된 문제가 있으면 노출
@@ -93,6 +98,7 @@
 
 ```text
 GET /student/me/progress
+GET /student/my-class
 GET /student/learning/assignments
 ```
 
@@ -266,7 +272,7 @@ GET /teacher/classes
 GET /teacher/instruction/assignments
 ```
 
-### 4.2 반 목록
+### 4.2 반 목록 / 반 생성
 
 ```text
 /teacher/classes
@@ -276,15 +282,18 @@ GET /teacher/instruction/assignments
 │ 학생 3명             │
 │ 최근 활동            │
 └─────────────────────┘
+
+[+ 새 반 만들기]
 ```
 
 사용 API:
 
 ```text
-GET /teacher/classes
+GET  /teacher/classes
+POST /teacher/classes
 ```
 
-### 4.3 반 상세
+### 4.3 반 상세 / 학생 편성
 
 ```text
 /teacher/classes/{class_id}
@@ -294,18 +303,29 @@ GET /teacher/classes
 │ 학생 3명 · 오늘 풀이 · 공통 약점     │
 └────────────────────────────────────┘
 
-┌──────────────────────┐ ┌──────────────────────┐
-│ AI 반 분석            │ │ 학생 목록              │
-│ 공통 약점: 되/돼       │ │ 민준 · 서연 · 지우       │
-│ 추천: 복습 문제 생성   │ │ 학생별 약점 요약        │
-│ [AI로 문제 만들기]     │ │                      │
-└──────────────────────┘ └──────────────────────┘
+┌──────────────────────┐ ┌──────────────────────────────┐
+│ AI 반 분석            │ │ 학생 목록             [+ 추가] │
+│ 공통 약점: 되/돼       │ │ 민준 · 서연 · 지우             │
+│ 추천: 복습 문제 생성   │ │ 학생별 약점 요약               │
+│ [AI로 문제 만들기]     │ │ [이름/이메일 검색 후 추가]      │
+└──────────────────────┘ └──────────────────────────────┘
+```
+
+학생 추가 흐름:
+```text
+1. [+ 추가] 클릭
+2. 이름 또는 이메일 입력
+3. GET /teacher/classes/search-students?q=... → 결과 목록 표시
+4. 선택 → POST /teacher/classes/{class_id}/students
 ```
 
 사용 API:
 
 ```text
-GET /teacher/classes/{class_id}/students
+GET    /teacher/classes/{class_id}/students
+GET    /teacher/classes/search-students?q=
+POST   /teacher/classes/{class_id}/students
+DELETE /teacher/classes/{class_id}/students/{student_id}
 ```
 
 ### 4.4 학생 상세

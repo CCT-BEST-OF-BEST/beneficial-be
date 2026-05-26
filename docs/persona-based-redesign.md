@@ -1,6 +1,6 @@
 # 페르소나 기반 재설계 기획안
 
-> 최종 업데이트: 2026-05-25
+> 최종 업데이트: 2026-05-26
 > 대상: 백엔드/프론트엔드 리팩토링 및 신규 기능 설계의 출발점
 > 관련 문서: [API 명세](./api-spec.md) · [페르소나 기반 UI 플로우](./persona-ui-flow.md)
 
@@ -570,6 +570,16 @@ domains/learning/content/
   - OpenAI client는 싱글톤으로 재사용한다.
   - 주요 MongoDB 조회 경로에 필요한 인덱스를 startup에서 확인/생성한다.
 
+### 12.6 회원가입·반 관리 완료 (2026-05-26)
+
+- 회원가입 시 `role(student|teacher)`와 `school_name`을 선택 저장한다. 개발자 계정은 가입 대신 `.env` 기반 하드코딩 경로로 발급한다.
+- `POST /admin/auth/login`: DB 없이 `.env`의 `ADMIN_EMAIL`/`ADMIN_PASSWORD`로 인증 후 `role=developer` JWT를 발급한다. `get_current_user`는 `user_id=admin_hardcoded` 토큰을 DB 조회 없이 처리한다.
+- `POST /teacher/classes`: 교사가 직접 반을 생성한다. 기존에는 시드 데이터로만 반을 만들었지만, 이제 API 경로를 제공한다.
+- `GET /teacher/classes/search-students?q=`: 이름·이메일 부분 검색으로 반 편성 대상 학생을 찾는다.
+- `POST /teacher/classes/{class_id}/students` / `DELETE .../students/{student_id}`: 학생 반 등록·제거. MongoDB `$addToSet`/`$pull`로 처리한다.
+- `GET /student/my-class`: 학생이 소속 반과 담당 교사 학교명을 조회한다. 반이 없으면 `null`.
+- `GET /student/me/progress` 진행도 계산 방식 변경: 기존 Stage 3 완료율 → **Stage 2에서 정답 제출한 차시 수 / 전체 차시 수**로 재산정한다.
+
 ### 12.6 현재 주요 컬렉션
 
 ```text
@@ -621,8 +631,10 @@ venv/bin/pytest -q
    - `learning/service.py`, `learning/models.py`, `classroom/service.py`를 Java식 하위 패키지로 더 쪼갤지 결정한다.
    - 다중 도메인 조합 엔드포인트에 use case 레이어를 둘지 결정한다.
 
-2. **교사 계정 부트스트랩**
-   - 화이트리스트 + 수동 반 시드만으로 시작할지, 교사 회원가입·반 생성 UI를 별도 Phase에 포함할지 결정한다.
+2. **교사 계정 부트스트랩** *(일부 완료)*
+   - 교사는 회원가입 시 `role=teacher`로 가입하고 `POST /teacher/classes`로 반을 직접 생성할 수 있다. 학생 검색(`search-students`)·등록·제거 API도 완료됐다.
+   - 개발자(관리자) 계정은 `.env` 기반 `POST /admin/auth/login`으로 발급한다.
+   - 남은 결정: 초대 링크 / 학교 코드 같은 교사 온보딩 플로우를 별도 Phase에 포함할지 여부.
 
 3. **신규 단원 콘텐츠**
    - 추가할 단원 수와 주제를 정한다. 콘텐츠 기획은 코드 작업과 병렬로 진행 가능하다.
