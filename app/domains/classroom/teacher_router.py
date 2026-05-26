@@ -8,6 +8,7 @@ from app.domains.learning.dependencies import get_learning_record_service
 from app.domains.learning.service import LearningRecordService
 from app.domains.classroom.schemas import (
     AddStudentRequest,
+    CreateClassRequest,
     TeacherClassesResponse,
     TeacherClassResponse,
     TeacherClassStudentsResponse,
@@ -17,6 +18,21 @@ from app.domains.classroom.schemas import (
 )
 
 router = APIRouter(prefix="/teacher/classes", tags=["teacher"])
+
+
+@router.post("", response_model=TeacherClassResponse, status_code=status.HTTP_201_CREATED)
+def create_class(
+    body: CreateClassRequest,
+    current_user: User = Depends(get_current_teacher),
+    classroom_service: ClassroomService = Depends(get_classroom_service),
+) -> TeacherClassResponse:
+    classroom = classroom_service.create_class(name=body.name, teacher_id=current_user.user_id)
+    return TeacherClassResponse(
+        class_id=classroom.class_id,
+        name=classroom.name,
+        teacher_id=classroom.teacher_id,
+        student_count=0,
+    )
 
 
 @router.get("", response_model=TeacherClassesResponse)

@@ -23,6 +23,9 @@ class ClassroomRepository(Protocol):
     def search_students_by_query(self, query: str) -> List[Dict[str, Any]]:
         ...
 
+    def create_class(self, class_doc: Dict[str, Any]) -> str:
+        ...
+
     def add_student_to_class(self, class_id: str, student_id: str) -> bool:
         ...
 

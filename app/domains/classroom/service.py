@@ -1,3 +1,6 @@
+import secrets
+from datetime import datetime, timezone
+
 from app.domains.auth.models import User
 from app.domains.classroom.models import Classroom
 from app.domains.classroom.repositories.base import ClassroomRepository
@@ -6,6 +9,19 @@ from app.domains.classroom.repositories.base import ClassroomRepository
 class ClassroomService:
     def __init__(self, repository: ClassroomRepository):
         self.repository = repository
+
+    def create_class(self, name: str, teacher_id: str) -> Classroom:
+        now = datetime.now(timezone.utc)
+        class_doc = {
+            "class_id": f"class_{secrets.token_urlsafe(12)}",
+            "name": name.strip(),
+            "teacher_id": teacher_id,
+            "student_ids": [],
+            "created_at": now,
+            "updated_at": now,
+        }
+        self.repository.create_class(class_doc)
+        return Classroom(**class_doc)
 
     def list_classes_for_user(self, user: User) -> list[Classroom]:
         if user.role == "developer":

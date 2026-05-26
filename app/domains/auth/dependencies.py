@@ -1,3 +1,6 @@
+import os
+from datetime import datetime, timezone
+
 from fastapi import Depends, HTTPException, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 
@@ -8,6 +11,8 @@ from app.domains.auth.service import AuthService
 from app.infrastructure.db.mongo.mongo_client import get_mongo_client
 
 bearer_scheme = HTTPBearer(auto_error=False)
+
+_ADMIN_USER_ID = "admin_hardcoded"
 
 
 def get_auth_service() -> AuthService:
@@ -30,6 +35,19 @@ def get_current_user(
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="유효하지 않은 인증 토큰입니다.",
+        )
+
+    # 하드코딩 관리자는 DB 조회 없이 토큰 클레임에서 바로 반환
+    if payload.get("sub") == _ADMIN_USER_ID:
+        now = datetime.now(timezone.utc)
+        return User(
+            user_id=_ADMIN_USER_ID,
+            email=payload.get("email", os.getenv("ADMIN_EMAIL", "")),
+            password_hash="",
+            display_name="관리자",
+            role="developer",
+            created_at=now,
+            updated_at=now,
         )
 
     user = auth_service.get_user(payload["sub"])

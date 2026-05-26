@@ -30,6 +30,10 @@ class TeacherClassStudentsResponse(BaseModel):
     total_count: int
 
 
+class CreateClassRequest(BaseModel):
+    name: str = Field(..., min_length=1, max_length=50)
+
+
 class StudentMyClassResponse(BaseModel):
     class_id: str
     class_name: str

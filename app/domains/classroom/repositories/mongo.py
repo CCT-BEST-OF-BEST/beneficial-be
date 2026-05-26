@@ -46,6 +46,9 @@ class MongoClassroomRepository:
             sort=[("display_name", 1)],
         )
 
+    def create_class(self, class_doc: Dict[str, Any]) -> str:
+        return self.mongo_client.insert_one(self.classes_collection, class_doc)
+
     def find_user_by_id(self, user_id: str) -> Dict[str, Any] | None:
         return self.mongo_client.find_one(
             self.users_collection,

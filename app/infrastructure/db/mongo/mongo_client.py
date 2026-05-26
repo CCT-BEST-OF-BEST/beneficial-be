@@ -40,7 +40,7 @@ class MongoClient:
     def _connect(self):
         """MongoDB 연결"""
         try:
-            self.client = PyMongoClient(self.connection_string)
+            self.client = PyMongoClient(self.connection_string, tz_aware=True)
             self.db = self.client[self.database_name]
 
             # 연결 테스트
