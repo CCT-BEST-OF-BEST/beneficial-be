@@ -10,6 +10,8 @@ from app.domains.learning.stages.stage3_schemas import (
 from app.domains.auth.dependencies import get_current_user
 from app.domains.auth.models import User
 from app.domains.learning.dependencies import get_learning_record_service
+from app.domains.instruction.dependencies import get_instruction_service
+from app.domains.instruction.service import InstructionService
 from app.domains.learning.stages.stage3_service import (
     DEFAULT_STAGE3_LESSON_ID,
     get_stage3_service,
@@ -49,9 +51,10 @@ async def get_stage3_problems(
 async def get_next_problem(
     lesson_id: str = DEFAULT_STAGE3_LESSON_ID,
     current_user: User = Depends(get_current_user),
+    instruction_service: InstructionService = Depends(get_instruction_service),
 ) -> dict:
     try:
-        problem = get_stage3_service().get_next_problem(
+        problem = get_stage3_service(instruction_service=instruction_service).get_next_problem(
             user_id=current_user.user_id,
             lesson_id=lesson_id,
         )
@@ -68,6 +71,8 @@ async def get_next_problem(
                 "visual_hint": problem.get("visual_hint"),
                 "accent_color": problem.get("accent_color"),
                 "badge": problem.get("badge"),
+                "source": problem.get("source", "base"),
+                "assignment_id": problem.get("assignment_id"),
             },
             "is_completed": False,
         }
@@ -85,14 +90,19 @@ async def submit_stage3_answer(
     request: Stage3AnswerRequest,
     lesson_id: str | None = None,
     current_user: User = Depends(get_current_user),
+    instruction_service: InstructionService = Depends(get_instruction_service),
 ) -> Stage3AnswerResponse:
     try:
         learning_svc = get_learning_record_service()
-        return get_stage3_service(learning_record_service=learning_svc).submit_answer(
+        return get_stage3_service(
+            learning_record_service=learning_svc,
+            instruction_service=instruction_service,
+        ).submit_answer(
             request.problem_id,
             request.user_answer,
             user_id=current_user.user_id,
             lesson_id=lesson_id,
+            assignment_id=request.assignment_id,
         )
     except Exception as e:
         logger.error(f"[ERROR] 3단계 답변 제출 실패: {e}")

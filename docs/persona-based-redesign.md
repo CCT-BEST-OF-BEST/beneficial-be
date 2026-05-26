@@ -537,6 +537,10 @@ domains/learning/
   - `PATCH /teacher/instruction/assignments/{assignment_id}/complete`
 - 상태 전환은 `draft -> assigned -> completed`, `draft -> cancelled`, `assigned -> cancelled`를 지원한다.
 - 교사는 담당 학생/반에만 assignment를 만들 수 있고, developer는 접근 검증을 우회할 수 있다.
+- 학생용 `GET /student/learning/assignments`를 추가해 본인에게 assigned 상태로 배정된 문제 목록을 조회할 수 있다.
+- `GET /student/learning/stage3/next-problem`은 assigned 상태의 `teacher_assignments` 문제를 기본 Stage 3 문제보다 먼저 반환한다.
+- assignment 문제 제출은 기존 `POST /student/learning/stage3/submit-answer`에서 `assignment_id`를 함께 받아 처리한다.
+- assignment 풀이 결과는 `learning_records.source = "assignment"`, `assignment_id`로 저장하고, 학생 대상 assignment는 모든 문제를 맞히면 `completed`로 전환한다.
 
 ### 12.6 현재 주요 컬렉션
 
@@ -581,24 +585,14 @@ venv/bin/pytest -q
    - 학생용 설명 길이와 난이도 확인
    - JSON schema 유효성 확인
 
-3. **학생 출제 큐에 assignment 우선 반영**
-   - `GET /student/learning/stage3/next-problem`이 assigned 상태의 `teacher_assignments` 문제를 먼저 조회
-   - 배정 문제가 없으면 기본 `stage3_problems`로 fallback
-   - 학생용 assignment 조회 API도 별도로 추가 필요
-
-4. **assignment 문제 제출 처리**
-   - AI 생성 문제 풀이 결과도 `learning_records`에 저장
-   - `source = "assignment"`, `assignment_id` 저장
-   - 문제를 모두 풀면 assignment 상태를 `completed`로 전환
-
-5. **패키지 구조 후속 정리**
+3. **패키지 구조 후속 정리**
    - `domains/learning/service.py`를 `domains/learning/service/record_service.py`로 이동할지 결정
    - `domains/learning/schemas.py`, `student_schemas.py`를 controller DTO와 domain schema로 분리
    - `domains/learning/models.py`를 `domain/models.py`로 옮길지 결정
    - `classroom/models.py`, `classroom/service.py`도 `domain/`, `service/` 하위로 정리할지 결정
    - `app/data/data_loader`를 `common` 하위로 옮길지는 별도 논의 후 결정
 
-6. **운영 보안/인프라 정리**
+4. **운영 보안/인프라 정리**
    - CORS `*` 제거
    - 운영 환경에서 `AUTH_SECRET_KEY` 미설정 시 fail-fast
    - OpenAI client DI/싱글톤 정리

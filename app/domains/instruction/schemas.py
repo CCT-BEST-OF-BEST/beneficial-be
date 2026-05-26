@@ -56,6 +56,7 @@ class AssignmentResponse(BaseModel):
     status: str
     source: str
     problems: list[GeneratedProblemResponse] = Field(default_factory=list)
+    student_progress: dict[str, list[str]] = Field(default_factory=dict)
     generation_context: dict = Field(default_factory=dict)
     created_at: datetime
     assigned_at: datetime | None = None
@@ -65,4 +66,31 @@ class AssignmentResponse(BaseModel):
 
 class AssignmentListResponse(BaseModel):
     assignments: list[AssignmentResponse] = Field(default_factory=list)
+    total_count: int
+
+
+class StudentAssignmentProblemResponse(BaseModel):
+    problem_id: str
+    problem_key: str | None = None
+    type: str
+    sentence_part1: str
+    sentence_part2: str
+    visual_hint: str | None = None
+    accent_color: str | None = None
+
+
+class StudentAssignmentResponse(BaseModel):
+    assignment_id: str
+    lesson_id: str
+    unit_id: str | None = None
+    stage: int
+    concept_key: str
+    status: str
+    problems: list[StudentAssignmentProblemResponse] = Field(default_factory=list)
+    completed_problem_ids: list[str] = Field(default_factory=list)
+    assigned_at: datetime | None = None
+
+
+class StudentAssignmentListResponse(BaseModel):
+    assignments: list[StudentAssignmentResponse] = Field(default_factory=list)
     total_count: int

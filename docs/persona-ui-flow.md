@@ -93,10 +93,8 @@
 
 ```text
 GET /student/me/progress
-GET /student/learning/assignments      # 백엔드 추가 필요
+GET /student/learning/assignments
 ```
-
-학생용 assignment 조회는 아직 별도 API가 없으므로, 실제 프론트 구현 전 `GET /student/assignments` 또는 `GET /student/learning/assignments` 형태의 학생 전용 조회 API를 추가해야 한다.
 
 ### 3.2 단원/차시 선택
 

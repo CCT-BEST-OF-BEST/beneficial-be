@@ -43,3 +43,7 @@ class ClassroomService:
 
         classrooms = self.repository.find_classes_by_student(student_id)
         return any(classroom.get("teacher_id") == user.user_id for classroom in classrooms)
+
+    def list_classes_for_student(self, student_id: str) -> list[Classroom]:
+        class_docs = self.repository.find_classes_by_student(student_id)
+        return [Classroom(**doc) for doc in class_docs]

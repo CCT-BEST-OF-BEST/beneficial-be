@@ -17,12 +17,14 @@ class Stage3Problem(BaseModel):
 
 class Stage3ProblemResponse(BaseModel):
     """3단계 문제 응답"""
-    problem_id: int = Field(..., description="문제 ID")
+    problem_id: int | str = Field(..., description="문제 ID")
     sentence_part1: str = Field(..., description="문장 첫 부분")
     sentence_part2: str = Field(..., description="문장 뒷부분")
     visual_hint: str | None = Field(None, description="프론트 아이콘/일러스트 키")
     accent_color: str | None = Field(None, description="프론트 디자인 토큰 키")
     badge: Optional[str] = Field(None, description="뱃지 (첫학습/훌륭해요 등)")
+    source: str = Field(default="base", description="문제 출처")
+    assignment_id: str | None = Field(None, description="교사 배정 ID")
 
 
 class Stage3ProblemsResponse(BaseModel):
@@ -37,14 +39,15 @@ class Stage3ProblemsResponse(BaseModel):
 
 class Stage3AnswerRequest(BaseModel):
     """3단계 답변 제출 요청"""
-    problem_id: int = Field(..., description="문제 ID")
+    problem_id: int | str = Field(..., description="문제 ID")
     user_answer: str = Field(..., description="사용자 답변")
+    assignment_id: str | None = Field(None, description="교사 배정 ID")
 
 
 class Stage3AnswerResponse(BaseModel):
     """3단계 답변 제출 응답"""
     success: bool = Field(..., description="성공 여부")
-    problem_id: int = Field(..., description="문제 ID")
+    problem_id: int | str = Field(..., description="문제 ID")
     is_correct: bool = Field(..., description="정답 여부")
     user_answer: str = Field(..., description="사용자 답변")
     correct_answer: str = Field(..., description="정답")
@@ -52,6 +55,8 @@ class Stage3AnswerResponse(BaseModel):
     full_sentence: str = Field(..., description="완성된 문장")
     status: str = Field(..., description="상태 (correct/wrong/review/completed)")
     badge: Optional[str] = Field(None, description="뱃지 (훌륭해요 등)")
+    source: str = Field(default="base", description="문제 출처")
+    assignment_id: str | None = Field(None, description="교사 배정 ID")
 
 
 class Stage3Progress(BaseModel):

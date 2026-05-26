@@ -251,6 +251,7 @@ Stage 1 (카드 학습) · Stage 2 (드래그&드롭) 컨텐츠.
 | POST | `/student/learning/stage1/submit-card-check` | 보호 | Stage 1 답안 확인 |
 | GET | `/student/learning/stage2/problems` | 보호 | Stage 2 문제 + 답안 풀 |
 | POST | `/student/learning/stage2/submit-answer` | 보호 | Stage 2 답안 제출 |
+| GET | `/student/learning/assignments` | student 보호 | 선생님이 배정한 복습 문제 목록 |
 
 > 모든 답안 제출 결과는 `LearningRecord`에 저장되어 Agent의 약점 분석에 반영된다.
 
@@ -339,6 +340,44 @@ Stage 1 (카드 학습) · Stage 2 (드래그&드롭) 컨텐츠.
 }
 ```
 **Errors**: `404` lesson 데이터 / problem_id 없음.
+
+### 4.5 `GET /student/learning/assignments`
+학생에게 배정된 `assigned` 상태의 Stage 3 복습 문제를 조회한다. 정답과 해설은 노출하지 않는다.
+
+**Query**
+| Query | 타입 | 설명 |
+| --- | --- | --- |
+| `lesson_id` | `string | null` | 특정 차시 배정만 필터 |
+
+**Response 200** (`StudentAssignmentListResponse`)
+```json
+{
+  "assignments": [
+    {
+      "assignment_id": "assign_xxx",
+      "lesson_id": "lesson_4",
+      "unit_id": "unit_1",
+      "stage": 3,
+      "concept_key": "되/돼",
+      "status": "assigned",
+      "completed_problem_ids": [],
+      "assigned_at": "ISO-8601",
+      "problems": [
+        {
+          "problem_id": "gen_1",
+          "problem_key": "assignment:assign_xxx:gen_1",
+          "type": "fill_blank",
+          "sentence_part1": "숙제가 다",
+          "sentence_part2": "?",
+          "visual_hint": "pencil",
+          "accent_color": "primary"
+        }
+      ]
+    }
+  ],
+  "total_count": 1
+}
+```
 
 ## 5. 학생 진척도 (`/student/me`)
 
@@ -445,7 +484,9 @@ Stage 3는 "순차 학습 → 틀린 문제만 순환 복습" 알고리즘으로
       "sentence_part2": "...",
       "visual_hint": "book-open",
       "accent_color": "primary",
-      "badge": "재도전 | 첫학습 | null"
+      "badge": "재도전 | 첫학습 | 선생님복습 | null",
+      "source": "base | assignment",
+      "assignment_id": "assign_xxx | null"
     },
     "is_completed": false
   }
@@ -462,8 +503,10 @@ Stage 3는 "순차 학습 → 틀린 문제만 순환 복습" 알고리즘으로
 ### 7.3 `POST /student/learning/stage3/submit-answer`
 **Request** (`Stage3AnswerRequest`)
 ```json
-{ "problem_id": 1, "user_answer": "돼" }
+{ "problem_id": 1, "user_answer": "돼", "assignment_id": null }
 ```
+- 교사 배정 문제를 제출할 때는 `problem_id`가 `"gen_1"` 같은 문자열일 수 있으며, `assignment_id`를 함께 보낸다.
+
 **Response 200** (`Stage3AnswerResponse`)
 ```json
 {
@@ -475,7 +518,9 @@ Stage 3는 "순차 학습 → 틀린 문제만 순환 복습" 알고리즘으로
   "explanation": "...",
   "full_sentence": "...",
   "status": "correct | wrong | review | completed",
-  "badge": "훌륭해요 | 잠시후복습 | null"
+  "badge": "훌륭해요 | 잠시후복습 | null",
+  "source": "base | assignment",
+  "assignment_id": "assign_xxx | null"
 }
 ```
 

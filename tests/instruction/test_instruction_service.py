@@ -3,6 +3,7 @@ from datetime import datetime, timezone
 import pytest
 
 from app.domains.auth.models import User
+from app.domains.classroom.models import Classroom
 from app.domains.instruction.models import GeneratedProblem
 from app.domains.instruction.service import (
     AssignmentAccessError,
@@ -67,6 +68,35 @@ class FakeAssignmentRepository:
             results = [assignment for assignment in results if assignment.get("student_id") == student_id]
         return results
 
+    def find_student_assignments(
+        self,
+        student_id,
+        class_ids,
+        status="assigned",
+        lesson_id=None,
+        stage=None,
+    ):
+        results = [
+            assignment
+            for assignment in self.assignments
+            if assignment["status"] == status
+            and (
+                (
+                    assignment["target_type"] == "student"
+                    and assignment.get("student_id") == student_id
+                )
+                or (
+                    assignment["target_type"] == "class"
+                    and assignment.get("class_id") in class_ids
+                )
+            )
+        ]
+        if lesson_id:
+            results = [assignment for assignment in results if assignment["lesson_id"] == lesson_id]
+        if stage is not None:
+            results = [assignment for assignment in results if assignment["stage"] == stage]
+        return results
+
     def update_assignment(self, assignment_id, fields):
         assignment = self.find_assignment_by_id(assignment_id)
         if not assignment:
@@ -87,6 +117,19 @@ class FakeClassroomService:
 
     def can_access_student(self, user, student_id):
         return user.role == "developer" or student_id in self.allowed_students
+
+    def list_classes_for_student(self, student_id):
+        if student_id not in self.allowed_students:
+            return []
+        return [
+            Classroom(
+                class_id=class_id,
+                name=class_id,
+                teacher_id="teacher_1",
+                student_ids=[student_id],
+            )
+            for class_id in self.allowed_classes
+        ]
 
 
 def _service(repository=None, classroom_service=None):
@@ -184,3 +227,77 @@ def test_list_assignments_filters_by_status():
 
     assert len(assignments) == 1
     assert assignments[0].assignment_id == assignment.assignment_id
+
+
+def test_get_next_assigned_problem_for_student_skips_completed_problems():
+    service = _service()
+    assignment = service.create_draft_assignment(
+        teacher=_user(),
+        target_type="student",
+        student_id="student_1",
+        lesson_id="lesson_4",
+        concept_key="되/돼",
+        problems=[
+            _problem(),
+            GeneratedProblem(
+                problem_id="gen_2",
+                sentence_part1="내일은 날씨가",
+                correct_answer="좋대",
+                sentence_part2=".",
+                full_sentence="내일은 날씨가 좋대.",
+                explanation="'좋대'는 들은 말을 전할 때 써요.",
+            ),
+        ],
+    )
+    service.assign(_user(), assignment.assignment_id)
+    service.submit_student_answer(
+        student_id="student_1",
+        assignment_id=assignment.assignment_id,
+        problem_id="gen_1",
+        user_answer="됐어",
+    )
+
+    problem = service.get_next_assigned_problem("student_1", lesson_id="lesson_4")
+
+    assert problem["problem_id"] == "gen_2"
+    assert problem["assignment_id"] == assignment.assignment_id
+    assert problem["source"] == "assignment"
+
+
+def test_submit_student_assignment_answer_records_source_and_completes_assignment():
+    class FakeLearningRecordService:
+        def __init__(self):
+            self.records = []
+
+        def record_answer(self, **kwargs):
+            self.records.append(kwargs)
+
+    repository = FakeAssignmentRepository()
+    service = _service(repository=repository)
+    assignment = service.create_draft_assignment(
+        teacher=_user(),
+        target_type="student",
+        student_id="student_1",
+        lesson_id="lesson_4",
+        concept_key="되/돼",
+        problems=[_problem()],
+    )
+    service.assign(_user(), assignment.assignment_id)
+    record_service = FakeLearningRecordService()
+
+    result = service.submit_student_answer(
+        student_id="student_1",
+        assignment_id=assignment.assignment_id,
+        problem_id="gen_1",
+        user_answer="됐어",
+        learning_record_service=record_service,
+    )
+
+    stored = repository.find_assignment_by_id(assignment.assignment_id)
+    assert result["is_correct"] is True
+    assert result["status"] == "completed"
+    assert stored["status"] == "completed"
+    assert stored["student_progress"]["student_1"] == ["gen_1"]
+    assert record_service.records[0]["source"] == "assignment"
+    assert record_service.records[0]["assignment_id"] == assignment.assignment_id
+    assert record_service.records[0]["problem_key"] == assignment.problems[0].problem_key

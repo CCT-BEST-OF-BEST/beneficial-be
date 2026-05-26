@@ -38,6 +38,31 @@ class MongoTeacherAssignmentRepository:
             sort=[("created_at", -1)],
         )
 
+    def find_student_assignments(
+        self,
+        student_id: str,
+        class_ids: list[str],
+        status: str = "assigned",
+        lesson_id: str | None = None,
+        stage: int | None = None,
+    ) -> List[Dict[str, Any]]:
+        query: Dict[str, Any] = {
+            "status": status,
+            "$or": [
+                {"target_type": "student", "student_id": student_id},
+                {"target_type": "class", "class_id": {"$in": class_ids}},
+            ],
+        }
+        if lesson_id:
+            query["lesson_id"] = lesson_id
+        if stage is not None:
+            query["stage"] = stage
+        return self.mongo_client.find_many(
+            self.collection_name,
+            query,
+            sort=[("assigned_at", 1), ("created_at", 1)],
+        )
+
     def update_assignment(self, assignment_id: str, fields: Dict[str, Any]) -> bool:
         return self.mongo_client.update_one(
             self.collection_name,

@@ -23,9 +23,11 @@ class Stage3Service:
         self,
         mongo_client: MongoClient,
         learning_record_service: LearningRecordService = None,
+        instruction_service=None,
     ):
         self.mongo_client = mongo_client
         self.learning_record_service = learning_record_service
+        self.instruction_service = instruction_service
 
     # ------------------------------------------------------------------
     # Public API
@@ -58,6 +60,15 @@ class Stage3Service:
         user_id: str,
         lesson_id: str = DEFAULT_STAGE3_LESSON_ID,
     ) -> Optional[Dict[str, Any]]:
+        if self.instruction_service:
+            assigned_problem = self.instruction_service.get_next_assigned_problem(
+                student_id=user_id,
+                lesson_id=lesson_id,
+                stage=3,
+            )
+            if assigned_problem:
+                return assigned_problem
+
         progress = self._load_progress(user_id, lesson_id)
         lesson_problem_ids = self._get_problem_ids_for_lesson(lesson_id)
         total = len(lesson_problem_ids)
@@ -105,11 +116,27 @@ class Stage3Service:
 
     def submit_answer(
         self,
-        problem_id: int,
+        problem_id: int | str,
         user_answer: str,
         user_id: str,
         lesson_id: str | None = None,
+        assignment_id: str | None = None,
     ) -> Stage3AnswerResponse:
+        if assignment_id:
+            if not self.instruction_service:
+                raise ValueError("배정 문제를 처리할 instruction_service가 필요합니다.")
+            result = self.instruction_service.submit_student_answer(
+                student_id=user_id,
+                assignment_id=assignment_id,
+                problem_id=str(problem_id),
+                user_answer=user_answer,
+                learning_record_service=self.learning_record_service,
+            )
+            return Stage3AnswerResponse(success=True, **result)
+
+        if not isinstance(problem_id, int):
+            raise ValueError("기본 Stage 3 문제 ID는 정수여야 합니다.")
+
         lesson_id = lesson_id or infer_lesson_id(3, problem_id) or DEFAULT_STAGE3_LESSON_ID
         problem = self._get_problem_by_id(problem_id, lesson_id)
         if not problem:
@@ -373,10 +400,14 @@ class Stage3Service:
         return sorted(p["problem_id"] for p in data.get("problems", []))
 
 
-def get_stage3_service(learning_record_service: LearningRecordService = None) -> Stage3Service:
+def get_stage3_service(
+    learning_record_service: LearningRecordService = None,
+    instruction_service=None,
+) -> Stage3Service:
     return Stage3Service(
         mongo_client=get_mongo_client(),
         learning_record_service=learning_record_service,
+        instruction_service=instruction_service,
     )
 
 

@@ -6,6 +6,7 @@ from app.domains.chat.router import router as chat_router
 from app.domains.classroom.controller.teacher_classroom_router import router as teacher_classroom_router
 from app.domains.classroom.controller.teacher_student_view_router import router as teacher_student_view_router
 from app.domains.instruction.controller.teacher_instruction_router import router as teacher_instruction_router
+from app.domains.instruction.controller.student_assignment_router import router as student_assignment_router
 from app.domains.learning.controller.content_catalog_router import router as content_catalog_router
 from app.domains.learning.controller.student_learning_router import router as student_learning_router
 from app.domains.learning.controller.student_progress_router import router as student_progress_router
@@ -175,6 +176,7 @@ app.include_router(student_progress_router)
 app.include_router(teacher_classroom_router)
 app.include_router(teacher_student_view_router)
 app.include_router(teacher_instruction_router)
+app.include_router(student_assignment_router)
 app.include_router(system_router)
 
 
