@@ -194,6 +194,37 @@ class MongoClient:
         filter_dict = filter_dict or {}
         return collection.count_documents(filter_dict)
 
+    def create_index(
+        self,
+        collection_name: str,
+        keys: List[tuple],
+        unique: bool = False,
+        name: str = None,
+        partial_filter_expression: Dict[str, Any] = None,
+    ) -> str:
+        """
+        컬렉션 인덱스 생성
+
+        Args:
+            collection_name: 컬렉션명
+            keys: 인덱스 키 목록. 예: [("user_id", 1), ("created_at", -1)]
+            unique: unique 인덱스 여부
+            name: 인덱스 이름
+            partial_filter_expression: partial index 조건
+
+        Returns:
+            생성된 인덱스 이름
+        """
+        collection = self.get_collection(collection_name)
+        options = {
+            "unique": unique,
+            "name": name,
+            "background": True,
+        }
+        if partial_filter_expression is not None:
+            options["partialFilterExpression"] = partial_filter_expression
+        return collection.create_index(keys, **options)
+
     def close(self):
         """MongoDB 연결 종료"""
         if self.client:

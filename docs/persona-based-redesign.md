@@ -545,6 +545,11 @@ domains/learning/
   - OpenAI 구조화 출력으로 Stage 3 빈칸 문제 후보를 생성한다.
   - `concept_key`, 정답 후보, 완성 문장 조합, 기존 기본 문제 중복, 생성 결과 내부 중복, 해설 길이를 검증한다.
   - 검증 통과 문제만 `teacher_assignments.status = draft`로 저장하고, 검증 결과는 응답에 함께 반환한다.
+- 운영 보안/인프라 기본값을 정리했다.
+  - CORS `*` 기본 허용을 제거하고 `CORS_ALLOWED_ORIGINS` 환경변수로 제어한다.
+  - `APP_ENV=production`에서 `AUTH_SECRET_KEY`/`JWT_SECRET_KEY`가 없으면 fail-fast한다.
+  - OpenAI client는 싱글톤으로 재사용한다.
+  - 주요 MongoDB 조회 경로에 필요한 인덱스를 startup에서 확인/생성한다.
 
 ### 12.6 현재 주요 컬렉션
 
@@ -569,7 +574,7 @@ teacher_assignments
 
 ```text
 venv/bin/pytest -q
-91 passed, 3 skipped
+104 passed, 3 skipped
 ```
 
 주의: 시스템 Python의 `pytest`가 아니라 프로젝트 `venv/bin/pytest`로 실행해야 한다.
@@ -583,14 +588,10 @@ venv/bin/pytest -q
    - `classroom/models.py`, `classroom/service.py`도 `domain/`, `service/` 하위로 정리할지 결정
    - `app/data/data_loader`를 `common` 하위로 옮길지는 별도 논의 후 결정
 
-2. **운영 보안/인프라 정리**
-   - CORS `*` 제거
-   - 운영 환경에서 `AUTH_SECRET_KEY` 미설정 시 fail-fast
-   - OpenAI client DI/싱글톤 정리
-   - Mongo index 추가:
-     - `learning_records`: `{user_id, created_at}`, `{user_id, concept_key, is_correct}`, `{user_id, problem_key}`
-     - `stage3_progress`: `{user_id, lesson_id}` unique
-     - `teacher_assignments`: `{student_id, status}`, `{class_id, status}`, `{teacher_id, created_at}`
+2. **실서비스 연동 검증**
+   - `OPENAI_API_KEY`가 설정된 환경에서 `POST /teacher/instruction/generate-problems` 스모크 테스트
+   - 실제 MongoDB에서 startup 인덱스 생성 확인
+   - 프론트에서 `CORS_ALLOWED_ORIGINS` 운영 도메인 값 확정
 
 ---
 

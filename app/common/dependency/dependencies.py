@@ -4,7 +4,11 @@
 """
 import os
 from typing import Optional
-from app.infrastructure.external.openai_client import OpenAIClient
+from app.infrastructure.external.openai_client import (
+    OpenAIClient,
+    get_openai_client as get_openai_client_singleton,
+    reset_openai_client,
+)
 from app.infrastructure.db.vector.vector_db import get_vector_db
 from app.infrastructure.embedding.embedding_model import get_embedding_model
 from app.domains.chat.service import ChatService
@@ -27,7 +31,7 @@ def get_openai_client() -> OpenAIClient:
         api_key = os.getenv("OPENAI_API_KEY")
         if not api_key:
             raise ValueError("OPENAI_API_KEY 환경변수가 설정되지 않았습니다.")
-        _openai_client = OpenAIClient(api_key=api_key)
+        _openai_client = get_openai_client_singleton()
     return _openai_client
 
 
@@ -66,6 +70,7 @@ def reset_dependencies():
     _chat_service = None
     _vector_db = None
     _embedding_model = None
+    reset_openai_client()
 
 
 def initialize_dependencies():

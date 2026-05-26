@@ -20,6 +20,27 @@ from app.common.logging.logging_config import get_logger
 
 logger = get_logger(__name__)
 
+DEFAULT_CORS_ORIGINS = [
+    "http://localhost:3000",
+    "http://localhost:5173",
+    "http://localhost:8080",
+    "http://127.0.0.1:3000",
+    "http://127.0.0.1:5173",
+    "http://127.0.0.1:8080",
+]
+
+
+def get_cors_origins() -> list[str]:
+    configured = os.getenv("CORS_ALLOWED_ORIGINS")
+    if not configured:
+        return DEFAULT_CORS_ORIGINS
+    origins = [
+        origin.strip()
+        for origin in configured.split(",")
+        if origin.strip()
+    ]
+    return origins or DEFAULT_CORS_ORIGINS
+
 app = FastAPI(
     title="🎓 CCT 백엔드 API",
     version="1.0.0",
@@ -116,15 +137,7 @@ app = FastAPI(
 # CORS 미들웨어 설정
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[
-        "http://localhost:3000",  # React 개발 서버
-        "http://localhost:5173",  # Vite 개발 서버
-        "http://localhost:8080",  # Vue 개발 서버
-        "http://127.0.0.1:3000",
-        "http://127.0.0.1:5173",
-        "http://127.0.0.1:8080",
-        "*"  # 개발 환경에서는 모든 origin 허용 (프로덕션에서는 제거)
-    ],
+    allow_origins=get_cors_origins(),
     allow_credentials=True,
     allow_methods=["*"],  # 모든 HTTP 메서드 허용
     allow_headers=["*"],  # 모든 헤더 허용

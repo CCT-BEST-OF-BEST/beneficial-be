@@ -67,6 +67,7 @@ def test_domain_packages_are_importable():
         "app.domains.rag.retriever",
         "app.domains.rag.schemas",
         "app.domains.rag.service",
+        "app.infrastructure.db.mongo.indexes",
     ]
 
     for module_name in modules:

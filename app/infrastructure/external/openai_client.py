@@ -152,6 +152,18 @@ class OpenAIClient:
             raise Exception(f"배치 임베딩 생성 실패: {str(e)}")
 
 
+_openai_client: OpenAIClient | None = None
+
+
 def get_openai_client() -> OpenAIClient:
-    """OpenAI 클라이언트 인스턴스 반환"""
-    return OpenAIClient()
+    """OpenAI 클라이언트 싱글톤 인스턴스 반환"""
+    global _openai_client
+    if _openai_client is None:
+        _openai_client = OpenAIClient()
+    return _openai_client
+
+
+def reset_openai_client() -> None:
+    """OpenAI 클라이언트 싱글톤 리셋 (테스트용)."""
+    global _openai_client
+    _openai_client = None
