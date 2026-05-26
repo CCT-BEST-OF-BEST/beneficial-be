@@ -5,6 +5,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from app.domains.chat.router import router as chat_router
 from app.domains.classroom.teacher_router import router as teacher_classroom_router
 from app.domains.classroom.student_view_router import router as teacher_student_view_router
+from app.domains.classroom.student_class_router import router as student_class_router
 from app.domains.instruction.teacher_router import router as teacher_instruction_router
 from app.domains.instruction.student_router import router as student_assignment_router
 from app.domains.learning.content.router import router as content_catalog_router
@@ -188,6 +189,7 @@ app.include_router(student_stage3_router)
 app.include_router(student_progress_router)
 app.include_router(teacher_classroom_router)
 app.include_router(teacher_student_view_router)
+app.include_router(student_class_router)
 app.include_router(teacher_instruction_router)
 app.include_router(student_assignment_router)
 app.include_router(system_router)

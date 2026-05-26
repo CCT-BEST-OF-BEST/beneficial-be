@@ -1,4 +1,5 @@
 from datetime import datetime
+from typing import Optional
 
 from pydantic import BaseModel, Field
 
@@ -27,3 +28,24 @@ class TeacherClassStudentsResponse(BaseModel):
     class_id: str
     students: list[TeacherStudentSummaryResponse] = Field(default_factory=list)
     total_count: int
+
+
+class StudentMyClassResponse(BaseModel):
+    class_id: str
+    class_name: str
+    teacher_display_name: str
+    teacher_school_name: Optional[str] = None
+
+
+class UserSearchResult(BaseModel):
+    user_id: str
+    display_name: str
+    email: str
+
+
+class UserSearchResponse(BaseModel):
+    users: list[UserSearchResult] = Field(default_factory=list)
+
+
+class AddStudentRequest(BaseModel):
+    student_id: str

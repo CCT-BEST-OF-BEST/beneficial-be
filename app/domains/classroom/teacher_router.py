@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 
 from app.domains.auth.dependencies import get_current_teacher
 from app.domains.auth.models import User
@@ -7,10 +7,13 @@ from app.domains.classroom.service import ClassroomService
 from app.domains.learning.dependencies import get_learning_record_service
 from app.domains.learning.service import LearningRecordService
 from app.domains.classroom.schemas import (
+    AddStudentRequest,
     TeacherClassesResponse,
     TeacherClassResponse,
     TeacherClassStudentsResponse,
     TeacherStudentSummaryResponse,
+    UserSearchResponse,
+    UserSearchResult,
 )
 
 router = APIRouter(prefix="/teacher/classes", tags=["teacher"])
@@ -58,6 +61,40 @@ def list_class_students(
         students=items,
         total_count=len(items),
     )
+
+
+@router.get("/search-students", response_model=UserSearchResponse)
+def search_students(
+    q: str = Query(..., min_length=1),
+    current_user: User = Depends(get_current_teacher),
+    classroom_service: ClassroomService = Depends(get_classroom_service),
+) -> UserSearchResponse:
+    users = classroom_service.search_students(q)
+    return UserSearchResponse(
+        users=[UserSearchResult(user_id=u["user_id"], display_name=u["display_name"], email=u["email"]) for u in users]
+    )
+
+
+@router.post("/{class_id}/students", status_code=status.HTTP_204_NO_CONTENT)
+def add_student_to_class(
+    class_id: str,
+    body: AddStudentRequest,
+    current_user: User = Depends(get_current_teacher),
+    classroom_service: ClassroomService = Depends(get_classroom_service),
+) -> None:
+    success = classroom_service.add_student_to_class(class_id, current_user, body.student_id)
+    if not success:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="반을 찾을 수 없습니다.")
+
+
+@router.delete("/{class_id}/students/{student_id}", status_code=status.HTTP_204_NO_CONTENT)
+def remove_student_from_class(
+    class_id: str,
+    student_id: str,
+    current_user: User = Depends(get_current_teacher),
+    classroom_service: ClassroomService = Depends(get_classroom_service),
+) -> None:
+    classroom_service.remove_student_from_class(class_id, current_user, student_id)
 
 
 def _to_student_summary(

@@ -41,12 +41,14 @@ class AuthService:
     def __init__(self, repository: AuthRepository):
         self.repository = repository
 
-    def signup(self, email: str, password: str, display_name: str) -> User:
+    def signup(self, email: str, password: str, display_name: str, role: str = "student", school_name: Optional[str] = None) -> User:
         normalized_email = self._normalize_email(email)
         self._validate_password(password)
 
         if self.repository.find_user_by_email(normalized_email):
             raise DuplicateUserError("이미 가입된 이메일입니다.")
+
+        resolved_role = role if role in {"student", "teacher"} else "student"
 
         now = utc_now()
         user = User(
@@ -54,7 +56,8 @@ class AuthService:
             email=normalized_email,
             password_hash=hash_password(password),
             display_name=display_name.strip(),
-            role="student",
+            role=resolved_role,
+            school_name=school_name.strip() if school_name else None,
             created_at=now,
             updated_at=now,
         )

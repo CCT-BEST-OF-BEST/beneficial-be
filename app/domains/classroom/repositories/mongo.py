@@ -45,3 +45,32 @@ class MongoClassroomRepository:
             {"user_id": {"$in": user_ids}},
             sort=[("display_name", 1)],
         )
+
+    def find_user_by_id(self, user_id: str) -> Dict[str, Any] | None:
+        return self.mongo_client.find_one(
+            self.users_collection,
+            {"user_id": user_id},
+        )
+
+    def search_students_by_query(self, query: str) -> List[Dict[str, Any]]:
+        pattern = {"$regex": query, "$options": "i"}
+        return self.mongo_client.find_many(
+            self.users_collection,
+            {"role": "student", "$or": [{"display_name": pattern}, {"email": pattern}]},
+            sort=[("display_name", 1)],
+            limit=20,
+        )
+
+    def add_student_to_class(self, class_id: str, student_id: str) -> bool:
+        return self.mongo_client.update_one_operator(
+            self.classes_collection,
+            {"class_id": class_id},
+            {"$addToSet": {"student_ids": student_id}},
+        )
+
+    def remove_student_from_class(self, class_id: str, student_id: str) -> bool:
+        return self.mongo_client.update_one_operator(
+            self.classes_collection,
+            {"class_id": class_id},
+            {"$pull": {"student_ids": student_id}},
+        )

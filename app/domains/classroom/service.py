@@ -47,3 +47,33 @@ class ClassroomService:
     def list_classes_for_student(self, student_id: str) -> list[Classroom]:
         class_docs = self.repository.find_classes_by_student(student_id)
         return [Classroom(**doc) for doc in class_docs]
+
+    def get_my_class_info(self, student_id: str) -> dict | None:
+        class_docs = self.repository.find_classes_by_student(student_id)
+        if not class_docs:
+            return None
+        classroom = class_docs[0]
+        teacher_doc = self.repository.find_user_by_id(classroom["teacher_id"])
+        if not teacher_doc:
+            return None
+        return {
+            "class_id": classroom["class_id"],
+            "class_name": classroom["name"],
+            "teacher_display_name": teacher_doc.get("display_name", ""),
+            "teacher_school_name": teacher_doc.get("school_name"),
+        }
+
+    def search_students(self, query: str) -> list[dict]:
+        return self.repository.search_students_by_query(query)
+
+    def add_student_to_class(self, class_id: str, user: User, student_id: str) -> bool:
+        classroom = self.get_class_for_user(class_id, user)
+        if not classroom:
+            return False
+        return self.repository.add_student_to_class(class_id, student_id)
+
+    def remove_student_from_class(self, class_id: str, user: User, student_id: str) -> bool:
+        classroom = self.get_class_for_user(class_id, user)
+        if not classroom:
+            return False
+        return self.repository.remove_student_from_class(class_id, student_id)

@@ -164,6 +164,11 @@ class MongoClient:
         result = collection.update_one(filter_dict, {"$set": update_dict})
         return result.modified_count > 0
 
+    def update_one_operator(self, collection_name: str, filter_dict: Dict[str, Any], update_operator: Dict[str, Any]) -> bool:
+        collection = self.get_collection(collection_name)
+        result = collection.update_one(filter_dict, update_operator)
+        return result.modified_count > 0
+
     def delete_one(self, collection_name: str, filter_dict: Dict[str, Any]) -> bool:
         """
         단일 문서 삭제

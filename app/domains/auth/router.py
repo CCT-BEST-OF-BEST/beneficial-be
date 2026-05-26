@@ -29,6 +29,8 @@ def signup(request: SignupRequest, auth_service: AuthService = Depends(get_auth_
             email=request.email,
             password=request.password,
             display_name=request.display_name,
+            role=request.role,
+            school_name=request.school_name,
         )
         return _to_user_response(user)
     except DuplicateUserError as exc:
