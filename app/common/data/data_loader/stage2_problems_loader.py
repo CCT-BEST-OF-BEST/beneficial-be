@@ -1,4 +1,4 @@
-# beneficial-be/app/data/data_loader/stage2_problems_loader.py
+# beneficial-be/app/common/data/data_loader/stage2_problems_loader.py
 
 from app.infrastructure.db.mongo.mongo_client import get_mongo_client
 from app.common.logging.logging_config import get_logger

@@ -1,7 +1,7 @@
 from typing import Optional
 
-from app.domains.rag.retriever import RagRetriever
-from app.domains.rag.schemas import RagDocument, RagSearchResult
+from app.infrastructure.rag.retriever import RagRetriever
+from app.infrastructure.rag.schemas import RagDocument, RagSearchResult
 
 
 class RagService:

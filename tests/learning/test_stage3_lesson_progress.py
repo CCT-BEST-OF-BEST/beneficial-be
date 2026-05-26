@@ -1,4 +1,4 @@
-from app.domains.learning.stages.stage3_service import Stage3Service
+from app.domains.learning.stage3.service import Stage3Service
 
 
 class FakeMongoClient:

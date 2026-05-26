@@ -1,5 +1,5 @@
-from app.domains.rag.retriever import RagRetriever
-from app.domains.rag.service import RagService
+from app.infrastructure.rag.retriever import RagRetriever
+from app.infrastructure.rag.service import RagService
 
 
 def get_rag_service(openai_client=None) -> RagService:

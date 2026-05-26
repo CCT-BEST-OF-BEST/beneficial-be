@@ -6,7 +6,7 @@ from fastapi import HTTPException
 
 from app.domains.agent.router import get_my_agent_profile
 from app.domains.auth.models import User
-from app.domains.learning.controller.student_progress_router import get_my_progress
+from app.domains.learning.progress.router import get_my_progress
 
 
 def _user(role: str = "student") -> User:

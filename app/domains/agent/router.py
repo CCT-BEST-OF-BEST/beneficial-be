@@ -13,8 +13,8 @@ from app.domains.auth.dependencies import get_current_user
 from app.domains.auth.models import User
 from app.domains.learning.dependencies import get_learning_record_service
 from app.domains.learning.service import LearningRecordService
-from app.domains.rag.retriever import RagRetriever
-from app.domains.rag.service import RagService
+from app.infrastructure.rag.retriever import RagRetriever
+from app.infrastructure.rag.service import RagService
 from app.infrastructure.db.mongo.mongo_client import get_mongo_client
 from app.infrastructure.external.openai_client import get_openai_client
 

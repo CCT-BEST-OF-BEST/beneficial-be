@@ -1,5 +1,5 @@
-from app.domains.learning.stages.stage3_service import Stage3Service
-from app.domains.learning.controller.student_learning_router import (
+from app.domains.learning.stage3.service import Stage3Service
+from app.domains.learning.practice.router import (
     _find_stage2_lesson_data,
     _find_stage2_problem_data,
     _stage1_pair_response,

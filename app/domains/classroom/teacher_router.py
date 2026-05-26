@@ -6,7 +6,7 @@ from app.domains.classroom.dependencies import get_classroom_service
 from app.domains.classroom.service import ClassroomService
 from app.domains.learning.dependencies import get_learning_record_service
 from app.domains.learning.service import LearningRecordService
-from app.domains.classroom.controller.dto.response import (
+from app.domains.classroom.schemas import (
     TeacherClassesResponse,
     TeacherClassResponse,
     TeacherClassStudentsResponse,

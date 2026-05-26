@@ -2,7 +2,7 @@ from typing import List, Dict, Any
 from app.infrastructure.search.bm25_retriever import get_bm25_retriever
 from app.infrastructure.db.vector.vector_db import get_vector_db
 from app.infrastructure.embedding.embedding_model import get_embedding_model
-from app.data.data_loader.hypothetical_questions_loader import is_question_collection_ready
+from app.common.data.data_loader.hypothetical_questions_loader import is_question_collection_ready
 from app.common.logging.logging_config import get_logger
 
 logger = get_logger(__name__)

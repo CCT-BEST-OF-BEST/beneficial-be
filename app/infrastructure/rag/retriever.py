@@ -1,6 +1,6 @@
 from typing import Any, Dict, List, Optional
 
-from app.domains.rag.schemas import RagDocument
+from app.infrastructure.rag.schemas import RagDocument
 from app.infrastructure.search.hybrid_search import get_hybrid_search_service
 
 

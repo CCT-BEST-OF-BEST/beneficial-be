@@ -3,8 +3,8 @@ from app.infrastructure.external.openai_client import OpenAIClient
 from app.infrastructure.db.vector.vector_db import get_vector_db
 from app.infrastructure.embedding.embedding_model import get_embedding_model
 from app.infrastructure.search.hybrid_search import get_hybrid_search_service
-from app.domains.rag.retriever import RagRetriever
-from app.domains.rag.service import RagService
+from app.infrastructure.rag.retriever import RagRetriever
+from app.infrastructure.rag.service import RagService
 from app.common.logging.logging_config import get_logger
 
 logger = get_logger(__name__)
@@ -115,7 +115,7 @@ class ChatService:
 
     def build_context_from_documents(self, documents: List[Dict[str, Any]]) -> str:
         """문서 리스트를 컨텍스트로 변환"""
-        from app.domains.rag.schemas import RagDocument
+        from app.infrastructure.rag.schemas import RagDocument
 
         rag_documents = [RagDocument(**doc) for doc in documents]
         context = self.rag_service.build_context(rag_documents)

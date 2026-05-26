@@ -4,7 +4,7 @@ from app.domains.auth.dependencies import get_current_student
 from app.domains.auth.models import User
 from app.domains.learning.dependencies import get_learning_record_service
 from app.domains.learning.service import LearningRecordService
-from app.domains.learning.stages.stage3_service import Stage3Service, get_stage3_service
+from app.domains.learning.stage3.service import Stage3Service, get_stage3_service
 from app.domains.learning.student_schemas import StudentProgressResponse
 
 router = APIRouter(prefix="/student/me", tags=["student"])

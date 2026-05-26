@@ -3,16 +3,16 @@ import os
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from app.domains.chat.router import router as chat_router
-from app.domains.classroom.controller.teacher_classroom_router import router as teacher_classroom_router
-from app.domains.classroom.controller.teacher_student_view_router import router as teacher_student_view_router
-from app.domains.instruction.controller.teacher_instruction_router import router as teacher_instruction_router
-from app.domains.instruction.controller.student_assignment_router import router as student_assignment_router
-from app.domains.learning.controller.content_catalog_router import router as content_catalog_router
-from app.domains.learning.controller.student_learning_router import router as student_learning_router
-from app.domains.learning.controller.student_progress_router import router as student_progress_router
-from app.domains.learning.controller.student_records_router import router as student_records_router
-from app.domains.learning.controller.student_stage3_router import router as student_stage3_router
-from app.domains.system.router import router as system_router
+from app.domains.classroom.teacher_router import router as teacher_classroom_router
+from app.domains.classroom.student_view_router import router as teacher_student_view_router
+from app.domains.instruction.teacher_router import router as teacher_instruction_router
+from app.domains.instruction.student_router import router as student_assignment_router
+from app.domains.learning.content.router import router as content_catalog_router
+from app.domains.learning.practice.router import router as student_learning_router
+from app.domains.learning.progress.router import router as student_progress_router
+from app.domains.learning.records.router import router as student_records_router
+from app.domains.learning.stage3.router import router as student_stage3_router
+from app.domains.developer.router import router as system_router
 from app.domains.auth.router import router as auth_router
 from app.domains.agent.router import router as agent_router
 from app.common.init.initialization import get_initialization_service

@@ -166,7 +166,7 @@
 ### 7.3 시각 자산(이미지) 의존 제거
 
 #### 7.3.1 현재 문제
-- **Stage 1 카드**: 기존에는 `static/images/cards/card1_front.png` 같은 정적 PNG에 의존했다. 현재는 [stage1_cards_loader.py](../app/data/data_loader/stage1_cards_loader.py)와 [student_learning_router.py](../app/domains/learning/controller/student_learning_router.py)가 이미지 경로 대신 `visual_hint`, `color_theme`를 다룬다.
+- **Stage 1 카드**: 기존에는 `static/images/cards/card1_front.png` 같은 정적 PNG에 의존했다. 현재는 [stage1_cards_loader.py](../app/common/data/data_loader/stage1_cards_loader.py)와 [student_learning_router.py](../app/domains/learning/practice/router.py)가 이미지 경로 대신 `visual_hint`, `color_theme`를 다룬다.
 - **Stage 3 문제**: 각 문제마다 `image: "stage3/problem_X.png"` 1장씩, 총 25장. `_load_problems_data` → 응답에 그대로 포함.
 - 콘텐츠 1개 추가 = 디자인 작업 + 이미지 파일 업로드 + 경로 수정 + 로더 재실행. **차시·단원이 늘어날수록 비선형적으로 비용 증가**.
 - 텍스트만 수정해도 이미지 재생성 필요 → 운영 부담.
@@ -288,14 +288,16 @@ class LearningRecord(BaseModel):
 
 ## 10. 백엔드 도메인 재정렬 (DDD + 페르소나 분리)
 
-해커톤 이후 재단장이므로 도메인(비즈니스 개념)을 최상위 기준으로 삼고, 각 도메인 안에 `controller / service / repository / domain model / dto`를 모은다. 페르소나는 별도 최상위 패키지로 분리하지 않고, 각 도메인의 `controller` 안에서 라우터 prefix와 DTO로 표현한다.
+해커톤 이후 재단장이므로 도메인(비즈니스 개념)을 최상위 기준으로 삼는다. 다만 라우터를 `controller/`에 한곳에 몰아두면 기능을 읽을 때 파일 이동이 많아지므로, 현재 구조는 **도메인 내부 기능별 vertical slice**를 따른다. 즉 `content/router.py`, `stage3/service.py`처럼 라우터와 서비스/DTO를 기능 옆에 둔다.
 
 ### 10.1 원칙
 - **도메인은 페르소나가 아니라 비즈니스 개념을 기준으로 나눈다.** `learning`이라는 한 도메인을 학생(쓰기)·교사(읽기)·개발자(집계)가 다른 권한·DTO로 접근한다. 도메인을 페르소나별로 복제하지 않는다.
-- **HTTP controller도 해당 도메인 안에 둔다.** Java/Spring식 패키징처럼 `domains/learning/controller/*`, `domains/classroom/controller/*`에 라우터와 controller DTO를 배치한다.
-- **페르소나는 controller의 라우터 prefix로 표현한다.** `/student/*`, `/teacher/*`, `/admin/*`은 도메인이 아니라 외부 API prefix다.
+- **HTTP router도 해당 기능 패키지 옆에 둔다.** 예: `learning/content/router.py`, `learning/stage3/router.py`.
+- **페르소나는 router prefix로 표현한다.** `/student/*`, `/teacher/*`, `/admin/*`은 최상위 패키지 기준이 아니라 외부 API prefix다.
 - **Repository 인터페이스 분리**로 도메인 서비스가 DB 구현에 직접 의존하지 않게 한다 (DIP). 테스트 가능성·인프라 교체 자유도 확보.
 - **페르소나별 응답 DTO 분리**로 같은 도메인 엔티티라도 노출 필드를 다르게 한다 (ISP). 학생 응답에 `wrong_count`가 아예 없으면 클라이언트가 그 필드에 접근할 길이 없음 → 사고 방지.
+- RAG처럼 비즈니스 도메인보다 기술 기능에 가까운 코드는 `infrastructure/rag`에 둔다.
+- seed/fixture 성격의 공통 데이터 로더와 PDF 원본은 `common/data`에 둔다.
 
 ### 10.2 새 디렉토리 구조
 
@@ -303,66 +305,76 @@ class LearningRecord(BaseModel):
 app/
   domains/
     auth/
-      controller/
-      domain/
-      repository/
-      service/
+      router.py
+      models.py
+      schemas.py
+      repository.py
+      service.py
 
     learning/
-      controller/
-        content_catalog_router.py
-        student_learning_router.py
-        student_records_router.py
-        student_progress_router.py
-        student_stage3_router.py
-        dto/
-      domain/
       content/
-      stages/
-      repository/
-      service/
+        router.py
+        models.py
+        schemas.py
+        service.py
+        repositories/
+      practice/
+        router.py
+      progress/
+        router.py
+      records/
+        router.py
+      stage3/
+        router.py
+        schemas.py
+        service.py
+      models.py
+      schemas.py
+      service.py
+      repositories/
 
     classroom/
-      controller/
-        teacher_classroom_router.py
-        teacher_student_view_router.py
-        dto/
-      domain/
-      repository/
-      service/
+      teacher_router.py
+      student_view_router.py
+      schemas.py
+      models.py
+      service.py
+      repositories/
 
-    instruction/                    # 교사 assignment, 맞춤 문제 생성 (Phase 2)
+    instruction/
+      teacher_router.py
+      student_router.py
+      schemas.py
+      models.py
+      service.py
+      generation.py
+      repositories/
+
     agent/                          # 이로 챗봇, 약점 분석
-    system/                         # 시드, 인덱싱, 운영
+    developer/                      # 개발자 운영 API: 시드, 인덱싱, 상태 조회
+
+  infrastructure/
+    rag/                            # RAG 검색/응답 기술 기능
+
+  common/
+    data/
+      data_loader/
+      pdfs/
 
   main.py
 ```
 
-### 10.3 도메인 내부 구조 (예: `learning`)
+### 10.3 도메인 내부 구조 (예: `learning/content`)
 
 ```
-domains/learning/
-  controller/
-    student_learning_router.py
-    student_stage3_router.py
-    student_records_router.py
-    student_progress_router.py
-    content_catalog_router.py
-    dto/
-      request.py
-      response.py
-
-  models.py            # 엔티티: LearningRecord, StageProblem 등 (Pydantic 도메인 모델)
+domains/learning/content/
+  router.py             # HTTP prefix, 인증, request/response mapping
+  schemas.py            # API DTO
+  models.py             # 도메인 모델
+  service.py            # 콘텐츠 카탈로그 조회 정책
   repositories/
-    base.py            # LearningRecordRepository 인터페이스 (Protocol 또는 ABC)
-    mongo.py           # MongoDB 구현
-  services/
-    record_service.py        # 학습기록 CRUD·약점 집계
-    answer_service.py        # 답 채점·정답 판정
-  schemas/
-    common.py          # 공유 DTO
-    student.py         # 학생용 응답 (긍정 지표만)
-    teacher.py         # 교사용 응답 (raw counts 포함)
+    base.py             # repository interface / port
+    mongo.py            # MongoDB adapter
 ```
 
 ### 10.4 prefix 매핑
@@ -376,7 +388,7 @@ domains/learning/
 | `/teacher/classes/*` | 선생님 | `classroom` |
 | `/teacher/students/*` | 선생님 | `classroom`(권한 검증) + `learning`(데이터) |
 | `/teacher/instruction/*` | 선생님 | `instruction` + `agent` (Phase 2) |
-| `/admin/*` | 개발자 | `system` |
+| `/admin/*` | 개발자 | `developer` |
 
 기존 `/learning/*`, `/agent/*`, `/learning/stage3/*` 는 `/student/...`로 통합 리네임 (재단장이므로 호환성 부담 없음).
 
@@ -415,17 +427,17 @@ domains/learning/
 | `User.role` Literal 확장 및 `"admin"` → `"developer"` 정규화 | 백엔드 |
 | `whitelist.py`에 `TEACHER_WHITELIST_EMAILS`/`DEVELOPER_WHITELIST_EMAILS`/`ANSWER_BYPASS_WHITELIST_EMAILS` 추가 | 백엔드 |
 | `shared/dependencies.py`에 `get_current_student|teacher|developer` 추가 | 백엔드 |
-| `domains/stage3`를 `domains/learning`에 흡수 (`controller/student_stage3_router.py`, `stages/stage3_service.py`, `stages/stage3_schemas.py`) | 백엔드 |
+| `domains/stage3`를 `domains/learning/stage3`로 흡수 (`stage3/router.py`, `stage3/service.py`, `stage3/schemas.py`) | 백엔드 |
 | 핵심 도메인부터 `repositories/base.py` + Mongo 구현 분리 (`learning`, `classroom`) | 백엔드 |
 | 학생/교사용 DTO 분리 (`schemas/student.py`, `schemas/teacher.py`) — 우선 progress/profile 응답부터 | 백엔드 |
-| `domains/admin` → `domains/system` 리네임 | 백엔드 |
+| `domains/admin`/`domains/system` → `domains/developer` 리네임 | 백엔드 |
 
 ### Phase 0.5 — 페르소나 API Prefix 전환
 **목표**: 내부 정리가 끝난 뒤 외부 API 경로를 페르소나 기준으로 바꾼다. 프론트 API 클라이언트와 동시에 진행한다.
 
 | 작업 | 영역 |
 |---|---|
-| 도메인 내부 `controller/` 디렉토리에 학생/교사/개발자 라우터 배치 | 백엔드 |
+| 도메인 내부 기능 패키지 옆에 학생/교사/개발자 라우터 배치 | 백엔드 |
 | `/learning/*`, `/agent/*`, `/learning/stage3/*` → `/student/...` 경로 전환 | 백엔드/프론트 |
 | `/student/me/progress` 신설, 학생의 `/agent/profile/me` 접근 제거 | 백엔드/프론트 |
 | `/admin/*`에 `get_current_developer` 적용 | 백엔드 |
@@ -468,7 +480,7 @@ domains/learning/
 
 선행: Phase 2.
 
-- `system` 도메인에 트레이스 로그 조회, 사용량 통계, 에이전트 호출 모니터링 추가
+- `developer` 도메인에 트레이스 로그 조회, 사용량 통계, 에이전트 호출 모니터링 추가
 - 반 전체 약점 트렌드 차트
 - 교사 → 학생 메시지/격려
 
@@ -478,17 +490,24 @@ domains/learning/
 
 ### 12.1 확정된 방향
 
-- 도메인은 페르소나가 아니라 비즈니스 개념 기준으로 둔다: `auth`, `learning`, `classroom`, `instruction`, `agent`, `rag`, `system`.
-- 페르소나는 controller prefix와 DTO 노출 정책으로 표현한다.
+- 도메인은 페르소나가 아니라 비즈니스 개념 기준으로 둔다: `auth`, `learning`, `classroom`, `instruction`, `agent`.
+- RAG는 비즈니스 도메인이 아니라 검색 인프라로 보고 `infrastructure/rag`에 둔다.
+- 개발자 운영 API는 페르소나 성격이 강하므로 `domains/developer`에 둔다. 외부 prefix는 기존대로 `/admin/*`를 유지한다.
+- 페르소나는 router prefix와 DTO 노출 정책으로 표현한다.
 - 학생은 학습과 긍정 지표 중심, 선생님은 약점 분석과 AI 문제 배정 중심, 개발자는 운영 관리 중심으로 나눈다.
-- 최상위 `interfaces/` 분리 방식은 사용하지 않고, 각 도메인 내부에 `controller / service / repository / model / schema`를 모으는 방향으로 간다.
+- 최상위 `interfaces/` 분리 방식은 사용하지 않는다. 각 도메인 내부에서 기능별 vertical slice를 우선하고, router는 가능하면 기능 패키지 옆에 둔다.
 
 ### 12.2 완료된 백엔드 작업
 
 - 역할 모델을 `student | teacher | developer`로 정리하고, 기존 `admin`은 `developer`로 정규화했다.
 - whitelist를 권한용(`TEACHER`, `DEVELOPER`)과 Stage 2 답안 우회용(`ANSWER_BYPASS`)으로 분리했다.
-- `domains/admin`을 `domains/system`으로 정리하고 `/admin/*`는 developer 권한으로 보호했다.
-- Stage 3를 `learning` 도메인으로 흡수하고 `domains/learning/stages/` 아래에 배치했다.
+- `domains/admin`/`domains/system`을 `domains/developer`로 정리하고 `/admin/*`는 developer 권한으로 보호했다.
+- Stage 3를 `learning` 도메인으로 흡수하고 `domains/learning/stage3/` 아래에 배치했다.
+- `learning` 라우터는 `content/`, `practice/`, `progress/`, `records/`, `stage3/` 기능 패키지 옆으로 이동했다.
+- `classroom`과 `instruction` 라우터도 `controller/` 디렉토리에서 도메인 루트의 기능별 router 파일로 이동했다.
+- `rag`는 `domains/rag`에서 `infrastructure/rag`로 이동했다.
+- 공통 seed/fixture 데이터 로더와 PDF 원본은 `app/common/data`로 이동했다.
+- 빈 패키지 표시용 `__init__.py` 파일은 Python 3.12 namespace package 기준에 맞춰 제거했다.
 - 학생 학습 API prefix를 `/student/learning/*`로 전환했다.
 - 학생용 `GET /student/me/progress`를 추가하고, 학생의 `/agent/profile/me` 접근은 차단했다.
 - `classroom` 도메인을 추가해 `classes` 컬렉션 기반 교사-학생 매핑을 표현했다.
@@ -517,7 +536,7 @@ domains/learning/
 
 ### 12.4 교사/학생 연결 완료
 
-- `app/data/data_loader/classroom_loader.py`를 추가했다.
+- `app/common/data/data_loader/classroom_loader.py`를 추가했다.
 - 기존 `classes` 데이터가 없을 때만 기본 반 매핑을 삽입하도록 비파괴적으로 동작한다.
 - `InitializationService.seed_mongo_collections()`에서 `classes` 시드도 함께 수행한다.
 - 반 매핑은 `teacher_demo_1`, `student_demo_1..3` 기준으로 넣었다.
@@ -586,7 +605,6 @@ venv/bin/pytest -q
    - `domains/learning/schemas.py`, `student_schemas.py`를 controller DTO와 domain schema로 분리
    - `domains/learning/models.py`를 `domain/models.py`로 옮길지 결정
    - `classroom/models.py`, `classroom/service.py`도 `domain/`, `service/` 하위로 정리할지 결정
-   - `app/data/data_loader`를 `common` 하위로 옮길지는 별도 논의 후 결정
 
 2. **실서비스 연동 검증**
    - `OPENAI_API_KEY`가 설정된 환경에서 `POST /teacher/instruction/generate-problems` 스모크 테스트
@@ -597,25 +615,14 @@ venv/bin/pytest -q
 
 ## 13. 추가 합의가 필요한 것
 
-이미 구현 방향이 확정된 역할명, `/student/learning/*` prefix, `/admin/*` developer 보호, 학생용 긍정 진척도, 차시별 Stage 데이터, assignment 상태 흐름은 완료 항목으로 본다. 남은 합의는 다음 구현 단위에 영향을 주는 것들이다.
+이미 구현 방향이 확정된 역할명, `/student/learning/*` prefix, `/admin/*` developer 보호, 학생용 긍정 진척도, 차시별 Stage 데이터, assignment 상태 흐름, OpenAI 생성 API, 학생용 assignment API, RAG/data loader 위치는 완료 항목으로 본다. 남은 합의는 다음 구현 단위에 영향을 주는 것들이다.
 
-1. **OpenAI 생성 API의 상세 계약**
-   - endpoint를 `POST /teacher/instruction/generate-problems`로 둘지, 학생/반 일괄 생성을 별도 endpoint로 나눌지 결정한다.
-   - 생성 요청에 `difficulty`, `count`, `problem_type`을 어느 정도까지 노출할지 정한다.
-
-2. **학생용 assignment API 경로**
-   - 후보: `GET /student/learning/assignments`, `GET /student/assignments`
-   - Stage 3 `next-problem`에 assignment 우선 출제를 통합할지, 별도 복습 화면에서만 풀게 할지 결정한다.
-
-3. **패키지 구조 정리 깊이**
+1. **패키지 구조 정리 깊이**
    - `learning/service.py`, `learning/models.py`, `classroom/service.py`를 Java식 하위 패키지로 더 쪼갤지 결정한다.
    - 다중 도메인 조합 엔드포인트에 use case 레이어를 둘지 결정한다.
 
-4. **data loader 위치**
-   - 현재 `app/data/data_loader`를 유지할지, 공통 seed/fixture 성격으로 `common` 하위로 옮길지 결정한다.
-
-5. **교사 계정 부트스트랩**
+2. **교사 계정 부트스트랩**
    - 화이트리스트 + 수동 반 시드만으로 시작할지, 교사 회원가입·반 생성 UI를 별도 Phase에 포함할지 결정한다.
 
-6. **신규 단원 콘텐츠**
+3. **신규 단원 콘텐츠**
    - 추가할 단원 수와 주제를 정한다. 콘텐츠 기획은 코드 작업과 병렬로 진행 가능하다.

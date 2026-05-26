@@ -4,7 +4,7 @@ import pytest
 from fastapi import HTTPException
 
 from app.domains.auth.models import User
-from app.domains.instruction.controller.teacher_instruction_router import (
+from app.domains.instruction.teacher_router import (
     assign_assignment,
     create_assignment_draft,
     generate_problems,

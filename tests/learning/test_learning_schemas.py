@@ -1,5 +1,5 @@
 from app.domains.learning.schemas import Stage2SubmitResponse
-from app.domains.learning.stages.stage3_schemas import Stage3AnswerRequest
+from app.domains.learning.stage3.schemas import Stage3AnswerRequest
 
 
 def test_stage3_answer_request_model():

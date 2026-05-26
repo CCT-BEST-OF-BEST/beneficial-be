@@ -336,7 +336,7 @@ def get_pdf_loader() -> PDFDataLoader:
         pdf_loader = PDFDataLoader()
     return pdf_loader
 
-def load_pdf_documents(pdf_directory: str = "app/data/pdfs/") -> List[Dict[str, Any]]:
+def load_pdf_documents(pdf_directory: str = "app/common/data/pdfs/") -> List[Dict[str, Any]]:
     """PDF 디렉토리에서 모든 PDF 문서 로드"""
     loader = get_pdf_loader()
     all_documents = []
