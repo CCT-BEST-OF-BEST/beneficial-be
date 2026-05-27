@@ -12,6 +12,7 @@ class User(BaseModel):
     password_hash: str = Field(..., description="PBKDF2 password hash")
     display_name: str = Field(..., description="Name shown in the learning UI")
     role: UserRole = Field(default="student")
+    school_name: Optional[str] = Field(default=None, description="School or organization name (teacher only)")
     created_at: datetime
     updated_at: datetime
 

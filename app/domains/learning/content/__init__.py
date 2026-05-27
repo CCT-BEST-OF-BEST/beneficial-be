@@ -1,1 +1,0 @@
-"""Learning content catalog domain."""

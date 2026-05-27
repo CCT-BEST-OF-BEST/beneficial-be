@@ -1,12 +1,10 @@
 from datetime import datetime, timezone
-from types import SimpleNamespace
-
 import pytest
 from fastapi import HTTPException
 
-from app.domains.agent.router import get_my_agent_profile
+from app.domains.agent.controller.agent_router import get_my_agent_profile
 from app.domains.auth.models import User
-from app.domains.learning.controller.student_progress_router import get_my_progress
+from app.domains.progress.controller.student_progress_router import get_my_progress
 
 
 def _user(role: str = "student") -> User:
@@ -34,22 +32,39 @@ class FakeLearningRecordService:
     def get_weakness_profile(self, user_id):
         raise AssertionError("student profile endpoint should be blocked first")
 
+    def get_records(self, user_id):
+        return [
+            SimpleRecord("lesson_1", 2, True),
+            SimpleRecord("lesson_2", 2, True),
+        ]
 
-class FakeStage3Service:
-    def get_progress(self, user_id):
-        return SimpleNamespace(
-            progress=SimpleNamespace(
-                total_problems=5,
-                completed_problems=[1, 2],
-            )
-        )
+    def calculate_progress_rate(self, user_id, units_with_lessons):
+        return 40
+
+    def build_progress_badges(self, metrics, progress_rate):
+        return ["첫 학습 시작", "연속 정답"]
+
+
+class FakeContentService:
+    def list_units_with_lessons(self):
+        return [
+            (object(), [SimpleRecord("lesson_1"), SimpleRecord("lesson_2")]),
+            (object(), [SimpleRecord("lesson_3"), SimpleRecord("lesson_4"), SimpleRecord("lesson_5")]),
+        ]
+
+
+class SimpleRecord:
+    def __init__(self, lesson_id, stage=2, is_correct=True):
+        self.lesson_id = lesson_id
+        self.stage = stage
+        self.is_correct = is_correct
 
 
 def test_student_progress_response_uses_positive_metrics_only():
     response = get_my_progress(
         current_user=_user("student"),
         learning_record_service=FakeLearningRecordService(),
-        stage3_service=FakeStage3Service(),
+        content_service=FakeContentService(),
     )
 
     assert response.today_solved_count == 4

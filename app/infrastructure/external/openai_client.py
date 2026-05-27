@@ -55,6 +55,33 @@ class OpenAIClient:
         except Exception as e:
             raise Exception(f"OpenAI API 호출 실패: {str(e)}")
 
+    async def parse_chat_completion(
+        self,
+        messages: List[Dict[str, str]],
+        response_format,
+        model: str = None,
+        max_tokens: int = None,
+        temperature: float = None,
+    ):
+        """Pydantic response_format 기반 구조화 출력을 생성한다."""
+        try:
+            response = await self.client.chat.completions.parse(
+                model=model or self.default_model,
+                messages=messages,
+                response_format=response_format,
+                max_tokens=max_tokens or self.max_tokens,
+                temperature=self.temperature if temperature is None else temperature,
+            )
+            message = response.choices[0].message
+            if getattr(message, "refusal", None):
+                raise ValueError(message.refusal)
+            if getattr(message, "parsed", None) is None:
+                raise ValueError("OpenAI 응답을 구조화된 모델로 파싱하지 못했습니다.")
+            return message.parsed
+
+        except Exception as e:
+            raise Exception(f"OpenAI 구조화 출력 호출 실패: {str(e)}")
+
     async def generate_response_with_context(self, prompt: str, context: str = None,
                                              system_prompt: str = None) -> str:
         """
@@ -125,6 +152,18 @@ class OpenAIClient:
             raise Exception(f"배치 임베딩 생성 실패: {str(e)}")
 
 
+_openai_client: OpenAIClient | None = None
+
+
 def get_openai_client() -> OpenAIClient:
-    """OpenAI 클라이언트 인스턴스 반환"""
-    return OpenAIClient()
+    """OpenAI 클라이언트 싱글톤 인스턴스 반환"""
+    global _openai_client
+    if _openai_client is None:
+        _openai_client = OpenAIClient()
+    return _openai_client
+
+
+def reset_openai_client() -> None:
+    """OpenAI 클라이언트 싱글톤 리셋 (테스트용)."""
+    global _openai_client
+    _openai_client = None

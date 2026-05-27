@@ -3,7 +3,7 @@ from datetime import datetime, timezone
 import pytest
 from fastapi import HTTPException
 
-from app.domains.auth.dependencies import (
+from app.domains.auth.dependency.auth_dependencies import (
     get_current_developer,
     get_current_student,
     get_current_teacher,

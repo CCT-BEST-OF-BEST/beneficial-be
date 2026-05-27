@@ -1,5 +1,5 @@
-from app.domains.system.router import router
-from app.domains.auth.dependencies import get_current_developer
+from app.domains.developer.admin_router import router
+from app.domains.auth.dependency.auth_dependencies import get_current_developer
 
 
 def test_admin_router_requires_developer_role():

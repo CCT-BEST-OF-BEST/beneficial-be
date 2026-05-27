@@ -1,7 +1,7 @@
 import asyncio
 
-from app.domains.rag.schemas import RagDocument
-from app.domains.rag.service import RagService
+from app.infrastructure.rag.schemas import RagDocument
+from app.infrastructure.rag.service import RagService
 
 
 class FakeRetriever:

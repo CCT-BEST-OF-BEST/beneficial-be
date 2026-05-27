@@ -39,6 +39,7 @@ class TeacherAssignment(BaseModel):
     status: AssignmentStatus = "draft"
     source: str = "ai_generated"
     problems: list[GeneratedProblem] = Field(default_factory=list)
+    student_progress: dict[str, list[str]] = Field(default_factory=dict)
     generation_context: dict = Field(default_factory=dict)
     created_at: datetime = Field(default_factory=utc_now)
     assigned_at: datetime | None = None

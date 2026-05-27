@@ -1,7 +1,7 @@
 from datetime import datetime, timezone
 
 from app.domains.auth.models import User
-from app.domains.classroom.service import ClassroomService
+from app.domains.classroom.service.classroom_service import ClassroomService
 
 
 class FakeClassroomRepository:

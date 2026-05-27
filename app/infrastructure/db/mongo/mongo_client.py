@@ -40,7 +40,7 @@ class MongoClient:
     def _connect(self):
         """MongoDB 연결"""
         try:
-            self.client = PyMongoClient(self.connection_string)
+            self.client = PyMongoClient(self.connection_string, tz_aware=True)
             self.db = self.client[self.database_name]
 
             # 연결 테스트
@@ -164,6 +164,11 @@ class MongoClient:
         result = collection.update_one(filter_dict, {"$set": update_dict})
         return result.modified_count > 0
 
+    def update_one_operator(self, collection_name: str, filter_dict: Dict[str, Any], update_operator: Dict[str, Any]) -> bool:
+        collection = self.get_collection(collection_name)
+        result = collection.update_one(filter_dict, update_operator)
+        return result.modified_count > 0
+
     def delete_one(self, collection_name: str, filter_dict: Dict[str, Any]) -> bool:
         """
         단일 문서 삭제
@@ -193,6 +198,37 @@ class MongoClient:
         collection = self.get_collection(collection_name)
         filter_dict = filter_dict or {}
         return collection.count_documents(filter_dict)
+
+    def create_index(
+        self,
+        collection_name: str,
+        keys: List[tuple],
+        unique: bool = False,
+        name: str = None,
+        partial_filter_expression: Dict[str, Any] = None,
+    ) -> str:
+        """
+        컬렉션 인덱스 생성
+
+        Args:
+            collection_name: 컬렉션명
+            keys: 인덱스 키 목록. 예: [("user_id", 1), ("created_at", -1)]
+            unique: unique 인덱스 여부
+            name: 인덱스 이름
+            partial_filter_expression: partial index 조건
+
+        Returns:
+            생성된 인덱스 이름
+        """
+        collection = self.get_collection(collection_name)
+        options = {
+            "unique": unique,
+            "name": name,
+            "background": True,
+        }
+        if partial_filter_expression is not None:
+            options["partialFilterExpression"] = partial_filter_expression
+        return collection.create_index(keys, **options)
 
     def close(self):
         """MongoDB 연결 종료"""

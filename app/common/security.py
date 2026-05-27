@@ -9,6 +9,7 @@ from typing import Any, Dict
 
 
 DEFAULT_PASSWORD_ITERATIONS = 120_000
+PRODUCTION_ENVIRONMENTS = {"production", "prod"}
 
 
 class TokenError(ValueError):
@@ -22,9 +23,20 @@ def utc_now() -> datetime:
 def get_auth_secret() -> str:
     secret = os.getenv("AUTH_SECRET_KEY") or os.getenv("JWT_SECRET_KEY")
     if not secret:
-        # Development fallback. Production should set AUTH_SECRET_KEY.
+        if _is_production_environment():
+            raise RuntimeError("AUTH_SECRET_KEY must be set in production.")
         secret = "dev-only-change-me"
     return secret
+
+
+def _is_production_environment() -> bool:
+    environment = (
+        os.getenv("APP_ENV")
+        or os.getenv("ENVIRONMENT")
+        or os.getenv("ENV")
+        or "development"
+    )
+    return environment.strip().lower() in PRODUCTION_ENVIRONMENTS
 
 
 def hash_password(password: str, iterations: int = DEFAULT_PASSWORD_ITERATIONS) -> str:

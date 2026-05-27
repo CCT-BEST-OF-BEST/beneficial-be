@@ -1,6 +1,6 @@
 # Beneficial Backend API 명세서
 
-> 최종 업데이트: 2026-05-25
+> 최종 업데이트: 2026-05-26
 > 대상: 프론트엔드 / 프론트 에이전트의 리팩토링 작업
 > 관련 문서: [페르소나 기반 재설계 기획안](./persona-based-redesign.md) · [페르소나 기반 UI 플로우](./persona-ui-flow.md)
 
@@ -36,13 +36,15 @@
 | --- | --- | --- |
 | `/` | 시스템 메타 정보 (`GET /`만) | — |
 | `/auth` | 회원가입 / 로그인 / 세션 | 일부 보호 (`/me`) |
+| `/admin/auth` | 관리자 하드코딩 로그인 (.env 기반) | — |
 | `/agent` | 학습 코치 Agent (LangGraph) | 전부 보호 |
 | `/student/learning` | Stage 1·2 컨텐츠 + 시각 힌트 | 전부 보호 |
 | `/student/learning/records` | 학습 기록 조회 | 보호 |
 | `/student/learning/stage3` | Stage 3 문제풀이 | 전부 보호 |
 | `/student/me` | 학생용 긍정 진척도 | student 보호 |
+| `/student/my-class` | 학생 소속 반 조회 | 보호 |
 | `/content` | 단원·차시 콘텐츠 트리 | 전부 보호 |
-| `/teacher/classes` | 교사 담당 반/학생 조회 | teacher/developer 보호 |
+| `/teacher/classes` | 교사 담당 반 생성/조회/학생 관리 | teacher/developer 보호 |
 | `/teacher/students` | 교사용 학생 약점/기록 조회 | teacher/developer 보호 |
 | `/teacher/instruction` | 교사용 문제 초안/배정 관리 | teacher/developer 보호 |
 | `/chat` | 단발 RAG 채팅 (Agent와 별개) | 전부 보호 |
@@ -78,7 +80,9 @@
 {
   "email": "string (5~255자)",
   "password": "string (8~128자)",
-  "display_name": "string (1~50자)"
+  "display_name": "string (1~50자)",
+  "role": "student | teacher (기본값: student)",
+  "school_name": "string | null (최대 100자, teacher일 때 사용)"
 }
 ```
 **Response 201** (`UserResponse`)
@@ -251,6 +255,7 @@ Stage 1 (카드 학습) · Stage 2 (드래그&드롭) 컨텐츠.
 | POST | `/student/learning/stage1/submit-card-check` | 보호 | Stage 1 답안 확인 |
 | GET | `/student/learning/stage2/problems` | 보호 | Stage 2 문제 + 답안 풀 |
 | POST | `/student/learning/stage2/submit-answer` | 보호 | Stage 2 답안 제출 |
+| GET | `/student/learning/assignments` | student 보호 | 선생님이 배정한 복습 문제 목록 |
 
 > 모든 답안 제출 결과는 `LearningRecord`에 저장되어 Agent의 약점 분석에 반영된다.
 
@@ -340,11 +345,50 @@ Stage 1 (카드 학습) · Stage 2 (드래그&드롭) 컨텐츠.
 ```
 **Errors**: `404` lesson 데이터 / problem_id 없음.
 
-## 5. 학생 진척도 (`/student/me`)
+### 4.5 `GET /student/learning/assignments`
+학생에게 배정된 `assigned` 상태의 Stage 3 복습 문제를 조회한다. 정답과 해설은 노출하지 않는다.
+
+**Query**
+| Query | 타입 | 설명 |
+| --- | --- | --- |
+| `lesson_id` | `string | null` | 특정 차시 배정만 필터 |
+
+**Response 200** (`StudentAssignmentListResponse`)
+```json
+{
+  "assignments": [
+    {
+      "assignment_id": "assign_xxx",
+      "lesson_id": "lesson_4",
+      "unit_id": "unit_1",
+      "stage": 3,
+      "concept_key": "되/돼",
+      "status": "assigned",
+      "completed_problem_ids": [],
+      "assigned_at": "ISO-8601",
+      "problems": [
+        {
+          "problem_id": "gen_1",
+          "problem_key": "assignment:assign_xxx:gen_1",
+          "type": "fill_blank",
+          "sentence_part1": "숙제가 다",
+          "sentence_part2": "?",
+          "visual_hint": "pencil",
+          "accent_color": "primary"
+        }
+      ]
+    }
+  ],
+  "total_count": 1
+}
+```
+
+## 5. 학생 진척도 · 반 정보 (`/student/me`, `/student/my-class`)
 
 | Method | Path | 인증 | 설명 |
 | --- | --- | --- | --- |
 | GET | `/student/me/progress` | student 보호 | 본인 긍정 진척도 |
+| GET | `/student/my-class` | 보호 | 본인 소속 반 정보 |
 
 ### 5.1 `GET /student/me/progress`
 
@@ -358,6 +402,22 @@ Stage 1 (카드 학습) · Stage 2 (드래그&드롭) 컨텐츠.
   "streak_correct_count": 4,
   "progress_rate": 60,
   "badges": ["첫 학습 시작", "연속 정답"]
+}
+```
+
+- `progress_rate`: **Stage 2를 통과한(정답 제출 있는) 차시 수 / 전체 차시 수 × 100**. 기존 Stage 3 완료율 기준에서 변경됨.
+
+### 5.2 `GET /student/my-class`
+
+학생이 소속된 반과 담당 선생님 정보를 반환한다. 반에 소속되지 않은 경우 `null`을 반환한다.
+
+**Response 200** (`StudentMyClassResponse | null`)
+```json
+{
+  "class_id": "class_xxx",
+  "class_name": "돌봄 한국어 1반",
+  "teacher_display_name": "김선생님",
+  "teacher_school_name": "OO초등학교"
 }
 ```
 
@@ -445,7 +505,9 @@ Stage 3는 "순차 학습 → 틀린 문제만 순환 복습" 알고리즘으로
       "sentence_part2": "...",
       "visual_hint": "book-open",
       "accent_color": "primary",
-      "badge": "재도전 | 첫학습 | null"
+      "badge": "재도전 | 첫학습 | 선생님복습 | null",
+      "source": "base | assignment",
+      "assignment_id": "assign_xxx | null"
     },
     "is_completed": false
   }
@@ -462,8 +524,10 @@ Stage 3는 "순차 학습 → 틀린 문제만 순환 복습" 알고리즘으로
 ### 7.3 `POST /student/learning/stage3/submit-answer`
 **Request** (`Stage3AnswerRequest`)
 ```json
-{ "problem_id": 1, "user_answer": "돼" }
+{ "problem_id": 1, "user_answer": "돼", "assignment_id": null }
 ```
+- 교사 배정 문제를 제출할 때는 `problem_id`가 `"gen_1"` 같은 문자열일 수 있으며, `assignment_id`를 함께 보낸다.
+
 **Response 200** (`Stage3AnswerResponse`)
 ```json
 {
@@ -475,7 +539,9 @@ Stage 3는 "순차 학습 → 틀린 문제만 순환 복습" 알고리즘으로
   "explanation": "...",
   "full_sentence": "...",
   "status": "correct | wrong | review | completed",
-  "badge": "훌륭해요 | 잠시후복습 | null"
+  "badge": "훌륭해요 | 잠시후복습 | null",
+  "source": "base | assignment",
+  "assignment_id": "assign_xxx | null"
 }
 ```
 
@@ -507,14 +573,33 @@ Stage 3는 "순차 학습 → 틀린 문제만 순환 복습" 알고리즘으로
 
 교사 API는 `teacher` 또는 `developer` 권한이 필요하다. 교사는 본인이 담당한 반/학생 데이터만 조회하거나 배정할 수 있고, developer는 운영 목적으로 우회 가능하다.
 
-### 8.1 반/학생 조회
+### 8.1 반 생성·조회 및 학생 관리
 
 | Method | Path | 인증 | 설명 |
 | --- | --- | --- | --- |
+| POST | `/teacher/classes` | teacher/developer | 새 반 생성 |
 | GET | `/teacher/classes` | teacher/developer | 담당 반 목록 |
+| GET | `/teacher/classes/search-students` | teacher/developer | 이름·이메일로 학생 검색 |
 | GET | `/teacher/classes/{class_id}/students` | teacher/developer | 반 학생 목록 + 약점 요약 |
+| POST | `/teacher/classes/{class_id}/students` | teacher/developer | 학생 반 등록 |
+| DELETE | `/teacher/classes/{class_id}/students/{student_id}` | teacher/developer | 학생 반 제거 |
 | GET | `/teacher/students/{user_id}/profile` | teacher/developer | 학생 약점 프로파일 |
 | GET | `/teacher/students/{user_id}/records` | teacher/developer | 학생 학습 기록 |
+
+`POST /teacher/classes` 요청/응답:
+
+```json
+// Request
+{ "name": "돌봄 한국어 1반" }
+
+// Response 201 (TeacherClassResponse)
+{
+  "class_id": "class_xxx",
+  "name": "돌봄 한국어 1반",
+  "teacher_id": "teacher_xxx",
+  "student_count": 0
+}
+```
 
 `GET /teacher/classes` 응답 예시:
 
@@ -531,6 +616,18 @@ Stage 3는 "순차 학습 → 틀린 문제만 순환 복습" 알고리즘으로
   "total_count": 1
 }
 ```
+
+`GET /teacher/classes/search-students?q=민준` 응답 예시:
+
+```json
+{
+  "users": [
+    { "user_id": "u_xxx", "display_name": "민준", "email": "minjun@example.com" }
+  ]
+}
+```
+
+- `q`: 이름 또는 이메일 일부 (최소 1자). role이 student인 사용자만 반환.
 
 `GET /teacher/classes/{class_id}/students` 응답 예시:
 
@@ -550,6 +647,16 @@ Stage 3는 "순차 학습 → 틀린 문제만 순환 복습" 알고리즘으로
 }
 ```
 
+`POST /teacher/classes/{class_id}/students` 요청:
+
+```json
+{ "student_id": "u_xxx" }
+```
+
+**Response**: `204 No Content`. 반을 찾을 수 없으면 `404`.
+
+`DELETE /teacher/classes/{class_id}/students/{student_id}` — **Response**: `204 No Content`.
+
 `GET /teacher/students/{user_id}/records` query:
 
 | Query | 타입 | 설명 |
@@ -563,6 +670,7 @@ Stage 3는 "순차 학습 → 틀린 문제만 순환 복습" 알고리즘으로
 | --- | --- | --- | --- |
 | POST | `/teacher/instruction/assignments/draft` | teacher/developer | 문제 초안 assignment 생성 |
 | GET | `/teacher/instruction/assignments` | teacher/developer | assignment 목록 |
+| POST | `/teacher/instruction/generate-problems` | teacher/developer | OpenAI로 문제 생성 후 검증 통과분을 draft 저장 |
 | PATCH | `/teacher/instruction/assignments/{assignment_id}/assign` | teacher/developer | draft를 assigned로 전환 |
 | PATCH | `/teacher/instruction/assignments/{assignment_id}/cancel` | teacher/developer | draft/assigned 취소 |
 | PATCH | `/teacher/instruction/assignments/{assignment_id}/complete` | teacher/developer | assigned를 completed로 전환 |
@@ -607,7 +715,93 @@ assigned -> cancelled
 
 응답은 `AssignmentResponse`이며 `assignment_id`, `status`, `problems[].problem_key`, `created_at` 등을 포함한다.
 
-현재 구현 범위는 생성된 문제를 draft로 저장하고 배정 상태를 관리하는 것이다. OpenAI를 호출해 문제 초안을 직접 만드는 `POST /teacher/instruction/generate-problems`는 다음 작업으로 남아 있다.
+`POST /teacher/instruction/generate-problems` 요청 예시:
+
+```json
+{
+  "target_type": "student",
+  "class_id": null,
+  "student_id": "student_demo_1",
+  "unit_id": "unit_1",
+  "lesson_id": "lesson_4",
+  "stage": 3,
+  "concept_key": "되/돼",
+  "count": 3,
+  "difficulty": "normal",
+  "generation_context": {
+    "reason": "최근 되/돼 오답 반복"
+  }
+}
+```
+
+응답 예시:
+
+```json
+{
+  "assignment": {
+    "assignment_id": "assign_xxx",
+    "teacher_id": "teacher_demo_1",
+    "student_id": "student_demo_1",
+    "target_type": "student",
+    "unit_id": "unit_1",
+    "lesson_id": "lesson_4",
+    "stage": 3,
+    "concept_key": "되/돼",
+    "status": "draft",
+    "source": "ai_generated",
+    "problems": [
+      {
+        "problem_id": "gen_xxx",
+        "problem_key": "assignment:assign_xxx:gen_xxx",
+        "type": "fill_blank",
+        "sentence_part1": "숙제가 다",
+        "correct_answer": "돼",
+        "sentence_part2": ".",
+        "full_sentence": "숙제가 다 돼.",
+        "explanation": "'돼'는 '되어'로 바꿀 수 있을 때 써요.",
+        "visual_hint": "pencil",
+        "accent_color": "primary",
+        "validation_status": "valid"
+      }
+    ],
+    "student_progress": {},
+    "generation_context": {
+      "reason": "최근 되/돼 오답 반복",
+      "difficulty": "normal",
+      "requested_count": 3,
+      "generated_count": 3,
+      "valid_count": 2
+    },
+    "created_at": "ISO-8601",
+    "assigned_at": null,
+    "completed_at": null,
+    "cancelled_at": null
+  },
+  "validation_results": [
+    {
+      "problem": {
+        "problem_id": "gen_xxx",
+        "problem_key": null,
+        "type": "fill_blank",
+        "sentence_part1": "숙제가 다",
+        "correct_answer": "돼",
+        "sentence_part2": ".",
+        "full_sentence": "숙제가 다 돼.",
+        "explanation": "'돼'는 '되어'로 바꿀 수 있을 때 써요.",
+        "visual_hint": "pencil",
+        "accent_color": "primary",
+        "validation_status": "valid"
+      },
+      "is_valid": true,
+      "reasons": []
+    }
+  ],
+  "total_generated": 3,
+  "total_valid": 2
+}
+```
+
+검증은 `concept_key` 허용 목록, 정답 후보, 빈칸 조합과 완성 문장 일치, 기본 Stage 3 문제와의 중복, 생성 결과 내부 중복, 해설 길이를 확인한다. 검증을 통과한 문제만 draft assignment에 저장된다.
 
 ---
 
@@ -658,6 +852,17 @@ assigned -> cancelled
 
 > developer 권한 필요.
 > 평상시 startup은 lightweight 모드라 시드/인덱싱은 이 엔드포인트들로 트리거한다.
+
+### 10.0 `POST /admin/auth/login` — 하드코딩 관리자 로그인
+
+DB를 거치지 않고 `.env`의 `ADMIN_EMAIL` / `ADMIN_PASSWORD`와 비교해 인증한다. 성공 시 `role=developer`, `user_id=admin_hardcoded`로 서명된 JWT를 발급한다. `ADMIN_EMAIL` 또는 `ADMIN_PASSWORD`가 설정되지 않으면 `503`을 반환한다.
+
+**Request body**
+```json
+{ "email": "...", "password": "..." }
+```
+**Response 200** (`AuthTokenResponse`) — 일반 로그인과 동일한 구조.  
+**Errors**: `401` 자격 증명 불일치, `503` 관리자 계정 미설정.
 
 | Method | Path | 설명 |
 | --- | --- | --- |

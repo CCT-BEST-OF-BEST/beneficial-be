@@ -20,7 +20,7 @@ if os.getenv("RUN_INTEGRATION_TESTS") != "1":
 if not os.getenv("OPENAI_API_KEY"):
     pytest.skip("OPENAI_API_KEY is required for this integration test", allow_module_level=True)
 
-from app.domains.chat.service import get_chat_service
+from app.domains.agent.service.agent_service import get_chat_service
 
 
 @pytest.mark.asyncio

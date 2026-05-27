@@ -5,9 +5,9 @@ from unittest.mock import AsyncMock, MagicMock
 import pytest
 
 from app.domains.agent.models import AgentDecision, ChatMessage, ChatSession
-from app.domains.agent.repository import ChatSessionRepository
-from app.domains.agent.service import AgentService, ChatSessionService
-from app.domains.learning.models import StudentWeaknessProfile, WeakConcept
+from app.domains.agent.repository.chat_session_repository import ChatSessionRepository
+from app.domains.agent.service.agent_service import AgentService, ChatSessionService
+from app.domains.progress.models import StudentWeaknessProfile, WeakConcept
 
 
 # ---------------------------------------------------------------------------

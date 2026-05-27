@@ -1,0 +1,33 @@
+from typing import Any, Dict, List, Protocol
+
+from app.infrastructure.db.mongo.mongo_client import MongoClient
+
+
+class LearningClassroomRepository(Protocol):
+    def find_classes_by_student(self, student_id: str) -> list[dict[str, Any]]:
+        ...
+
+
+class LearningRecordRepository(Protocol):
+    def create_record(self, record: Dict[str, Any]) -> str:
+        ...
+
+    def find_records_by_user(self, user_id: str) -> List[Dict[str, Any]]:
+        ...
+
+
+class MongoLearningRecordRepository:
+    collection_name = "learning_records"
+
+    def __init__(self, mongo_client: MongoClient):
+        self.mongo_client = mongo_client
+
+    def create_record(self, record: Dict[str, Any]) -> str:
+        return self.mongo_client.insert_one(self.collection_name, record)
+
+    def find_records_by_user(self, user_id: str) -> List[Dict[str, Any]]:
+        return self.mongo_client.find_many(
+            self.collection_name,
+            {"user_id": user_id},
+            sort=[("created_at", -1)],
+        )

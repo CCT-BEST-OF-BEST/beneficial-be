@@ -2,22 +2,45 @@ import os
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from app.domains.chat.router import router as chat_router
-from app.domains.classroom.controller.teacher_classroom_router import router as teacher_classroom_router
-from app.domains.classroom.controller.teacher_student_view_router import router as teacher_student_view_router
-from app.domains.instruction.controller.teacher_instruction_router import router as teacher_instruction_router
-from app.domains.learning.controller.content_catalog_router import router as content_catalog_router
-from app.domains.learning.controller.student_learning_router import router as student_learning_router
-from app.domains.learning.controller.student_progress_router import router as student_progress_router
-from app.domains.learning.controller.student_records_router import router as student_records_router
-from app.domains.learning.controller.student_stage3_router import router as student_stage3_router
-from app.domains.system.router import router as system_router
-from app.domains.auth.router import router as auth_router
-from app.domains.agent.router import router as agent_router
+from app.domains.classroom.controller.teacher_class_router import router as teacher_classroom_router
+from app.domains.progress.controller.teacher_student_router import router as teacher_student_view_router
+from app.domains.classroom.controller.student_class_router import router as student_class_router
+from app.domains.instruction.controller.teacher_router import router as teacher_instruction_router
+from app.domains.instruction.controller.student_router import router as student_assignment_router, stage3_router as student_stage3_orchestration_router
+from app.domains.content.controller.catalog_router import router as content_catalog_router
+from app.domains.content.stage1.router import router as student_stage1_router
+from app.domains.content.stage2.router import router as student_stage2_router
+from app.domains.content.stage3.router import router as student_stage3_router
+from app.domains.progress.controller.student_progress_router import router as student_progress_router
+from app.domains.developer.admin_router import router as system_router
+from app.domains.auth.controller.auth_router import router as auth_router
+from app.domains.auth.controller.admin_auth_router import router as admin_auth_router
+from app.domains.agent.controller.agent_router import router as agent_router
 from app.common.init.initialization import get_initialization_service
 from app.common.logging.logging_config import get_logger
 
 logger = get_logger(__name__)
+
+DEFAULT_CORS_ORIGINS = [
+    "http://localhost:3000",
+    "http://localhost:5173",
+    "http://localhost:8080",
+    "http://127.0.0.1:3000",
+    "http://127.0.0.1:5173",
+    "http://127.0.0.1:8080",
+]
+
+
+def get_cors_origins() -> list[str]:
+    configured = os.getenv("CORS_ALLOWED_ORIGINS")
+    if not configured:
+        return DEFAULT_CORS_ORIGINS
+    origins = [
+        origin.strip()
+        for origin in configured.split(",")
+        if origin.strip()
+    ]
+    return origins or DEFAULT_CORS_ORIGINS
 
 app = FastAPI(
     title="🎓 CCT 백엔드 API",
@@ -115,15 +138,7 @@ app = FastAPI(
 # CORS 미들웨어 설정
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[
-        "http://localhost:3000",  # React 개발 서버
-        "http://localhost:5173",  # Vite 개발 서버
-        "http://localhost:8080",  # Vue 개발 서버
-        "http://127.0.0.1:3000",
-        "http://127.0.0.1:5173",
-        "http://127.0.0.1:8080",
-        "*"  # 개발 환경에서는 모든 origin 허용 (프로덕션에서는 제거)
-    ],
+    allow_origins=get_cors_origins(),
     allow_credentials=True,
     allow_methods=["*"],  # 모든 HTTP 메서드 허용
     allow_headers=["*"],  # 모든 헤더 허용
@@ -165,16 +180,19 @@ async def shutdown_event():
 
 # 라우터 등록
 app.include_router(auth_router)
+app.include_router(admin_auth_router)
 app.include_router(agent_router)
-app.include_router(chat_router)
-app.include_router(student_learning_router)
 app.include_router(content_catalog_router)
-app.include_router(student_records_router)
+app.include_router(student_stage1_router)
+app.include_router(student_stage2_router)
 app.include_router(student_stage3_router)
 app.include_router(student_progress_router)
 app.include_router(teacher_classroom_router)
 app.include_router(teacher_student_view_router)
+app.include_router(student_class_router)
 app.include_router(teacher_instruction_router)
+app.include_router(student_assignment_router)
+app.include_router(student_stage3_orchestration_router)
 app.include_router(system_router)
 
 

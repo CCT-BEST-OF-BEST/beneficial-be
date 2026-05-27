@@ -1,4 +1,4 @@
-from app.domains.chat.schemas import ChatRequest, ChatResponse
+from app.domains.agent.schema.agent_schemas import ChatRequest, ChatResponse
 
 
 def test_chat_request_model():

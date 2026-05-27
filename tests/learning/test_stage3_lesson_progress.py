@@ -1,4 +1,4 @@
-from app.domains.learning.stages.stage3_service import Stage3Service
+from app.domains.content.stage3.service import Stage3Service
 
 
 class FakeMongoClient:
@@ -128,3 +128,80 @@ def test_stage3_legacy_progress_is_normalized_to_default_lesson():
     assert progress.completed_problems == [1, 2]
     assert progress.review_problems == [3]
     assert progress.current_problem_id is None
+
+
+def test_stage3_next_problem_prioritizes_teacher_assignment():
+    class FakeInstructionService:
+        def get_next_assigned_problem(self, student_id, lesson_id, stage):
+            return {
+                "problem_id": "gen_1",
+                "assignment_id": "assign_1",
+                "sentence_part1": "숙제가 다",
+                "sentence_part2": "?",
+                "visual_hint": "pencil",
+                "accent_color": "primary",
+                "source": "assignment",
+                "badge": "선생님복습",
+            }
+
+    service = Stage3Service(FakeMongoClient(), instruction_service=FakeInstructionService())
+
+    problem = service.get_next_problem("student_1", lesson_id="lesson_1")
+
+    assert problem["problem_id"] == "gen_1"
+    assert problem["assignment_id"] == "assign_1"
+    assert problem["source"] == "assignment"
+
+
+def test_stage3_submit_answer_delegates_assignment_submission():
+    class FakeInstructionService:
+        def __init__(self):
+            self.submitted = None
+
+        def submit_student_answer(
+            self,
+            student_id,
+            assignment_id,
+            problem_id,
+            user_answer,
+            learning_record_service=None,
+        ):
+            self.submitted = {
+                "student_id": student_id,
+                "assignment_id": assignment_id,
+                "problem_id": problem_id,
+                "user_answer": user_answer,
+                "learning_record_service": learning_record_service,
+            }
+            return {
+                "problem_id": problem_id,
+                "is_correct": True,
+                "user_answer": user_answer,
+                "correct_answer": "됐어",
+                "explanation": "설명",
+                "full_sentence": "숙제가 다 됐어?",
+                "status": "completed",
+                "badge": "훌륭해요!",
+                "assignment_id": assignment_id,
+                "source": "assignment",
+            }
+
+    instruction_service = FakeInstructionService()
+    record_service = object()
+    service = Stage3Service(
+        FakeMongoClient(),
+        learning_record_service=record_service,
+        instruction_service=instruction_service,
+    )
+
+    response = service.submit_answer(
+        "gen_1",
+        "됐어",
+        user_id="student_1",
+        assignment_id="assign_1",
+    )
+
+    assert response.problem_id == "gen_1"
+    assert response.assignment_id == "assign_1"
+    assert response.source == "assignment"
+    assert instruction_service.submitted["learning_record_service"] is record_service
