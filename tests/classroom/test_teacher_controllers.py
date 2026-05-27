@@ -5,7 +5,7 @@ import pytest
 from fastapi import HTTPException
 
 from app.domains.auth.models import User
-from app.domains.classroom.teacher_router import list_class_students, list_my_classes
+from app.domains.classroom.teacher_class_router import list_class_students, list_my_classes
 from app.domains.progress.teacher_router import get_student_records
 
 

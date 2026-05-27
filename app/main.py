@@ -2,7 +2,7 @@ import os
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from app.domains.classroom.teacher_router import router as teacher_classroom_router
+from app.domains.classroom.teacher_class_router import router as teacher_classroom_router
 from app.domains.progress.teacher_router import router as teacher_student_view_router
 from app.domains.classroom.student_class_router import router as student_class_router
 from app.domains.instruction.teacher_router import router as teacher_instruction_router
