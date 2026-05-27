@@ -1,6 +1,6 @@
 import pytest
 
-from app.domains.auth.service import (
+from app.domains.auth.service.service import (
     AuthService,
     DuplicateUserError,
     InvalidCredentialsError,

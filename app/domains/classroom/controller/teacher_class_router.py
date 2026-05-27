@@ -10,7 +10,7 @@ student_view_router.py와 분리한 이유:
 """
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 
-from app.domains.auth.dependencies import get_current_teacher
+from app.domains.auth.dependency.dependencies import get_current_teacher
 from app.domains.auth.models import User
 from app.domains.classroom.dependency.dependencies import get_classroom_service
 from app.domains.classroom.service.service import ClassroomService

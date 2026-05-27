@@ -4,7 +4,7 @@ from typing import Any, Dict, List, Optional
 from app.common.security import utc_now
 from app.common.logging.logging_config import get_logger
 from app.domains.agent.models import AgentDecision, ChatMessage, ChatSession
-from app.domains.agent.repository import ChatSessionRepository
+from app.domains.agent.repository.repository import ChatSessionRepository
 from app.domains.progress.models import StudentWeaknessProfile
 from app.domains.progress.service.service import LearningRecordService
 from app.infrastructure.db.vector.vector_db import get_vector_db
@@ -88,7 +88,7 @@ class AgentService:
         self.learning_record_service = learning_record_service
         self.openai_client = openai_client
 
-        from app.domains.agent.graph import build_agent_graph
+        from app.domains.agent.service.graph import build_agent_graph
         self._graph = build_agent_graph(self)
 
     async def chat(
@@ -97,7 +97,7 @@ class AgentService:
         message: str,
         session_id: Optional[str] = None,
     ) -> dict:
-        from app.domains.agent.graph import AgentState
+        from app.domains.agent.service.graph import AgentState
         initial: AgentState = {
             "user_id": user_id,
             "session_id": session_id,

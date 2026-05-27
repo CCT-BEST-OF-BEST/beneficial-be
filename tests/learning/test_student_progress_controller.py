@@ -2,7 +2,7 @@ from datetime import datetime, timezone
 import pytest
 from fastapi import HTTPException
 
-from app.domains.agent.router import get_my_agent_profile
+from app.domains.agent.controller.router import get_my_agent_profile
 from app.domains.auth.models import User
 from app.domains.progress.controller.router import get_my_progress
 

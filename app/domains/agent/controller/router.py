@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 
-from app.domains.agent.repository import ChatSessionRepository
-from app.domains.agent.schemas import (
+from app.domains.agent.repository.repository import ChatSessionRepository
+from app.domains.agent.schema.schemas import (
     AgentChatRequest,
     AgentChatResponse,
     AgentProfileResponse,
@@ -11,12 +11,12 @@ from app.domains.agent.schemas import (
     ChatSessionResponse,
     WeakConceptResponse,
 )
-from app.domains.agent.service import (
+from app.domains.agent.service.service import (
     AgentService,
     ChatSessionService,
     get_chat_service,
 )
-from app.domains.auth.dependencies import get_current_user
+from app.domains.auth.dependency.dependencies import get_current_user
 from app.domains.auth.models import User
 from app.domains.progress.dependency.dependencies import get_learning_record_service
 from app.domains.progress.service.service import LearningRecordService

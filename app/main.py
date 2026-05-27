@@ -13,9 +13,9 @@ from app.domains.content.stage2.router import router as student_stage2_router
 from app.domains.content.stage3.router import router as student_stage3_router
 from app.domains.progress.controller.router import router as student_progress_router
 from app.domains.developer.router import router as system_router
-from app.domains.auth.router import router as auth_router
-from app.domains.auth.admin_auth_router import router as admin_auth_router
-from app.domains.agent.router import router as agent_router
+from app.domains.auth.controller.router import router as auth_router
+from app.domains.auth.controller.admin_auth_router import router as admin_auth_router
+from app.domains.agent.controller.router import router as agent_router
 from app.common.init.initialization import get_initialization_service
 from app.common.logging.logging_config import get_logger
 

@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException
 
-from app.domains.auth.dependencies import get_current_user
+from app.domains.auth.dependency.dependencies import get_current_user
 from app.domains.auth.models import User
 from app.domains.content.schema.schemas import (
     ContentUnitsResponse,

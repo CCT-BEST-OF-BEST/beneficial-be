@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 
-from app.domains.auth.dependencies import get_current_teacher
+from app.domains.auth.dependency.dependencies import get_current_teacher
 from app.domains.auth.models import User
 from app.domains.instruction.dependency.dependencies import get_instruction_service, get_problem_generator
 from app.domains.instruction.service.generation import OpenAIProblemGenerator
