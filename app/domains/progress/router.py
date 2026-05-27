@@ -1,17 +1,22 @@
 from fastapi import APIRouter, Depends
 
 from app.domains.auth.dependencies import get_current_student
+from app.domains.auth.dependencies import get_current_user
 from app.domains.auth.models import User
-from app.domains.learning.content.service import ContentCatalogService
-from app.domains.learning.dependencies import get_content_catalog_service
-from app.domains.learning.dependencies import get_learning_record_service
-from app.domains.learning.service import LearningRecordService
-from app.domains.learning.student_schemas import StudentProgressResponse
+from app.domains.content.dependencies import get_content_catalog_service
+from app.domains.content.service import ContentCatalogService
+from app.domains.progress.dependencies import get_learning_record_service
+from app.domains.progress.schemas import (
+    LearningRecordResponse,
+    LearningRecordsResponse,
+    StudentProgressResponse,
+)
+from app.domains.progress.service import LearningRecordService
 
-router = APIRouter(prefix="/student/me", tags=["student"])
+router = APIRouter(tags=["student"])
 
 
-@router.get("/progress", response_model=StudentProgressResponse)
+@router.get("/student/me/progress", response_model=StudentProgressResponse)
 def get_my_progress(
     current_user: User = Depends(get_current_student),
     learning_record_service: LearningRecordService = Depends(get_learning_record_service),
@@ -24,6 +29,22 @@ def get_my_progress(
         **metrics,
         progress_rate=progress_rate,
         badges=_build_badges(metrics, progress_rate),
+    )
+
+
+@router.get("/student/learning/records/me", response_model=LearningRecordsResponse)
+def get_my_learning_records(
+    current_user: User = Depends(get_current_user),
+    learning_record_service: LearningRecordService = Depends(get_learning_record_service),
+):
+    records = learning_record_service.get_records(current_user.user_id)
+    response_records = [
+        LearningRecordResponse(**record.model_dump())
+        for record in records
+    ]
+    return LearningRecordsResponse(
+        records=response_records,
+        total_count=len(response_records),
     )
 
 

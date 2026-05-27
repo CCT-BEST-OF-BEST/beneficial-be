@@ -2,17 +2,16 @@ import os
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from app.domains.chat.router import router as chat_router
 from app.domains.classroom.teacher_router import router as teacher_classroom_router
 from app.domains.classroom.student_view_router import router as teacher_student_view_router
 from app.domains.classroom.student_class_router import router as student_class_router
 from app.domains.instruction.teacher_router import router as teacher_instruction_router
 from app.domains.instruction.student_router import router as student_assignment_router
-from app.domains.learning.content.router import router as content_catalog_router
-from app.domains.learning.practice.router import router as student_learning_router
-from app.domains.learning.progress.router import router as student_progress_router
-from app.domains.learning.records.router import router as student_records_router
-from app.domains.learning.stage3.router import router as student_stage3_router
+from app.domains.content.router import router as content_catalog_router
+from app.domains.content.stage1.router import router as student_stage1_router
+from app.domains.content.stage2.router import router as student_stage2_router
+from app.domains.content.stage3.router import router as student_stage3_router
+from app.domains.progress.router import router as student_progress_router
 from app.domains.developer.router import router as system_router
 from app.domains.auth.router import router as auth_router
 from app.domains.auth.admin_auth_router import router as admin_auth_router
@@ -183,10 +182,9 @@ async def shutdown_event():
 app.include_router(auth_router)
 app.include_router(admin_auth_router)
 app.include_router(agent_router)
-app.include_router(chat_router)
-app.include_router(student_learning_router)
 app.include_router(content_catalog_router)
-app.include_router(student_records_router)
+app.include_router(student_stage1_router)
+app.include_router(student_stage2_router)
 app.include_router(student_stage3_router)
 app.include_router(student_progress_router)
 app.include_router(teacher_classroom_router)

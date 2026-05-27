@@ -3,12 +3,12 @@ from datetime import datetime, timezone
 from typing import Any, Dict, Optional, Protocol
 
 from app.common.security import utc_now
-from app.domains.learning.models import (
+from app.domains.progress.models import (
     LearningRecord,
     StudentWeaknessProfile,
     WeakConcept,
 )
-from app.domains.learning.repositories.base import LearningRecordRepository
+from app.domains.progress.repository import LearningRecordRepository
 
 
 CONCEPT_KEY_BY_ANSWER = {

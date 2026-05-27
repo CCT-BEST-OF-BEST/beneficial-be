@@ -1,15 +1,23 @@
 import secrets
-from typing import List, Optional
+from typing import Any, Dict, List, Optional
 
 from app.common.security import utc_now
+from app.common.logging.logging_config import get_logger
 from app.domains.agent.models import AgentDecision, ChatMessage, ChatSession
 from app.domains.agent.repository import ChatSessionRepository
-from app.domains.learning.models import StudentWeaknessProfile
-from app.domains.learning.service import LearningRecordService
+from app.domains.progress.models import StudentWeaknessProfile
+from app.domains.progress.service import LearningRecordService
+from app.infrastructure.db.vector.vector_db import get_vector_db
+from app.infrastructure.embedding.embedding_model import get_embedding_model
+from app.infrastructure.external.openai_client import OpenAIClient
+from app.infrastructure.rag.retriever import RagRetriever
+from app.infrastructure.rag.service import RagService
+from app.infrastructure.search.hybrid_search import get_hybrid_search_service
 
 
 INTERVENTION_COOLDOWN_TURNS = 3  # proactive hint 사이 최소 assistant 턴 수
 RECENT_TURNS = 10                 # Agent가 참조할 최근 대화 수
+logger = get_logger(__name__)
 
 
 class ChatSessionService:
@@ -197,3 +205,105 @@ class AgentService:
             "\n- 설명은 짧고 간단하게."
             f"{hint_instruction}"
         )
+
+
+class ChatService:
+    """Legacy /chat API 서비스. Agent 도메인 내부에서 RAG 채팅을 담당한다."""
+
+    def __init__(
+        self,
+        openai_client: OpenAIClient = None,
+        vector_db=None,
+        embedding_model=None,
+    ):
+        self.openai_client = openai_client or OpenAIClient()
+        self.vector_db = vector_db or get_vector_db()
+        self.embedding_model = embedding_model or get_embedding_model()
+        self.hybrid_search = get_hybrid_search_service()
+        self.rag_service = RagService(
+            retriever=RagRetriever(self.hybrid_search),
+            openai_client=self.openai_client,
+        )
+        self.default_system_prompt = (
+            "너는 초등학생 돌봄선생님이야. "
+            "주어진 참고 자료를 바탕으로 정확하고 친근하게 답변해줘.\n"
+            "아이들에게 친절하게 알려주는 튜터처럼 다정한 반말로 이야기해줘. "
+            "어려운 말은 쓰지 말고, 설명은 짧고 쉽게 해줘. "
+            "참고 자료가 있으면 그것을 우선적으로 활용해줘."
+        )
+
+    async def chat_with_rag(
+        self,
+        prompt: str,
+        collection_name: str = None,
+        top_k: int = 3,
+    ) -> str:
+        try:
+            logger.info(
+                f"[SEARCH] RAG 채팅 시작: '{prompt}' "
+                f"(top_k={top_k}, collection={collection_name or 'all'})"
+            )
+            response = await self.rag_service.answer(
+                query=prompt,
+                system_prompt=self.default_system_prompt,
+                collection_name=collection_name,
+                top_k=top_k,
+            )
+            logger.info(f"[OK] GPT 응답 생성 완료: {len(response)}자")
+            return response
+        except Exception as e:
+            logger.error(f"[ERROR] RAG 채팅 실패: {e}")
+            return f"죄송합니다. 채팅 처리 중 오류가 발생했습니다: {str(e)}"
+
+    async def search_relevant_documents(
+        self,
+        query: str,
+        collection_name: str = None,
+        top_k: int = 5,
+        similarity_threshold: float = 0.3,
+    ) -> List[Dict[str, Any]]:
+        try:
+            search_result = await self.rag_service.search(
+                query=query,
+                collection_name=collection_name,
+                top_k=top_k,
+            )
+            return [
+                doc.model_dump() if hasattr(doc, "model_dump") else doc.dict()
+                for doc in search_result.documents
+            ]
+        except Exception as e:
+            logger.error(f"[ERROR] 하이브리드 검색 실패: {e}")
+            return []
+
+    async def generate_response_with_context(self, prompt: str, context: str) -> str:
+        try:
+            return await self.openai_client.generate_response_with_context(
+                prompt=prompt,
+                context=context,
+                system_prompt=self.default_system_prompt,
+            )
+        except Exception as e:
+            logger.error(f"[ERROR] GPT 응답 생성 실패: {e}")
+            return f"죄송합니다. 응답 생성 중 오류가 발생했습니다: {str(e)}"
+
+    def build_context_from_documents(self, documents: List[Dict[str, Any]]) -> str:
+        from app.infrastructure.rag.schemas import RagDocument
+
+        rag_documents = [RagDocument(**doc) for doc in documents]
+        return self.rag_service.build_context(rag_documents)
+
+    async def simple_chat(self, prompt: str) -> str:
+        try:
+            messages = [
+                {"role": "system", "content": self.default_system_prompt},
+                {"role": "user", "content": prompt},
+            ]
+            return await self.openai_client.chat_completion(messages)
+        except Exception as e:
+            logger.error(f"[ERROR] 간단 채팅 실패: {e}")
+            return f"죄송합니다. 응답 생성 중 오류가 발생했습니다: {str(e)}"
+
+
+def get_chat_service() -> ChatService:
+    return ChatService()

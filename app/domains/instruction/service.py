@@ -10,8 +10,8 @@ from app.domains.instruction.models import (
     GeneratedProblem,
     TeacherAssignment,
 )
-from app.domains.learning.service import CONCEPT_KEY_BY_ANSWER
-from app.domains.instruction.repositories.base import TeacherAssignmentRepository
+from app.domains.progress.service import CONCEPT_KEY_BY_ANSWER
+from app.domains.instruction.repository import TeacherAssignmentRepository
 
 
 class InstructionError(ValueError):

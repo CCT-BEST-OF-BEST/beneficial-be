@@ -2,8 +2,8 @@ import pytest
 from datetime import datetime, timezone
 
 from app.domains.auth.models import User
-from app.domains.learning.content.models import Lesson, Unit
-from app.domains.learning.content.router import get_content_lesson, get_content_units
+from app.domains.content.models import Lesson, Unit
+from app.domains.content.router import get_content_lesson, get_content_units
 
 
 def _user() -> User:

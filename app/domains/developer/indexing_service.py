@@ -68,7 +68,7 @@ class IndexingService:
     async def index_korean_word_problems(self) -> Dict[str, Any]:
         """한국어 단어 문제 데이터를 인덱싱"""
         try:
-            from app.common.data.data_loader.korean_word_problems_loader import get_korean_word_problems
+            from app.infrastructure.loaders.korean_word_problems_loader import get_korean_word_problems
 
             # 데이터 로드
             data = get_korean_word_problems()
@@ -94,7 +94,7 @@ class IndexingService:
     async def index_card_check_data(self) -> Dict[str, Any]:
         """카드 체크 데이터를 인덱싱"""
         try:
-            from app.common.data.data_loader.card_check_loader import get_card_check_data
+            from app.infrastructure.loaders.card_check_loader import get_card_check_data
 
             # 데이터 로드
             data = get_card_check_data()
@@ -120,7 +120,7 @@ class IndexingService:
     async def index_pdf_documents(self) -> Dict[str, Any]:
         """PDF 문서들을 인덱싱"""
         try:
-            from app.common.data.data_loader.pdf_loader import load_pdf_documents
+            from app.infrastructure.loaders.pdf_loader import load_pdf_documents
             
             # PDF 데이터 로드
             pdf_data = load_pdf_documents()
@@ -210,7 +210,7 @@ class IndexingService:
     async def index_pdf_documents(self) -> Dict[str, Any]:
         """PDF 문서들을 인덱싱"""
         try:
-            from app.common.data.data_loader.pdf_loader import load_pdf_documents
+            from app.infrastructure.loaders.pdf_loader import load_pdf_documents
 
             # PDF 데이터 로드
             pdf_data = load_pdf_documents()

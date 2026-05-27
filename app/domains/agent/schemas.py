@@ -1,5 +1,5 @@
 from datetime import datetime
-from typing import List, Optional
+from typing import Any, Dict, List, Optional
 
 from pydantic import BaseModel, Field
 
@@ -46,3 +46,22 @@ class ChatSessionResponse(BaseModel):
     created_at: datetime
     updated_at: datetime
     last_agent_action: Optional[str] = None
+
+
+class ChatRequest(BaseModel):
+    prompt: str = Field(..., description="사용자 질문")
+
+
+class ChatResponse(BaseModel):
+    status: str = Field(..., description="응답 상태")
+    prompt: str = Field(..., description="원본 질문")
+    response: str = Field(..., description="GPT 응답")
+    collection_used: str = Field(..., description="사용된 컬렉션")
+    top_k: int = Field(..., description="참조한 문서 수")
+
+
+class ChatStatusResponse(BaseModel):
+    status: str = Field(..., description="응답 상태")
+    chat_system: str = Field(..., description="채팅 시스템 상태")
+    rag_system: str = Field(..., description="RAG 시스템 상태")
+    collections: Dict[str, Dict[str, Any]] = Field(..., description="컬렉션 정보")

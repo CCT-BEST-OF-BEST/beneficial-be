@@ -5,20 +5,29 @@ from app.domains.agent.schemas import (
     AgentChatRequest,
     AgentChatResponse,
     AgentProfileResponse,
+    ChatRequest,
+    ChatResponse,
+    ChatStatusResponse,
     ChatSessionResponse,
     WeakConceptResponse,
 )
-from app.domains.agent.service import AgentService, ChatSessionService
+from app.domains.agent.service import (
+    AgentService,
+    ChatSessionService,
+    get_chat_service,
+)
 from app.domains.auth.dependencies import get_current_user
 from app.domains.auth.models import User
-from app.domains.learning.dependencies import get_learning_record_service
-from app.domains.learning.service import LearningRecordService
+from app.domains.progress.dependencies import get_learning_record_service
+from app.domains.progress.service import LearningRecordService
 from app.infrastructure.rag.retriever import RagRetriever
 from app.infrastructure.rag.service import RagService
 from app.infrastructure.db.mongo.mongo_client import get_mongo_client
 from app.infrastructure.external.openai_client import get_openai_client
 
-router = APIRouter(prefix="/agent", tags=["agent"])
+router = APIRouter(tags=["agent"])
+agent_router = APIRouter(prefix="/agent", tags=["agent"])
+legacy_chat_router = APIRouter(prefix="/chat", tags=["chat"])
 
 
 def get_chat_session_service() -> ChatSessionService:
@@ -38,7 +47,7 @@ def get_agent_service(
     )
 
 
-@router.post("/chat", response_model=AgentChatResponse)
+@agent_router.post("/chat", response_model=AgentChatResponse)
 async def agent_chat(
     body: AgentChatRequest,
     current_user: User = Depends(get_current_user),
@@ -52,7 +61,7 @@ async def agent_chat(
     return AgentChatResponse(**result)
 
 
-@router.get("/session/{session_id}", response_model=ChatSessionResponse)
+@agent_router.get("/session/{session_id}", response_model=ChatSessionResponse)
 def get_session(
     session_id: str,
     current_user: User = Depends(get_current_user),
@@ -67,7 +76,7 @@ def get_session(
     return ChatSessionResponse(**session.model_dump())
 
 
-@router.delete("/session/{session_id}", status_code=status.HTTP_204_NO_CONTENT)
+@agent_router.delete("/session/{session_id}", status_code=status.HTTP_204_NO_CONTENT)
 def delete_session(
     session_id: str,
     current_user: User = Depends(get_current_user),
@@ -81,7 +90,7 @@ def delete_session(
         )
 
 
-@router.get("/profile/me", response_model=AgentProfileResponse)
+@agent_router.get("/profile/me", response_model=AgentProfileResponse)
 def get_my_agent_profile(
     current_user: User = Depends(get_current_user),
     learning_record_service: LearningRecordService = Depends(get_learning_record_service),
@@ -99,3 +108,60 @@ def get_my_agent_profile(
             WeakConceptResponse(**wc.model_dump()) for wc in profile.weak_concepts
         ],
     )
+
+
+@legacy_chat_router.post("/", response_model=ChatResponse)
+async def chat_with_rag(
+    request: ChatRequest,
+    current_user: User = Depends(get_current_user),
+):
+    try:
+        top_k = 5
+        collection_name = None
+        chat_service = get_chat_service()
+        response = await chat_service.chat_with_rag(
+            prompt=request.prompt,
+            collection_name=collection_name,
+            top_k=top_k,
+        )
+        return ChatResponse(
+            status="success",
+            prompt=request.prompt,
+            response=response,
+            collection_used=collection_name or "all",
+            top_k=top_k,
+        )
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"채팅 실패: {str(e)}")
+
+
+@legacy_chat_router.get("/status", response_model=ChatStatusResponse)
+async def get_chat_status(current_user: User = Depends(get_current_user)):
+    try:
+        chat_service = get_chat_service()
+        collections_info = {}
+        for collection_name in ["korean_word_problems", "card_check", "pdf_documents"]:
+            collection = chat_service.vector_db.get_collection(collection_name)
+            if collection:
+                collections_info[collection_name] = {
+                    "document_count": collection.count(),
+                    "status": "available",
+                }
+            else:
+                collections_info[collection_name] = {
+                    "document_count": 0,
+                    "status": "not_available",
+                }
+
+        return ChatStatusResponse(
+            status="success",
+            chat_system="active",
+            rag_system="available",
+            collections=collections_info,
+        )
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"상태 확인 실패: {str(e)}")
+
+
+router.include_router(agent_router)
+router.include_router(legacy_chat_router)

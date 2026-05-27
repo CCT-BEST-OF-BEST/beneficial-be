@@ -1,6 +1,41 @@
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Protocol
 
 from app.infrastructure.db.mongo.mongo_client import MongoClient
+
+
+class TeacherAssignmentRepository(Protocol):
+    def create_assignment(self, assignment: Dict[str, Any]) -> str:
+        ...
+
+    def find_assignment_by_id(self, assignment_id: str) -> Dict[str, Any] | None:
+        ...
+
+    def find_assignments(
+        self,
+        teacher_id: str,
+        status: str | None = None,
+        class_id: str | None = None,
+        student_id: str | None = None,
+    ) -> List[Dict[str, Any]]:
+        ...
+
+    def find_student_assignments(
+        self,
+        student_id: str,
+        class_ids: list[str],
+        status: str = "assigned",
+        lesson_id: str | None = None,
+        stage: int | None = None,
+    ) -> List[Dict[str, Any]]:
+        ...
+
+    def update_assignment(self, assignment_id: str, fields: Dict[str, Any]) -> bool:
+        ...
+
+
+class StageProblemLookup(Protocol):
+    def find_stage3_full_sentences(self, lesson_id: str) -> set[str]:
+        ...
 
 
 class MongoTeacherAssignmentRepository:
@@ -69,3 +104,20 @@ class MongoTeacherAssignmentRepository:
             {"assignment_id": assignment_id},
             fields,
         )
+
+
+class MongoStageProblemLookup:
+    collection_name = "stage3_problems"
+
+    def __init__(self, mongo_client: MongoClient):
+        self.mongo_client = mongo_client
+
+    def find_stage3_full_sentences(self, lesson_id: str) -> set[str]:
+        data = self.mongo_client.find_one(self.collection_name, {"lesson_id": lesson_id})
+        if not data:
+            return set()
+        return {
+            problem.get("full_sentence", "").strip()
+            for problem in data.get("problems", [])
+            if problem.get("full_sentence")
+        }

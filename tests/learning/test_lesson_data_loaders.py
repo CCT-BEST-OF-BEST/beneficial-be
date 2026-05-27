@@ -1,5 +1,5 @@
-from app.common.data.data_loader.stage2_problems_loader import STAGE2_LESSON_DATA
-from app.common.data.data_loader.stage3_problems_loader import STAGE3_LESSON_DATA
+from app.infrastructure.loaders.stage2_problems_loader import STAGE2_LESSON_DATA
+from app.infrastructure.loaders.stage3_problems_loader import STAGE3_LESSON_DATA
 
 
 def test_stage2_loader_defines_lesson_scoped_documents():

@@ -1,8 +1,8 @@
-from app.domains.learning.stage3.service import Stage3Service
-from app.domains.learning.practice.router import (
-    _find_stage2_lesson_data,
-    _find_stage2_problem_data,
-    _stage1_pair_response,
+from app.domains.content.stage3.service import Stage3Service
+from app.domains.content.stage1.service import stage1_pair_response
+from app.domains.content.stage2.service import (
+    find_stage2_lesson_data,
+    find_stage2_problem_data,
 )
 
 
@@ -24,7 +24,7 @@ def test_stage1_card_response_removes_image_paths():
         "order": 1,
     }
 
-    response = _stage1_pair_response(pair)
+    response = stage1_pair_response(pair)
     data = response.model_dump()
 
     assert "front_image" not in data["card1"]
@@ -92,7 +92,7 @@ def test_stage2_lookup_prefers_new_lesson_id():
     current = {"lesson_id": "lesson_1", "title": "current"}
     legacy = {"lesson_id": "lesson1", "title": "legacy"}
 
-    data = _find_stage2_lesson_data(FakeStage2MongoClient([legacy, current]))
+    data = find_stage2_lesson_data(FakeStage2MongoClient([legacy, current]))
 
     assert data == current
 
@@ -100,7 +100,7 @@ def test_stage2_lookup_prefers_new_lesson_id():
 def test_stage2_lookup_falls_back_to_legacy_lesson_id():
     legacy = {"lesson_id": "lesson1", "title": "legacy"}
 
-    data = _find_stage2_lesson_data(FakeStage2MongoClient([legacy]))
+    data = find_stage2_lesson_data(FakeStage2MongoClient([legacy]))
 
     assert data == legacy
 
@@ -115,7 +115,7 @@ def test_stage2_problem_lookup_finds_problem_in_other_lesson_doc():
         "problems": [{"problem_id": 13}],
     }
 
-    data = _find_stage2_problem_data(
+    data = find_stage2_problem_data(
         FakeStage2MongoClient([lesson_1, lesson_4]),
         problem_id=13,
     )

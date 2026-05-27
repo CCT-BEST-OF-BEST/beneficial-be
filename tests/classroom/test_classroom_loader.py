@@ -1,4 +1,4 @@
-from app.common.data.data_loader import classroom_loader
+from app.infrastructure.loaders import classroom_loader
 
 
 class FakeMongoClient:

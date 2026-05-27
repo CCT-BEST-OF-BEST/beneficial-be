@@ -5,9 +5,9 @@ from app.domains.auth.dependencies import get_current_teacher
 from app.domains.auth.models import User
 from app.domains.classroom.dependencies import get_classroom_service
 from app.domains.classroom.service import ClassroomService
-from app.domains.learning.dependencies import get_learning_record_service
-from app.domains.learning.schemas import LearningRecordResponse, LearningRecordsResponse
-from app.domains.learning.service import LearningRecordService
+from app.domains.progress.dependencies import get_learning_record_service
+from app.domains.progress.schemas import LearningRecordResponse, LearningRecordsResponse
+from app.domains.progress.service import LearningRecordService
 
 router = APIRouter(prefix="/teacher/students", tags=["teacher"])
 

@@ -1,6 +1,6 @@
 from datetime import datetime, timedelta, timezone
 
-from app.domains.learning.service import (
+from app.domains.progress.service import (
     LearningRecordService,
     build_problem_key,
     infer_lesson_id,

@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException
 
 from app.common.logging.logging_config import get_logger
-from app.domains.learning.stage3.schemas import (
+from app.domains.content.stage3.schemas import (
     Stage3AnswerRequest,
     Stage3AnswerResponse,
     Stage3ProblemsResponse,
@@ -9,10 +9,10 @@ from app.domains.learning.stage3.schemas import (
 )
 from app.domains.auth.dependencies import get_current_user
 from app.domains.auth.models import User
-from app.domains.learning.dependencies import get_learning_record_service
+from app.domains.progress.dependencies import get_learning_record_service
 from app.domains.instruction.dependencies import get_instruction_service
 from app.domains.instruction.service import InstructionService
-from app.domains.learning.stage3.service import (
+from app.domains.content.stage3.service import (
     DEFAULT_STAGE3_LESSON_ID,
     get_stage3_service,
 )

@@ -13,13 +13,13 @@ import chromadb
 
 from app.common.dependency.dependencies import initialize_dependencies
 from app.common.logging.logging_config import get_logger
-from app.common.data.data_loader.classroom_loader import load_classrooms
-from app.common.data.data_loader.content_hierarchy_loader import load_content_hierarchy
-from app.common.data.data_loader.hypothetical_questions_loader import build_hypothetical_questions
-from app.common.data.data_loader.seed_mongo_loader import seed_mongo_data
-from app.common.data.data_loader.stage1_cards_loader import load_stage1_cards
-from app.common.data.data_loader.stage2_problems_loader import load_stage2_problems
-from app.common.data.data_loader.stage3_problems_loader import load_stage3_problems
+from app.infrastructure.loaders.classroom_loader import load_classrooms
+from app.infrastructure.loaders.content_hierarchy_loader import load_content_hierarchy
+from app.infrastructure.loaders.hypothetical_questions_loader import build_hypothetical_questions
+from app.infrastructure.loaders.seed_mongo_loader import seed_mongo_data
+from app.infrastructure.loaders.stage1_cards_loader import load_stage1_cards
+from app.infrastructure.loaders.stage2_problems_loader import load_stage2_problems
+from app.infrastructure.loaders.stage3_problems_loader import load_stage3_problems
 from app.domains.developer.indexing_service import get_indexing_service
 from app.infrastructure.db.mongo.indexes import ensure_mongo_indexes
 from app.infrastructure.db.mongo.mongo_client import get_mongo_client

@@ -1,7 +1,7 @@
 from pydantic import BaseModel, Field
 
 from app.domains.instruction.models import GeneratedProblem
-from app.domains.learning.service import CONCEPT_KEY_BY_ANSWER
+from app.domains.progress.service import CONCEPT_KEY_BY_ANSWER
 from app.infrastructure.external.openai_client import OpenAIClient
 
 
