@@ -16,7 +16,7 @@ from app.domains.classroom.dependency.classroom_dependencies import get_classroo
 from app.domains.classroom.service.classroom_service import ClassroomService
 from app.domains.progress.dependency.learning_record_dependencies import get_learning_record_service
 from app.domains.progress.service.learning_record_service import LearningRecordService
-from app.domains.classroom.schema.schemas import (
+from app.domains.classroom.schema.classroom_schemas import (
     AddStudentRequest,
     CreateClassRequest,
     TeacherClassesResponse,

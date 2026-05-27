@@ -10,7 +10,7 @@ from app.domains.instruction.controller.teacher_router import (
     generate_problems,
 )
 from app.domains.instruction.models import GeneratedProblem
-from app.domains.instruction.schema.schemas import (
+from app.domains.instruction.schema.instruction_schemas import (
     CreateAssignmentDraftRequest,
     GeneratedProblemRequest,
     GenerateProblemsRequest,

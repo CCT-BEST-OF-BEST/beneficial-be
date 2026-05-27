@@ -11,7 +11,7 @@ from app.domains.auth.models import User
 from app.domains.content.stage3.schemas import Stage3AnswerRequest, Stage3AnswerResponse
 from app.domains.content.stage3.service import DEFAULT_STAGE3_LESSON_ID, get_stage3_service
 from app.domains.instruction.dependency.instruction_dependencies import get_instruction_service
-from app.domains.instruction.schema.schemas import (
+from app.domains.instruction.schema.instruction_schemas import (
     StudentAssignmentListResponse,
     StudentAssignmentProblemResponse,
     StudentAssignmentResponse,

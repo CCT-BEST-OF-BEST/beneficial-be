@@ -14,7 +14,7 @@ from app.domains.auth.models import User
 from app.domains.classroom.dependency.classroom_dependencies import get_classroom_service
 from app.domains.classroom.service.classroom_service import ClassroomService
 from app.domains.progress.dependency.learning_record_dependencies import get_learning_record_service
-from app.domains.progress.schema.schemas import (
+from app.domains.progress.schema.learning_record_schemas import (
     LearningRecordResponse,
     LearningRecordsResponse,
     StudentWeaknessProfileResponse,

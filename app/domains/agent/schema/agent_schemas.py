@@ -3,7 +3,7 @@ from typing import Any, Dict, List, Optional
 
 from pydantic import BaseModel, Field
 
-from app.domains.progress.schema.schemas import WeakConceptResponse, StudentWeaknessProfileResponse
+from app.domains.progress.schema.learning_record_schemas import WeakConceptResponse, StudentWeaknessProfileResponse
 
 # progress 도메인 스키마를 agent 라우터에서도 쓸 수 있도록 re-export
 AgentProfileResponse = StudentWeaknessProfileResponse

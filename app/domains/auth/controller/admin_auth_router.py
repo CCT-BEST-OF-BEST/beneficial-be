@@ -6,7 +6,7 @@ from pydantic import BaseModel
 
 from app.common.security import create_access_token, create_refresh_token, hash_refresh_token, utc_now
 from app.domains.auth.service.auth_service import ACCESS_TOKEN_EXPIRE_SECONDS, REFRESH_TOKEN_EXPIRE_DAYS
-from app.domains.auth.schema.schemas import AuthTokenResponse, UserResponse
+from app.domains.auth.schema.auth_schemas import AuthTokenResponse, UserResponse
 
 router = APIRouter(prefix="/admin/auth", tags=["admin-auth"])
 

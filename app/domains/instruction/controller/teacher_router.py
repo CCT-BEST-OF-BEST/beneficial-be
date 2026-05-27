@@ -5,7 +5,7 @@ from app.domains.auth.models import User
 from app.domains.instruction.dependency.instruction_dependencies import get_instruction_service, get_problem_generator
 from app.domains.instruction.service.generation import OpenAIProblemGenerator
 from app.domains.instruction.models import GeneratedProblem
-from app.domains.instruction.schema.schemas import (
+from app.domains.instruction.schema.instruction_schemas import (
     AssignmentListResponse,
     AssignmentResponse,
     CreateAssignmentDraftRequest,
