@@ -3,15 +3,15 @@ import os
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from app.domains.classroom.controller.teacher_class_router import router as teacher_classroom_router
-from app.domains.progress.teacher_router import router as teacher_student_view_router
+from app.domains.progress.controller.teacher_router import router as teacher_student_view_router
 from app.domains.classroom.controller.student_class_router import router as student_class_router
-from app.domains.instruction.teacher_router import router as teacher_instruction_router
-from app.domains.instruction.student_router import router as student_assignment_router, stage3_router as student_stage3_orchestration_router
+from app.domains.instruction.controller.teacher_router import router as teacher_instruction_router
+from app.domains.instruction.controller.student_router import router as student_assignment_router, stage3_router as student_stage3_orchestration_router
 from app.domains.content.controller.router import router as content_catalog_router
 from app.domains.content.stage1.router import router as student_stage1_router
 from app.domains.content.stage2.router import router as student_stage2_router
 from app.domains.content.stage3.router import router as student_stage3_router
-from app.domains.progress.router import router as student_progress_router
+from app.domains.progress.controller.router import router as student_progress_router
 from app.domains.developer.router import router as system_router
 from app.domains.auth.router import router as auth_router
 from app.domains.auth.admin_auth_router import router as admin_auth_router

@@ -2,10 +2,10 @@ from fastapi import APIRouter, Depends, HTTPException, Query, status
 
 from app.domains.auth.dependencies import get_current_teacher
 from app.domains.auth.models import User
-from app.domains.instruction.dependencies import get_instruction_service, get_problem_generator
-from app.domains.instruction.generation import OpenAIProblemGenerator
+from app.domains.instruction.dependency.dependencies import get_instruction_service, get_problem_generator
+from app.domains.instruction.service.generation import OpenAIProblemGenerator
 from app.domains.instruction.models import GeneratedProblem
-from app.domains.instruction.schemas import (
+from app.domains.instruction.schema.schemas import (
     AssignmentListResponse,
     AssignmentResponse,
     CreateAssignmentDraftRequest,
@@ -13,7 +13,7 @@ from app.domains.instruction.schemas import (
     GenerateProblemsResponse,
     ProblemValidationResponse,
 )
-from app.domains.instruction.service import (
+from app.domains.instruction.service.service import (
     AssignmentAccessError,
     AssignmentNotFoundError,
     InstructionError,

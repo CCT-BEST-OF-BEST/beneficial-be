@@ -3,6 +3,11 @@ from typing import Any, Dict, List, Protocol
 from app.infrastructure.db.mongo.mongo_client import MongoClient
 
 
+class LearningClassroomRepository(Protocol):
+    def find_classes_by_student(self, student_id: str) -> list[dict[str, Any]]:
+        ...
+
+
 class LearningRecordRepository(Protocol):
     def create_record(self, record: Dict[str, Any]) -> str:
         ...

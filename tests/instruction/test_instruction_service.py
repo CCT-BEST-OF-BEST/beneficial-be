@@ -5,7 +5,7 @@ import pytest
 from app.domains.auth.models import User
 from app.domains.classroom.models import Classroom
 from app.domains.instruction.models import GeneratedProblem
-from app.domains.instruction.service import (
+from app.domains.instruction.service.service import (
     AssignmentAccessError,
     InstructionService,
     InvalidAssignmentTransitionError,

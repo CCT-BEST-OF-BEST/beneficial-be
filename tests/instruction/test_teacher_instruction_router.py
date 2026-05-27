@@ -4,18 +4,18 @@ import pytest
 from fastapi import HTTPException
 
 from app.domains.auth.models import User
-from app.domains.instruction.teacher_router import (
+from app.domains.instruction.controller.teacher_router import (
     assign_assignment,
     create_assignment_draft,
     generate_problems,
 )
 from app.domains.instruction.models import GeneratedProblem
-from app.domains.instruction.schemas import (
+from app.domains.instruction.schema.schemas import (
     CreateAssignmentDraftRequest,
     GeneratedProblemRequest,
     GenerateProblemsRequest,
 )
-from app.domains.instruction.service import InstructionService
+from app.domains.instruction.service.service import InstructionService
 from tests.instruction.test_instruction_service import (
     FakeAssignmentRepository,
     FakeClassroomService,

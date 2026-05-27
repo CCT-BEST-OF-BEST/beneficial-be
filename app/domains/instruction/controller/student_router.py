@@ -10,14 +10,14 @@ from app.domains.auth.dependencies import get_current_student
 from app.domains.auth.models import User
 from app.domains.content.stage3.schemas import Stage3AnswerRequest, Stage3AnswerResponse
 from app.domains.content.stage3.service import DEFAULT_STAGE3_LESSON_ID, get_stage3_service
-from app.domains.instruction.dependencies import get_instruction_service
-from app.domains.instruction.schemas import (
+from app.domains.instruction.dependency.dependencies import get_instruction_service
+from app.domains.instruction.schema.schemas import (
     StudentAssignmentListResponse,
     StudentAssignmentProblemResponse,
     StudentAssignmentResponse,
 )
-from app.domains.instruction.service import InstructionService
-from app.domains.progress.dependencies import get_learning_record_service
+from app.domains.instruction.service.service import InstructionService
+from app.domains.progress.dependency.dependencies import get_learning_record_service
 from app.common.logging.logging_config import get_logger
 
 logger = get_logger(__name__)

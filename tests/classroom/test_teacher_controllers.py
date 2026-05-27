@@ -6,7 +6,7 @@ from fastapi import HTTPException
 
 from app.domains.auth.models import User
 from app.domains.classroom.controller.teacher_class_router import list_class_students, list_my_classes
-from app.domains.progress.teacher_router import get_student_records
+from app.domains.progress.controller.teacher_router import get_student_records
 
 
 def _user(user_id: str = "teacher_1", role: str = "teacher") -> User:

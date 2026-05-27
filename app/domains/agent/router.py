@@ -18,8 +18,8 @@ from app.domains.agent.service import (
 )
 from app.domains.auth.dependencies import get_current_user
 from app.domains.auth.models import User
-from app.domains.progress.dependencies import get_learning_record_service
-from app.domains.progress.service import LearningRecordService
+from app.domains.progress.dependency.dependencies import get_learning_record_service
+from app.domains.progress.service.service import LearningRecordService
 from app.infrastructure.rag.retriever import RagRetriever
 from app.infrastructure.rag.service import RagService
 from app.infrastructure.db.mongo.mongo_client import get_mongo_client

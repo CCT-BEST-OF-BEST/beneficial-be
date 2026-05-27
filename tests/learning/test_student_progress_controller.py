@@ -4,7 +4,7 @@ from fastapi import HTTPException
 
 from app.domains.agent.router import get_my_agent_profile
 from app.domains.auth.models import User
-from app.domains.progress.router import get_my_progress
+from app.domains.progress.controller.router import get_my_progress
 
 
 def _user(role: str = "student") -> User:
@@ -37,6 +37,12 @@ class FakeLearningRecordService:
             SimpleRecord("lesson_1", 2, True),
             SimpleRecord("lesson_2", 2, True),
         ]
+
+    def calculate_progress_rate(self, user_id, units_with_lessons):
+        return 40
+
+    def build_progress_badges(self, metrics, progress_rate):
+        return ["첫 학습 시작", "연속 정답"]
 
 
 class FakeContentService:
