@@ -13,7 +13,7 @@ from app.domains.auth.dependency.dependencies import get_current_user
 from app.domains.auth.models import User
 from app.domains.classroom.dependency.dependencies import get_classroom_service
 from app.domains.classroom.schema.schemas import StudentMyClassResponse
-from app.domains.classroom.service.service import ClassroomService
+from app.domains.classroom.service.classroom_service import ClassroomService
 
 # 학생 관점의 "내 반" 단일 리소스.
 router = APIRouter(prefix="/student/my-class", tags=["student"])

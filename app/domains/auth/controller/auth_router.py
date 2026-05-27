@@ -10,7 +10,7 @@ from app.domains.auth.schema.schemas import (
     SignupRequest,
     UserResponse,
 )
-from app.domains.auth.service.service import (
+from app.domains.auth.service.auth_service import (
     AuthError,
     AuthService,
     DuplicateUserError,

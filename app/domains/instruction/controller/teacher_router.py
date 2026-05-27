@@ -13,7 +13,7 @@ from app.domains.instruction.schema.schemas import (
     GenerateProblemsResponse,
     ProblemValidationResponse,
 )
-from app.domains.instruction.service.service import (
+from app.domains.instruction.service.instruction_service import (
     AssignmentAccessError,
     AssignmentNotFoundError,
     InstructionError,

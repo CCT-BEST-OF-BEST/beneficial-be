@@ -9,7 +9,7 @@ from app.domains.content.schema.schemas import (
     UnitSummaryResponse,
 )
 from app.domains.content.dependency.dependencies import get_content_catalog_service
-from app.domains.content.service.service import ContentCatalogService
+from app.domains.content.service.catalog_service import ContentCatalogService
 
 router = APIRouter(prefix="/content", tags=["content"])
 

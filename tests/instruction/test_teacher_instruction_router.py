@@ -15,7 +15,7 @@ from app.domains.instruction.schema.schemas import (
     GeneratedProblemRequest,
     GenerateProblemsRequest,
 )
-from app.domains.instruction.service.service import InstructionService
+from app.domains.instruction.service.instruction_service import InstructionService
 from tests.instruction.test_instruction_service import (
     FakeAssignmentRepository,
     FakeClassroomService,

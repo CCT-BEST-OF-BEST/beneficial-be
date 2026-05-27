@@ -2,7 +2,7 @@ from app.domains.classroom.dependency.dependencies import get_classroom_service
 from app.domains.instruction.service.generation import OpenAIProblemGenerator
 from app.domains.instruction.repository.repository import MongoTeacherAssignmentRepository
 from app.domains.instruction.repository.repository import MongoStageProblemLookup
-from app.domains.instruction.service.service import InstructionService
+from app.domains.instruction.service.instruction_service import InstructionService
 from app.infrastructure.external.openai_client import get_openai_client
 from app.infrastructure.db.mongo.mongo_client import get_mongo_client
 

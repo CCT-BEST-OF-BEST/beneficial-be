@@ -16,7 +16,7 @@ from app.domains.content.stage2.service import (
     find_stage2_problem_data,
 )
 from app.domains.progress.dependency.dependencies import get_learning_record_service
-from app.domains.progress.service.service import LearningRecordService
+from app.domains.progress.service.learning_record_service import LearningRecordService
 from app.infrastructure.db.mongo.mongo_client import get_mongo_client
 
 router = APIRouter(prefix="/student/learning", tags=["student-learning"])

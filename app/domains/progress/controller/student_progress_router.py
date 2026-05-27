@@ -4,14 +4,14 @@ from app.domains.auth.dependency.dependencies import get_current_student
 from app.domains.auth.dependency.dependencies import get_current_user
 from app.domains.auth.models import User
 from app.domains.content.dependency.dependencies import get_content_catalog_service
-from app.domains.content.service.service import ContentCatalogService
+from app.domains.content.service.catalog_service import ContentCatalogService
 from app.domains.progress.dependency.dependencies import get_learning_record_service
 from app.domains.progress.schema.schemas import (
     LearningRecordResponse,
     LearningRecordsResponse,
     StudentProgressResponse,
 )
-from app.domains.progress.service.service import LearningRecordService
+from app.domains.progress.service.learning_record_service import LearningRecordService
 
 router = APIRouter(tags=["student"])
 

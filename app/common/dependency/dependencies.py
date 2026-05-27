@@ -11,7 +11,7 @@ from app.infrastructure.external.openai_client import (
 )
 from app.infrastructure.db.vector.vector_db import get_vector_db
 from app.infrastructure.embedding.embedding_model import get_embedding_model
-from app.domains.agent.service.service import ChatService
+from app.domains.agent.service.agent_service import ChatService
 from app.common.logging.logging_config import get_logger
 
 logger = get_logger(__name__)

@@ -6,7 +6,7 @@ from app.common.logging.logging_config import get_logger
 from app.domains.agent.models import AgentDecision, ChatMessage, ChatSession
 from app.domains.agent.repository.repository import ChatSessionRepository
 from app.domains.progress.models import StudentWeaknessProfile
-from app.domains.progress.service.service import LearningRecordService
+from app.domains.progress.service.learning_record_service import LearningRecordService
 from app.infrastructure.db.vector.vector_db import get_vector_db
 from app.infrastructure.embedding.embedding_model import get_embedding_model
 from app.infrastructure.external.openai_client import OpenAIClient

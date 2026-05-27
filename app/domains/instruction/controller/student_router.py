@@ -16,7 +16,7 @@ from app.domains.instruction.schema.schemas import (
     StudentAssignmentProblemResponse,
     StudentAssignmentResponse,
 )
-from app.domains.instruction.service.service import InstructionService
+from app.domains.instruction.service.instruction_service import InstructionService
 from app.domains.progress.dependency.dependencies import get_learning_record_service
 from app.common.logging.logging_config import get_logger
 

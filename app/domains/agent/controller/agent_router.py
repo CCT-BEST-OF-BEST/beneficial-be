@@ -11,7 +11,7 @@ from app.domains.agent.schema.schemas import (
     ChatSessionResponse,
     WeakConceptResponse,
 )
-from app.domains.agent.service.service import (
+from app.domains.agent.service.agent_service import (
     AgentService,
     ChatSessionService,
     get_chat_service,
@@ -19,7 +19,7 @@ from app.domains.agent.service.service import (
 from app.domains.auth.dependency.dependencies import get_current_user
 from app.domains.auth.models import User
 from app.domains.progress.dependency.dependencies import get_learning_record_service
-from app.domains.progress.service.service import LearningRecordService
+from app.domains.progress.service.learning_record_service import LearningRecordService
 from app.infrastructure.rag.retriever import RagRetriever
 from app.infrastructure.rag.service import RagService
 from app.infrastructure.db.mongo.mongo_client import get_mongo_client

@@ -1,5 +1,5 @@
 from app.domains.content.repository.repository import MongoContentCatalogRepository
-from app.domains.content.service.service import ContentCatalogService
+from app.domains.content.service.catalog_service import ContentCatalogService
 from app.infrastructure.db.mongo.mongo_client import get_mongo_client
 
 

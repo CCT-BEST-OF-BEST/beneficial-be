@@ -13,9 +13,9 @@ from fastapi import APIRouter, Depends, HTTPException, Query, status
 from app.domains.auth.dependency.dependencies import get_current_teacher
 from app.domains.auth.models import User
 from app.domains.classroom.dependency.dependencies import get_classroom_service
-from app.domains.classroom.service.service import ClassroomService
+from app.domains.classroom.service.classroom_service import ClassroomService
 from app.domains.progress.dependency.dependencies import get_learning_record_service
-from app.domains.progress.service.service import LearningRecordService
+from app.domains.progress.service.learning_record_service import LearningRecordService
 from app.domains.classroom.schema.schemas import (
     AddStudentRequest,
     CreateClassRequest,
