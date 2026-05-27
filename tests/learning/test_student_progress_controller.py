@@ -2,9 +2,9 @@ from datetime import datetime, timezone
 import pytest
 from fastapi import HTTPException
 
-from app.domains.agent.controller.router import get_my_agent_profile
+from app.domains.agent.controller.agent_router import get_my_agent_profile
 from app.domains.auth.models import User
-from app.domains.progress.controller.router import get_my_progress
+from app.domains.progress.controller.student_progress_router import get_my_progress
 
 
 def _user(role: str = "student") -> User:
