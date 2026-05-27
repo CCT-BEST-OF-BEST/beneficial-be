@@ -3,17 +3,10 @@ from typing import Any, Dict, List, Optional
 
 from pydantic import BaseModel, Field
 
+from app.domains.progress.schemas import WeakConceptResponse, StudentWeaknessProfileResponse
 
-class WeakConceptResponse(BaseModel):
-    concept_key: str
-    wrong_count: int
-    last_wrong_at: datetime
-    priority: float
-
-
-class AgentProfileResponse(BaseModel):
-    user_id: str
-    weak_concepts: List[WeakConceptResponse] = Field(default_factory=list)
+# progress 도메인 스키마를 agent 라우터에서도 쓸 수 있도록 re-export
+AgentProfileResponse = StudentWeaknessProfileResponse
 
 
 class AgentChatRequest(BaseModel):

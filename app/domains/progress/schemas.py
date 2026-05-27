@@ -1,6 +1,19 @@
 from datetime import datetime
+from typing import List
 
 from pydantic import BaseModel, Field
+
+
+class WeakConceptResponse(BaseModel):
+    concept_key: str
+    wrong_count: int
+    last_wrong_at: datetime
+    priority: float
+
+
+class StudentWeaknessProfileResponse(BaseModel):
+    user_id: str
+    weak_concepts: List[WeakConceptResponse] = Field(default_factory=list)
 
 
 class LearningRecordResponse(BaseModel):
