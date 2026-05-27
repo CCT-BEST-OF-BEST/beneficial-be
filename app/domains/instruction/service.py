@@ -4,7 +4,7 @@ from pydantic import BaseModel, Field
 
 from app.common.security import utc_now
 from app.domains.auth.models import User
-from app.domains.classroom.service import ClassroomService
+from app.domains.classroom.service.service import ClassroomService
 from app.domains.instruction.models import (
     AssignmentStatus,
     GeneratedProblem,
