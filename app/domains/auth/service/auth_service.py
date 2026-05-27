@@ -12,7 +12,7 @@ from app.common.security import (
     verify_password,
 )
 from app.domains.auth.models import User
-from app.domains.auth.repository.repository import AuthRepository
+from app.domains.auth.repository.auth_repository import AuthRepository
 from app.domains.auth.whitelist import is_developer_email, is_teacher_email
 
 

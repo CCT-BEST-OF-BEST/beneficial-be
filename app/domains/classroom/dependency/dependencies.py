@@ -1,4 +1,4 @@
-from app.domains.classroom.repository.repository import MongoClassroomRepository
+from app.domains.classroom.repository.classroom_repository import MongoClassroomRepository
 from app.domains.classroom.service.classroom_service import ClassroomService
 from app.infrastructure.db.mongo.mongo_client import get_mongo_client
 

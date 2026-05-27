@@ -4,7 +4,7 @@ from typing import Any, Dict, List, Optional
 from app.common.security import utc_now
 from app.common.logging.logging_config import get_logger
 from app.domains.agent.models import AgentDecision, ChatMessage, ChatSession
-from app.domains.agent.repository.repository import ChatSessionRepository
+from app.domains.agent.repository.chat_session_repository import ChatSessionRepository
 from app.domains.progress.models import StudentWeaknessProfile
 from app.domains.progress.service.learning_record_service import LearningRecordService
 from app.infrastructure.db.vector.vector_db import get_vector_db

@@ -3,7 +3,7 @@ from datetime import datetime, timezone
 
 from app.domains.auth.models import User
 from app.domains.classroom.models import Classroom
-from app.domains.classroom.repository.repository import ClassroomRepository
+from app.domains.classroom.repository.classroom_repository import ClassroomRepository
 
 
 class ClassroomService:

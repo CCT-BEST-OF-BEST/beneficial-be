@@ -6,7 +6,7 @@ from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 
 from app.common.security import TokenError, decode_access_token
 from app.domains.auth.models import User
-from app.domains.auth.repository.repository import AuthRepository
+from app.domains.auth.repository.auth_repository import AuthRepository
 from app.domains.auth.service.auth_service import AuthService
 from app.infrastructure.db.mongo.mongo_client import get_mongo_client
 

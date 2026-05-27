@@ -8,7 +8,7 @@ from app.domains.progress.models import (
     StudentWeaknessProfile,
     WeakConcept,
 )
-from app.domains.progress.repository.repository import LearningClassroomRepository, LearningRecordRepository
+from app.domains.progress.repository.learning_record_repository import LearningClassroomRepository, LearningRecordRepository
 from app.domains.progress.util.util import (
     _calculate_priority,
     _record_created_at,

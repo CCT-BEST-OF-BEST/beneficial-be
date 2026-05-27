@@ -10,7 +10,7 @@ from app.domains.instruction.models import (
     GeneratedProblem,
     TeacherAssignment,
 )
-from app.domains.instruction.repository.repository import StageProblemLookup, TeacherAssignmentRepository
+from app.domains.instruction.repository.assignment_repository import StageProblemLookup, TeacherAssignmentRepository
 from app.domains.instruction.validation.validation import (
     allowed_concept_keys,
     normalize_sentence,
