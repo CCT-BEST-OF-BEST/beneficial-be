@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException
 
 from app.common.logging.logging_config import get_logger
-from app.domains.auth.dependency.dependencies import get_current_user
+from app.domains.auth.dependency.auth_dependencies import get_current_user
 from app.domains.auth.models import User
 from app.domains.auth.whitelist import is_answer_bypass_email
 from app.domains.content.stage2.schemas import (
@@ -15,7 +15,7 @@ from app.domains.content.stage2.service import (
     find_stage2_lesson_data,
     find_stage2_problem_data,
 )
-from app.domains.progress.dependency.dependencies import get_learning_record_service
+from app.domains.progress.dependency.learning_record_dependencies import get_learning_record_service
 from app.domains.progress.service.learning_record_service import LearningRecordService
 from app.infrastructure.db.mongo.mongo_client import get_mongo_client
 

@@ -9,9 +9,9 @@
 """
 from fastapi import APIRouter, Depends
 
-from app.domains.auth.dependency.dependencies import get_current_user
+from app.domains.auth.dependency.auth_dependencies import get_current_user
 from app.domains.auth.models import User
-from app.domains.classroom.dependency.dependencies import get_classroom_service
+from app.domains.classroom.dependency.classroom_dependencies import get_classroom_service
 from app.domains.classroom.schema.schemas import StudentMyClassResponse
 from app.domains.classroom.service.classroom_service import ClassroomService
 

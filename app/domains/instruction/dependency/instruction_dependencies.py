@@ -1,4 +1,4 @@
-from app.domains.classroom.dependency.dependencies import get_classroom_service
+from app.domains.classroom.dependency.classroom_dependencies import get_classroom_service
 from app.domains.instruction.service.generation import OpenAIProblemGenerator
 from app.domains.instruction.repository.assignment_repository import MongoTeacherAssignmentRepository
 from app.domains.instruction.repository.assignment_repository import MongoStageProblemLookup

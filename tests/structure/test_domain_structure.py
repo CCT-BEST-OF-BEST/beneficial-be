@@ -17,7 +17,7 @@ def test_domain_packages_are_importable():
         "app.domains.classroom.controller.teacher_class_router",
         "app.domains.classroom.controller.student_class_router",
         "app.domains.progress.controller.teacher_student_router",
-        "app.domains.classroom.dependency.dependencies",
+        "app.domains.classroom.dependency.classroom_dependencies",
         "app.domains.classroom.models",
         "app.domains.classroom.repository.classroom_repository",
         "app.domains.classroom.service.classroom_service",
