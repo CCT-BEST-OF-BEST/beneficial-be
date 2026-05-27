@@ -6,8 +6,8 @@ from app.domains.classroom.controller.teacher_class_router import router as teac
 from app.domains.progress.teacher_router import router as teacher_student_view_router
 from app.domains.classroom.controller.student_class_router import router as student_class_router
 from app.domains.instruction.teacher_router import router as teacher_instruction_router
-from app.domains.instruction.student_router import router as student_assignment_router
-from app.domains.content.router import router as content_catalog_router
+from app.domains.instruction.student_router import router as student_assignment_router, stage3_router as student_stage3_orchestration_router
+from app.domains.content.controller.router import router as content_catalog_router
 from app.domains.content.stage1.router import router as student_stage1_router
 from app.domains.content.stage2.router import router as student_stage2_router
 from app.domains.content.stage3.router import router as student_stage3_router
@@ -192,6 +192,7 @@ app.include_router(teacher_student_view_router)
 app.include_router(student_class_router)
 app.include_router(teacher_instruction_router)
 app.include_router(student_assignment_router)
+app.include_router(student_stage3_orchestration_router)
 app.include_router(system_router)
 
 

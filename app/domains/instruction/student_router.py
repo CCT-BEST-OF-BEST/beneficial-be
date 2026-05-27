@@ -1,17 +1,15 @@
-"""학생이 교사가 배정한 학습 과제를 조회하는 Instruction 라우터.
+"""학생 관점의 Instruction 라우터.
 
-경로 prefix: /student/learning/assignments
-주 사용자: 학생
-
-classroom/student_class_router.py와 다른 점:
-- classroom/student_class_router.py는 학생의 소속 반 정보를 조회한다.
-- 이 파일은 교사가 배정한 Stage 3 복습/과제 목록을 조회한다.
-- 즉, 반 소속 정보가 아니라 instruction 도메인의 "배정 과제" 리소스다.
+router        : /student/learning/assignments  — 배정 과제 목록 조회
+stage3_router : /student/learning/stage3       — 다음 문제 조회 / 답안 제출
+                (content + instruction 오케스트레이션. instruction 계층에서 담당)
 """
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, HTTPException, Query
 
 from app.domains.auth.dependencies import get_current_student
 from app.domains.auth.models import User
+from app.domains.content.stage3.schemas import Stage3AnswerRequest, Stage3AnswerResponse
+from app.domains.content.stage3.service import DEFAULT_STAGE3_LESSON_ID, get_stage3_service
 from app.domains.instruction.dependencies import get_instruction_service
 from app.domains.instruction.schemas import (
     StudentAssignmentListResponse,
@@ -19,9 +17,16 @@ from app.domains.instruction.schemas import (
     StudentAssignmentResponse,
 )
 from app.domains.instruction.service import InstructionService
+from app.domains.progress.dependencies import get_learning_record_service
+from app.common.logging.logging_config import get_logger
 
-# 학생 관점의 배정 과제 조회 API.
+logger = get_logger(__name__)
+
+# 배정 과제 목록 조회
 router = APIRouter(prefix="/student/learning/assignments", tags=["student-learning"])
+
+# stage3 다음 문제 / 답안 제출 (content + instruction 오케스트레이션)
+stage3_router = APIRouter(prefix="/student/learning/stage3", tags=["student-learning"])
 
 
 @router.get("", response_model=StudentAssignmentListResponse)
@@ -66,3 +71,69 @@ def list_my_assignments(
             )
         )
     return StudentAssignmentListResponse(assignments=items, total_count=len(items))
+
+
+@stage3_router.get(
+    "/next-problem",
+    summary="다음 문제 조회",
+    response_model=dict,
+)
+async def get_next_problem(
+    lesson_id: str = DEFAULT_STAGE3_LESSON_ID,
+    current_user: User = Depends(get_current_student),
+    instruction_service: InstructionService = Depends(get_instruction_service),
+) -> dict:
+    """선생님 배정 문제를 우선 출제하고, 없으면 기본 Stage 3 문제를 출제한다."""
+    try:
+        problem = get_stage3_service(instruction_service=instruction_service).get_next_problem(
+            user_id=current_user.user_id,
+            lesson_id=lesson_id,
+        )
+        if not problem:
+            return {"success": True, "message": "모든 문제를 완료했습니다!", "is_completed": True}
+        return {
+            "success": True,
+            "problem": {
+                "problem_id": problem["problem_id"],
+                "sentence_part1": problem["sentence_part1"],
+                "sentence_part2": problem["sentence_part2"],
+                "visual_hint": problem.get("visual_hint"),
+                "accent_color": problem.get("accent_color"),
+                "badge": problem.get("badge"),
+                "source": problem.get("source", "base"),
+                "assignment_id": problem.get("assignment_id"),
+            },
+            "is_completed": False,
+        }
+    except Exception as e:
+        logger.error(f"[ERROR] 3단계 다음 문제 조회 실패: {e}")
+        raise HTTPException(status_code=500, detail="다음 문제 조회에 실패했습니다")
+
+
+@stage3_router.post(
+    "/submit-answer",
+    summary="답변 제출",
+    response_model=Stage3AnswerResponse,
+)
+async def submit_stage3_answer(
+    request: Stage3AnswerRequest,
+    lesson_id: str | None = None,
+    current_user: User = Depends(get_current_student),
+    instruction_service: InstructionService = Depends(get_instruction_service),
+) -> Stage3AnswerResponse:
+    """기본 문제 또는 배정 문제 답안을 제출한다."""
+    try:
+        learning_svc = get_learning_record_service()
+        return get_stage3_service(
+            learning_record_service=learning_svc,
+            instruction_service=instruction_service,
+        ).submit_answer(
+            request.problem_id,
+            request.user_answer,
+            user_id=current_user.user_id,
+            lesson_id=lesson_id,
+            assignment_id=request.assignment_id,
+        )
+    except Exception as e:
+        logger.error(f"[ERROR] 3단계 답변 제출 실패: {e}")
+        raise HTTPException(status_code=500, detail="답변 제출에 실패했습니다")
