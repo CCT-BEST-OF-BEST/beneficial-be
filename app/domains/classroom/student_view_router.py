@@ -1,3 +1,13 @@
+"""교사가 특정 학생의 학습 상태를 조회하는 Classroom 라우터.
+
+경로 prefix: /teacher/students
+주 사용자: 교사, 개발자
+
+teacher_router.py와 분리한 이유:
+- teacher_router.py는 반 자체를 관리한다. 예: 반 생성, 반 목록, 학생 추가/삭제.
+- 이 파일은 교사가 담당 학생 1명의 프로필/학습 기록을 보는 read-only 조회 API를 담는다.
+- URL도 /teacher/classes가 아니라 /teacher/students/{user_id} 중심이다.
+"""
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 
 from app.domains.agent.schemas import AgentProfileResponse, WeakConceptResponse
@@ -9,6 +19,7 @@ from app.domains.progress.dependencies import get_learning_record_service
 from app.domains.progress.schemas import LearningRecordResponse, LearningRecordsResponse
 from app.domains.progress.service import LearningRecordService
 
+# 교사 관점의 학생 상세 조회 API.
 router = APIRouter(prefix="/teacher/students", tags=["teacher"])
 
 
@@ -19,6 +30,7 @@ def get_student_profile(
     classroom_service: ClassroomService = Depends(get_classroom_service),
     learning_record_service: LearningRecordService = Depends(get_learning_record_service),
 ) -> AgentProfileResponse:
+    """담당 학생의 약점 개념 프로필을 조회한다."""
     _ensure_student_access(classroom_service, current_user, user_id)
     profile = learning_record_service.get_weakness_profile(user_id)
     return AgentProfileResponse(
@@ -39,6 +51,7 @@ def get_student_records(
     classroom_service: ClassroomService = Depends(get_classroom_service),
     learning_record_service: LearningRecordService = Depends(get_learning_record_service),
 ) -> LearningRecordsResponse:
+    """담당 학생의 학습 기록을 조회한다. stage 파라미터로 단계별 필터링할 수 있다."""
     _ensure_student_access(classroom_service, current_user, user_id)
     records = learning_record_service.get_records(user_id)
     if stage is not None:
@@ -60,6 +73,7 @@ def _ensure_student_access(
     current_user: User,
     student_id: str,
 ) -> None:
+    """교사가 담당하지 않는 학생의 학습 데이터에 접근하지 못하게 막는다."""
     if not classroom_service.can_access_student(current_user, student_id):
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
