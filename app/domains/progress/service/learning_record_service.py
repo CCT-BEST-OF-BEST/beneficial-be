@@ -3,13 +3,13 @@ from datetime import datetime
 from typing import Dict, Optional
 
 from app.common.security import utc_now
-from app.domains.progress.models import (
+from app.domains.progress.model.progress_models import (
     LearningRecord,
     StudentWeaknessProfile,
     WeakConcept,
 )
 from app.domains.progress.repository.learning_record_repository import LearningClassroomRepository, LearningRecordRepository
-from app.domains.progress.util.util import (
+from app.domains.progress.util import (
     _calculate_priority,
     _record_created_at,
     build_problem_key,
